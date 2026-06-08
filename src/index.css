@@ -1,0 +1,86 @@
+@import "tailwindcss";
+
+@theme {
+  --color-accent: #00e676;
+  --color-accent-dim: #00b85f;
+  --color-bg: #000000;
+  --color-surface: #0a0a0a;
+  --color-surface-2: #111113;
+  --color-line: #1c1c1f;
+  --color-line-2: #262629;
+  --color-text: #ededed;
+  --color-text-dim: #8a8a8f;
+  --color-text-mute: #5a5a60;
+  --font-sans: "Inter", system-ui, sans-serif;
+}
+
+@font-face {
+  font-family: "Inter";
+  src: url("/Inter.ttf") format("truetype");
+  font-weight: 100 900;
+  font-display: swap;
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+html, body, #root { height: 100%; overflow: hidden; }
+
+body {
+  background: #000;
+  color: #ededed;
+  font-family: "Inter", system-ui, sans-serif;
+  font-feature-settings: "cv11", "ss01";
+  letter-spacing: -0.01em;
+  user-select: none;
+  -webkit-font-smoothing: antialiased;
+}
+
+::-webkit-scrollbar { width: 8px; height: 8px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: #1f1f22; border-radius: 4px; }
+::-webkit-scrollbar-thumb:hover { background: #2c2c30; }
+
+/* Etiqueta de sección minimalista */
+.section-label {
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--color-text-mute);
+}
+
+/* Fondo con profundidad: glow arriba + acento inferior + textura de puntos */
+.content-bg {
+  background-color: #070708;
+  background-image:
+    radial-gradient(ellipse 95% 60% at 50% -10%, rgba(0, 230, 118, 0.11), transparent 62%),
+    radial-gradient(ellipse 70% 60% at 105% 112%, rgba(59, 158, 255, 0.07), transparent 60%),
+    radial-gradient(circle at 1px 1px, rgba(255, 255, 255, 0.032) 1px, transparent 0);
+  background-size: auto, auto, 24px 24px;
+}
+
+/* Botones unificados */
+.btn {
+  height: 2.25rem;
+  padding: 0 1rem;
+  border-radius: 0.5rem;
+  font-size: 13px;
+  font-weight: 500;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  transition: background-color .15s ease, color .15s ease, border-color .15s ease,
+    transform .12s ease, box-shadow .15s ease;
+  white-space: nowrap;
+}
+.btn:disabled { opacity: 0.4; pointer-events: none; }
+.btn:focus-visible { outline: 2px solid var(--color-accent); outline-offset: 2px; }
+
+.btn-primary { color: #00140a; font-weight: 600; background: var(--color-accent); }
+.btn-primary:hover { background: #19ff8c; transform: translateY(-1px); box-shadow: 0 6px 18px rgba(0, 230, 118, 0.25); }
+.btn-primary:active { transform: translateY(0); box-shadow: none; }
+
+.btn-ghost { color: var(--color-text-dim); border: 1px solid var(--color-line); background: transparent; }
+.btn-ghost:hover { color: var(--color-text); border-color: var(--color-line-2); background: rgba(255, 255, 255, 0.025); }
+.btn-ghost:active { transform: translateY(1px); }
