@@ -32,7 +32,7 @@ export default function StatusBar() {
             </span>
           ))}
         </div>
-        <span className="text-text-mute">Gaming Optimizer v2.0.0</span>
+        <span className="text-text-mute">Gaming Optimizer v2.0.1</span>
       </div>
     </div>
   );

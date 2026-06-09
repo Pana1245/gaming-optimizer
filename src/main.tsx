@@ -3,11 +3,14 @@ import { createRoot } from 'react-dom/client'
 import './index.css'
 import App from './App.tsx'
 import { I18nProvider } from './lib/i18n'
+import { GameModeProvider } from './lib/gameMode'
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
     <I18nProvider>
-      <App />
+      <GameModeProvider>
+        <App />
+      </GameModeProvider>
     </I18nProvider>
   </StrictMode>,
 )

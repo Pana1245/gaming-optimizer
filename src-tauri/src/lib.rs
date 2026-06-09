@@ -19,32 +19,52 @@ pub struct RunResult {
 }
 
 /// Ejecuta un script PowerShell oculto (-EncodedCommand evita problemas de escaping).
+/// `timeout_secs` es opcional (por defecto 600s) para cortar scripts colgados sin
+/// matar operaciones largas legítimas (instalaciones, backups).
 #[tauri::command]
-async fn run_powershell(script: String) -> RunResult {
+async fn run_powershell(script: String, timeout_secs: Option<u64>) -> RunResult {
     tauri::async_runtime::spawn_blocking(move || {
+        use wait_timeout::ChildExt;
         let full = format!("$ProgressPreference='SilentlyContinue';\n{script}");
         // UTF-16LE -> base64 (formato que espera -EncodedCommand)
         let utf16: Vec<u8> = full.encode_utf16().flat_map(|u| u.to_le_bytes()).collect();
         let encoded = general_purpose::STANDARD.encode(utf16);
 
         let mut cmd = Command::new("powershell.exe");
-        cmd.args(["-NoProfile", "-ExecutionPolicy", "Bypass", "-EncodedCommand", &encoded]);
+        cmd.args(["-NoProfile", "-ExecutionPolicy", "Bypass", "-EncodedCommand", &encoded])
+            .stdout(Stdio::piped())
+            .stderr(Stdio::piped());
         #[cfg(windows)]
         cmd.creation_flags(CREATE_NO_WINDOW);
 
-        match cmd.output() {
-            Ok(out) => {
-                let stdout = String::from_utf8_lossy(&out.stdout).trim().to_string();
-                let stderr = String::from_utf8_lossy(&out.stderr).trim().to_string();
-                let mut text = stdout;
-                if !out.status.success() && !stderr.is_empty() && !stderr.contains("CLIXML") {
-                    if !text.is_empty() { text.push('\n'); }
-                    text.push_str(&stderr);
-                }
-                RunResult { ok: out.status.success(), output: text }
+        let mut child = match cmd.spawn() {
+            Ok(c) => c,
+            Err(e) => return RunResult { ok: false, output: e.to_string() },
+        };
+        // Drenar las tuberías en hilos para no bloquear si la salida es grande.
+        let mut so = child.stdout.take().unwrap();
+        let mut se = child.stderr.take().unwrap();
+        let t_out = std::thread::spawn(move || { let mut b = Vec::new(); let _ = so.read_to_end(&mut b); b });
+        let t_err = std::thread::spawn(move || { let mut b = Vec::new(); let _ = se.read_to_end(&mut b); b });
+
+        let dur = std::time::Duration::from_secs(timeout_secs.unwrap_or(600));
+        let status = match child.wait_timeout(dur) {
+            Ok(Some(s)) => s,
+            Ok(None) => {
+                let _ = child.kill();
+                let _ = child.wait();
+                return RunResult { ok: false, output: "Tiempo de espera agotado".into() };
             }
-            Err(e) => RunResult { ok: false, output: e.to_string() },
+            Err(e) => return RunResult { ok: false, output: e.to_string() },
+        };
+        let stdout = String::from_utf8_lossy(&t_out.join().unwrap_or_default()).trim().to_string();
+        let stderr = String::from_utf8_lossy(&t_err.join().unwrap_or_default()).trim().to_string();
+        let mut text = stdout;
+        if !status.success() && !stderr.is_empty() && !stderr.contains("CLIXML") {
+            if !text.is_empty() { text.push('\n'); }
+            text.push_str(&stderr);
         }
+        RunResult { ok: status.success(), output: text }
     })
     .await
     .unwrap_or(RunResult { ok: false, output: "error interno".into() })
@@ -109,16 +129,21 @@ pub struct Stats {
 
 struct AppState {
     sys: Mutex<System>,
-    game_watch: Arc<AtomicBool>,
+    // Cada hilo del vigilante tiene su propio flag; al re-arrancar se reemplaza
+    // (frenando el anterior) para evitar hilos duplicados.
+    game_watch: Mutex<Arc<AtomicBool>>,
 }
 
 // ---- Auto Game-Mode: vigila procesos y avisa cuando entra/sale un juego ----
 /// Arranca el vigilante. Emite `game-on` (con el nombre) y `game-off`.
 #[tauri::command]
 fn start_game_watch(app: tauri::AppHandle, state: tauri::State<AppState>, games: Vec<String>) {
-    let flag = state.game_watch.clone();
-    if flag.swap(true, Ordering::SeqCst) {
-        return; // ya estaba corriendo
+    // Frena cualquier hilo previo y crea un flag nuevo para este hilo.
+    let flag = Arc::new(AtomicBool::new(true));
+    {
+        let mut guard = state.game_watch.lock().unwrap();
+        guard.store(false, Ordering::SeqCst);
+        *guard = flag.clone();
     }
     let targets: Vec<String> = games.iter().map(|g| g.to_lowercase()).collect();
     std::thread::spawn(move || {
@@ -153,7 +178,7 @@ fn start_game_watch(app: tauri::AppHandle, state: tauri::State<AppState>, games:
 /// Detiene el vigilante.
 #[tauri::command]
 fn stop_game_watch(state: tauri::State<AppState>) {
-    state.game_watch.store(false, Ordering::SeqCst);
+    state.game_watch.lock().unwrap().store(false, Ordering::SeqCst);
 }
 
 /// Uso instantáneo de CPU, RAM y disco del sistema (%).
@@ -326,7 +351,7 @@ pub fn run() {
         .plugin(tauri_plugin_notification::init())
         .manage(AppState {
             sys: Mutex::new(System::new_all()),
-            game_watch: Arc::new(AtomicBool::new(false)),
+            game_watch: Mutex::new(Arc::new(AtomicBool::new(false))),
         })
         .setup(|app| {
             if cfg!(debug_assertions) {
