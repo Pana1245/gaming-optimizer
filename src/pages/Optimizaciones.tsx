@@ -60,7 +60,10 @@ export default function Optimizaciones() {
   const [canReboot, setCanReboot] = useState(false);
   const logRef = useRef<HTMLDivElement>(null);
   const mounted = useRef(true);
-  useEffect(() => () => { mounted.current = false; }, []);
+  useEffect(() => {
+    mounted.current = true;
+    return () => { mounted.current = false; };
+  }, []);
   const scrollRef = useScrollMemory<HTMLDivElement>("opt");
 
   const cats = useMemo(
@@ -73,7 +76,7 @@ export default function Optimizaciones() {
 
   useEffect(() => {
     const init: Record<string, boolean> = {};
-    ALL_CATEGORIES.forEach((c) => c.tweaks.forEach((_, i) => (init[`${c.id}:${i}`] = true)));
+    ALL_CATEGORIES.forEach((c) => c.tweaks.forEach((t, i) => (init[`${c.id}:${i}`] = !t.optIn)));
     setSel(init);
     getSystemInfo().then((info) => setWinVer(info.win_ver)).catch(() => {});
   }, []);
@@ -85,7 +88,7 @@ export default function Optimizaciones() {
   const addLog = (s: string) => setLog((l) => [...l, s]);
   const setAll = (v: boolean) => {
     const n: Record<string, boolean> = {};
-    cats.forEach((c) => c.tweaks.forEach((_, i) => (n[`${c.id}:${i}`] = v)));
+    cats.forEach((c) => c.tweaks.forEach((t, i) => (n[`${c.id}:${i}`] = v && !t.optIn)));
     setSel(n);
   };
   const modoGamer = () => {
@@ -157,10 +160,10 @@ export default function Optimizaciones() {
                 <div className="flex items-center gap-2.5 mb-2.5">
                   <span className="w-1.5 h-1.5 rounded-full" style={{ background: c.color }} />
                   <h2 className="section-label">{c.name}</h2>
-                  <span className="text-[11px] text-text-mute">{selCount}/{c.tweaks.length}</span>
+                  <span className="text-[12px] text-text-mute">{selCount}/{c.tweaks.length}</span>
                 </div>
                 {c.id === "winutil" && (
-                  <p className="text-[11px] text-text-mute -mt-1.5 mb-2">
+                  <p className="text-[12px] text-text-mute -mt-1.5 mb-2">
                     Adaptados de WinUtil · Chris Titus Tech (MIT)
                   </p>
                 )}
@@ -188,7 +191,7 @@ export default function Optimizaciones() {
           <span className="section-label mb-2.5">Progreso</span>
           <div
             ref={logRef}
-            className="flex-1 overflow-y-auto rounded-xl bg-surface border border-line p-4 font-mono text-[12px] leading-relaxed text-text-dim whitespace-pre-wrap"
+            className="flex-1 overflow-y-auto rounded-xl bg-surface border border-line p-4 font-mono text-[13px] leading-relaxed text-text-dim whitespace-pre-wrap"
           >
             {log.join("\n")}
           </div>

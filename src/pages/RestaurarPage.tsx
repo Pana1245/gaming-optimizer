@@ -58,7 +58,7 @@ export default function RestaurarPage() {
         <div className="flex items-center justify-between gap-4">
           <div>
             <div className="text-[14px] font-medium text-text">{title}</div>
-            <div className="text-[12px] text-text-dim mt-0.5">{desc}</div>
+            <div className="text-[13px] text-text-dim mt-0.5">{desc}</div>
           </div>
           <motion.button whileTap={{ scale: 0.96 }} disabled={busy} onClick={onClick}
             className={`shrink-0 px-4 h-9 rounded-lg text-[13px] font-medium transition disabled:opacity-40
@@ -91,14 +91,14 @@ export default function RestaurarPage() {
             <NeonCard>
               <span className="section-label">Backups disponibles</span>
               {backups.length ? (
-                <div className="mt-3 space-y-1.5 font-mono text-[12px] text-text-dim">
+                <div className="mt-3 space-y-1.5 font-mono text-[13px] text-text-dim">
                   {backups.map((b) => (
                     <div key={b} className="flex items-center gap-2">
                       <span className="w-1 h-1 rounded-full bg-accent" />{b}
                     </div>
                   ))}
                 </div>
-              ) : <div className="text-text-mute text-[12px] mt-2">Todavía no hay backups. Se crean al optimizar.</div>}
+              ) : <div className="text-text-mute text-[13px] mt-2">Todavía no hay backups. Se crean al optimizar.</div>}
             </NeonCard>
           </motion.div>
         </motion.div>
@@ -109,7 +109,7 @@ export default function RestaurarPage() {
             {busy && <Spinner size={12} />}
           </div>
           {busy && <IndeterminateBar className="mb-2" />}
-          <div ref={logRef} className="flex-1 overflow-y-auto rounded-xl bg-surface border border-line p-4 font-mono text-[12px] leading-relaxed text-text-dim whitespace-pre-wrap">
+          <div ref={logRef} className="flex-1 overflow-y-auto rounded-xl bg-surface border border-line p-4 font-mono text-[13px] leading-relaxed text-text-dim whitespace-pre-wrap">
             {log.join("\n")}
           </div>
         </div>

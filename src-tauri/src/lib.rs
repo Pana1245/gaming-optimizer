@@ -335,6 +335,58 @@ fn ledger_write(content: String) -> bool {
     std::fs::write(f, content).is_ok()
 }
 
+// ---- RAM Booster: purga la lista standby de memoria (cache en RAM) ----------
+/// Libera la memoria en standby (archivos cacheados). Requiere admin.
+#[cfg(windows)]
+#[tauri::command]
+fn clear_standby_ram() -> RunResult {
+    use windows::core::{s, w};
+    use windows::Win32::Foundation::{CloseHandle, HANDLE, LUID};
+    use windows::Win32::Security::{
+        AdjustTokenPrivileges, LookupPrivilegeValueW, LUID_AND_ATTRIBUTES, SE_PRIVILEGE_ENABLED,
+        TOKEN_ADJUST_PRIVILEGES, TOKEN_PRIVILEGES, TOKEN_QUERY,
+    };
+    use windows::Win32::System::LibraryLoader::{GetProcAddress, LoadLibraryA};
+    use windows::Win32::System::Threading::{GetCurrentProcess, OpenProcessToken};
+    unsafe {
+        // Habilitar SeProfileSingleProcessPrivilege (necesario para purgar la lista).
+        let mut token = HANDLE::default();
+        if OpenProcessToken(GetCurrentProcess(), TOKEN_ADJUST_PRIVILEGES | TOKEN_QUERY, &mut token).is_ok() {
+            let mut luid = LUID::default();
+            if LookupPrivilegeValueW(None, w!("SeProfileSingleProcessPrivilege"), &mut luid).is_ok() {
+                let tp = TOKEN_PRIVILEGES {
+                    PrivilegeCount: 1,
+                    Privileges: [LUID_AND_ATTRIBUTES { Luid: luid, Attributes: SE_PRIVILEGE_ENABLED }],
+                };
+                let _ = AdjustTokenPrivileges(token, false, Some(&tp), 0, None, None);
+            }
+            let _ = CloseHandle(token);
+        }
+        // NtSetSystemInformation(SystemMemoryListInformation=80, MemoryPurgeStandbyList=4).
+        let ntdll = match LoadLibraryA(s!("ntdll.dll")) {
+            Ok(h) => h,
+            Err(e) => return RunResult { ok: false, output: e.to_string() },
+        };
+        let Some(proc) = GetProcAddress(ntdll, s!("NtSetSystemInformation")) else {
+            return RunResult { ok: false, output: "NtSetSystemInformation no disponible".into() };
+        };
+        let func: extern "system" fn(i32, *mut core::ffi::c_void, u32) -> i32 = std::mem::transmute(proc);
+        let mut command: i32 = 4;
+        let status = func(80, &mut command as *mut _ as *mut core::ffi::c_void, 4);
+        if status == 0 {
+            RunResult { ok: true, output: "Memoria standby liberada".into() }
+        } else {
+            RunResult { ok: false, output: format!("Error NTSTATUS {status:#x} (¿sin admin?)") }
+        }
+    }
+}
+
+#[cfg(not(windows))]
+#[tauri::command]
+fn clear_standby_ram() -> RunResult {
+    RunResult { ok: false, output: "solo Windows".into() }
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     // En release, si no somos admin, relanzar con UAC y salir.
@@ -365,7 +417,8 @@ pub fn run() {
         })
         .invoke_handler(tauri::generate_handler![
             run_powershell, run_powershell_stream, stats, system_info,
-            ledger_read, ledger_write, start_game_watch, stop_game_watch
+            ledger_read, ledger_write, start_game_watch, stop_game_watch,
+            clear_standby_ram
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

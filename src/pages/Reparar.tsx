@@ -67,7 +67,7 @@ export default function Reparar() {
                 <div className="flex items-center justify-between gap-4">
                   <div className="min-w-0">
                     <div className="text-[14px] font-medium text-text">{a.title}</div>
-                    <div className="text-[12px] text-text-dim mt-0.5">{a.desc}</div>
+                    <div className="text-[13px] text-text-dim mt-0.5">{a.desc}</div>
                   </div>
                   <motion.button whileTap={{ scale: 0.96 }} onClick={() => run(a)} disabled={!!busy}
                     className="shrink-0 px-4 h-9 rounded-lg text-[13px] font-medium text-text-dim hover:text-text border border-line hover:border-line-2 transition disabled:opacity-40">
@@ -85,7 +85,7 @@ export default function Reparar() {
             {busy && <Spinner size={12} />}
           </div>
           {busy && <IndeterminateBar className="mb-2" />}
-          <div ref={logRef} className="flex-1 overflow-y-auto rounded-xl bg-surface border border-line p-4 font-mono text-[12px] leading-relaxed text-text-dim whitespace-pre-wrap">
+          <div ref={logRef} className="flex-1 overflow-y-auto rounded-xl bg-surface border border-line p-4 font-mono text-[13px] leading-relaxed text-text-dim whitespace-pre-wrap">
             {log.join("\n")}
           </div>
         </div>

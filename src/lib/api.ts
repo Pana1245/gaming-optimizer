@@ -14,7 +14,9 @@ export interface SysInfo {
 }
 
 export const runPowershell = (script: string) =>
-  invoke<RunResult>("run_powershell", { script });
+  invoke<RunResult>("run_powershell", { script }).catch(
+    (e) => ({ ok: false, output: `ERROR invoke: ${String(e)}` }) as RunResult,
+  );
 
 export const getStats = () => invoke<Stats>("stats");
 
@@ -25,6 +27,8 @@ export const ledgerWrite = (content: string) => invoke<boolean>("ledger_write", 
 
 export const startGameWatch = (games: string[]) => invoke("start_game_watch", { games });
 export const stopGameWatch = () => invoke("stop_game_watch");
+
+export const clearStandbyRam = () => invoke<RunResult>("clear_standby_ram");
 
 let _streamId = 0;
 /** Ejecuta PowerShell con salida en vivo. Llama onLine por cada línea; resuelve al terminar. */

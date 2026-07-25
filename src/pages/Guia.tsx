@@ -16,6 +16,37 @@ const GUIDE: Item[] = [
     ],
   },
   {
+    id: "panel", icon: "📊", title: "Panel",
+    desc: "Tu PC de un vistazo: puntaje, temperaturas y RAM.",
+    points: [
+      "El puntaje se calcula LEYENDO el registro real: cuántos tweaks clave (Gaming + Privacidad) están aplicados.",
+      "Temperaturas de CPU y GPU en vivo (si tu hardware las expone; GPU NVIDIA vía nvidia-smi).",
+      "RAM Booster: libera la memoria standby (archivos cacheados) — útil antes de abrir un juego pesado.",
+      "También muestra el uso de CPU/RAM/SSD y el estado del Auto Game-Mode.",
+    ],
+  },
+  {
+    id: "profiles", icon: "📚", title: "Perfiles",
+    desc: "Configuraciones completas con un solo clic.",
+    points: [
+      "Competitivo: FPS y latencia al máximo (plan máximo, HAGS, CPU sin reserva, sin transparencias).",
+      "Streaming: igual de rápido pero dejando CPU para el encoder de OBS.",
+      "Equilibrado: valores estándar de Windows — usalo si algo anda raro.",
+      "Ahorro: para notebooks o PCs encendidas todo el día.",
+      "Todos los cambios pasan por el Motor: quedan en el Historial y se pueden deshacer.",
+    ],
+  },
+  {
+    id: "network", icon: "🌐", title: "Red",
+    desc: "DNS más rápido y test de ping.",
+    points: [
+      "Cambiá el DNS a Cloudflare (1.1.1.1) o Google (8.8.8.8) con un clic — o volvé al automático del router.",
+      "Un DNS rápido acelera la resolución de nombres (webs, login de juegos), no el ping dentro de la partida.",
+      "El test de ping mide tu latencia real a Cloudflare, Google y Steam.",
+      "Verde < 35 ms · amarillo < 80 ms · rojo: revisá tu conexión.",
+    ],
+  },
+  {
     id: "opt", icon: "🚀", title: "Optimizaciones",
     desc: "Aplica tweaks para mejorar rendimiento, red y privacidad.",
     points: [
@@ -39,10 +70,11 @@ const GUIDE: Item[] = [
     id: "gamemode", icon: "🎮", title: "Auto Game-Mode",
     desc: "Activa el modo gamer solo cuando abrís un juego.",
     points: [
-      "Un servicio en segundo plano vigila los procesos cada 3 segundos.",
-      "Detecta un juego de tu lista → activa plan de energía máximo + responsiveness gamer y te notifica.",
-      "Cerrás el juego → revierte todo solo y te avisa.",
-      "La lista de juegos es editable (agregás el nombre del .exe). Para probar: agregá notepad.exe.",
+      "Un servicio en segundo plano vigila los procesos cada 3 segundos (funciona estés en la sección que estés).",
+      "Detecta un juego de tu lista → guarda tu plan actual, activa el plan máximo + responsiveness gamer y te notifica.",
+      "Modo Pro ⚡: además pone el juego en prioridad Alta, baja apps de fondo (Spotify, Chrome…) y libera RAM standby.",
+      "Cerrás el juego → restaura TU plan anterior y las prioridades, y te avisa.",
+      "“Detectar instalados” escanea Steam, Epic y Riot y llena la lista solo. También podés agregar .exe a mano.",
     ],
   },
   {
@@ -138,7 +170,7 @@ export default function Guia() {
                 <span className="text-[18px]">{g.icon}</span>
                 <div className="flex-1 min-w-0">
                   <div className="text-[14px] font-medium text-text">{g.title}</div>
-                  <div className="text-[12px] text-text-mute truncate">{g.desc}</div>
+                  <div className="text-[13px] text-text-mute truncate">{g.desc}</div>
                 </div>
                 <motion.span animate={{ rotate: isOpen ? 180 : 0 }} transition={{ duration: 0.2 }}
                   className="text-text-mute shrink-0">

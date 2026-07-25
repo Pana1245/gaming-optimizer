@@ -16,7 +16,7 @@ export default function Tooltip({ content, children, className = "" }: { content
       {pos && content && createPortal(
         <div
           style={{ position: "fixed", left: pos.x, top: pos.y - 8, transform: "translate(-50%, -100%)" }}
-          className="z-[100] w-max max-w-[280px] px-2.5 py-1.5 rounded-lg bg-surface-2 border border-line-2 text-[11.5px] text-text-dim leading-snug pointer-events-none shadow-xl"
+          className="z-[100] w-max max-w-[280px] px-2.5 py-1.5 rounded-lg bg-surface-2 border border-line-2 text-[12.5px] text-text-dim leading-snug pointer-events-none shadow-xl"
         >
           {content}
         </div>,

@@ -13,7 +13,7 @@ interface Props {
 export default function EnergyCheckbox({ checked, onChange, label, badge, risk, desc }: Props) {
   return (
     <div
-      className="flex items-center gap-3 py-1.5 px-2 -mx-2 rounded-md cursor-pointer hover:bg-white/[0.025] transition-colors"
+      className="flex items-center gap-3 py-2.5 px-2 -mx-2 rounded-md cursor-pointer hover:bg-white/[0.025] transition-colors"
       onClick={() => onChange(!checked)}
     >
       <motion.div
@@ -54,17 +54,17 @@ export default function EnergyCheckbox({ checked, onChange, label, badge, risk, 
             </>
           }
         >
-          <span className={`text-[13px] truncate transition-colors ${checked ? "text-text" : "text-text-dim"}`}>
+          <span className={`text-[13.5px] truncate transition-colors ${checked ? "text-text" : "text-text-dim"}`}>
             {label}
           </span>
         </Tooltip>
       ) : (
-        <span className={`text-[13px] flex-1 transition-colors ${checked ? "text-text" : "text-text-dim"}`}>
+        <span className={`text-[13.5px] flex-1 transition-colors ${checked ? "text-text" : "text-text-dim"}`}>
           {label}
         </span>
       )}
       {badge && (
-        <span className="text-[10px] font-medium text-text-mute border border-line-2 rounded px-1.5 py-0.5">
+        <span className="text-[11px] font-medium text-text-mute border border-line-2 rounded px-1.5 py-0.5">
           {badge}
         </span>
       )}

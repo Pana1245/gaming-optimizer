@@ -61,7 +61,10 @@ export default function Limpieza() {
   const [done, setDone] = useState<string | null>(null);
   const logRef = useRef<HTMLDivElement>(null);
   const mounted = useRef(true);
-  useEffect(() => () => { mounted.current = false; }, []);
+  useEffect(() => {
+    mounted.current = true;
+    return () => { mounted.current = false; };
+  }, []);
 
   const selected = useMemo(() => ITEMS.filter((i) => sel[i.id]), [sel]);
   const busy = analyzing || running;
@@ -133,7 +136,7 @@ export default function Limpieza() {
 
         <div className="flex flex-col min-h-0">
           <span className="section-label mb-2.5">Progreso</span>
-          <div ref={logRef} className="flex-1 overflow-y-auto rounded-xl bg-surface border border-line p-4 font-mono text-[12px] leading-relaxed text-text-dim whitespace-pre-wrap">
+          <div ref={logRef} className="flex-1 overflow-y-auto rounded-xl bg-surface border border-line p-4 font-mono text-[13px] leading-relaxed text-text-dim whitespace-pre-wrap">
             {log.join("\n")}
           </div>
         </div>

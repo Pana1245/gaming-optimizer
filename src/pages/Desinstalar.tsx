@@ -46,14 +46,15 @@ Write-Output 'Desinstalador ejecutado'`;
 const forceScript = (a: App) => {
   if (a.type === "uwp")
     return `Get-AppxPackage -Name '${esc(a.name)}' -AllUsers -EA SilentlyContinue | Remove-AppxPackage -AllUsers -EA SilentlyContinue; Write-Output 'Paquete UWP eliminado'`;
+  // Borrado SEGURO: solo la carpeta de instalacion exacta + la clave de desinstalacion
+  // de ESTA app. No se borra por nombre de editor en carpetas/ramas compartidas
+  // (eso podia eliminar HKLM\Software\Microsoft, %AppData%\Microsoft, etc.).
   return String.raw`$removed=@()
-$loc='${esc(a.location)}'; $name='${esc(a.name)}'; $pub='${esc(a.pub)}'; $key='${esc(a.key)}'
-if($loc -and (Test-Path $loc)){ Remove-Item -LiteralPath $loc -Recurse -Force -EA SilentlyContinue; $removed+="Carpeta: $loc" }
-$bases=@($env:ProgramFiles,[Environment]::GetEnvironmentVariable('ProgramFiles(x86)'),$env:ProgramData,$env:APPDATA,$env:LOCALAPPDATA)
-foreach($b in $bases){ foreach($t in @($name,$pub)){ if($t -and $b){ $d=Join-Path $b $t; if(Test-Path $d){ Remove-Item -LiteralPath $d -Recurse -Force -EA SilentlyContinue; $removed+="Carpeta: $d" } } } }
-if($key){ Remove-Item -LiteralPath "Registry::$key" -Recurse -Force -EA SilentlyContinue; $removed+="Registro de desinstalacion" }
-foreach($r in @('HKCU:\Software','HKLM:\Software','HKLM:\Software\Wow6432Node')){ foreach($t in @($pub,$name)){ if($t){ $pp=Join-Path $r $t; if(Test-Path $pp){ Remove-Item -LiteralPath $pp -Recurse -Force -EA SilentlyContinue; $removed+="Registro: $t" } } } }
-if($removed.Count -eq 0){ Write-Output 'No se encontraron restos.' } else { $removed | ForEach-Object { Write-Output $_ } }`;
+$loc='${esc(a.location)}'; $key='${esc(a.key)}'
+$protegidas=@($env:ProgramFiles,[Environment]::GetEnvironmentVariable('ProgramFiles(x86)'),$env:ProgramData,$env:windir,$env:APPDATA,$env:LOCALAPPDATA,$env:SystemDrive,'C:\Windows','C:\Program Files','C:\Program Files (x86)','C:\Users') | ForEach-Object { if($_){ $_.TrimEnd('\') } }
+if($loc){ $locT=$loc.TrimEnd('\'); if((Test-Path $loc) -and ($locT.Length -gt 12) -and ($protegidas -notcontains $locT)){ Remove-Item -LiteralPath $loc -Recurse -Force -EA SilentlyContinue; $removed+="Carpeta: $loc" } }
+if($key){ Remove-Item -LiteralPath "Registry::$key" -Recurse -Force -EA SilentlyContinue; $removed+="Clave de desinstalacion" }
+if($removed.Count -eq 0){ Write-Output 'No se encontraron restos seguros para borrar (ya estaba limpio).' } else { $removed | ForEach-Object { Write-Output $_ } }`;
 };
 
 const MS_BLOAT = String.raw`$list='Microsoft.BingNews','Microsoft.BingWeather','Microsoft.GetHelp','Microsoft.Getstarted','Microsoft.Messaging','Microsoft.MicrosoftSolitaireCollection','Microsoft.MicrosoftOfficeHub','Microsoft.People','Microsoft.SkypeApp','Microsoft.ZuneMusic','Microsoft.ZuneVideo','Microsoft.WindowsFeedbackHub','Microsoft.YourPhone','Microsoft.Todos','Clipchamp.Clipchamp','Microsoft.GamingApp','Microsoft.549981C3F5F10','Microsoft.MixedReality.Portal','Microsoft.WindowsMaps'
@@ -147,23 +148,23 @@ export default function Desinstalar() {
           <div className="rounded-xl border border-line divide-y divide-line/60">
             {filtered.map((a) => (
               <div key={a.type + a.name} className="flex items-center gap-3 px-4 py-2.5 group">
-                <span className={`text-[10px] px-1.5 py-0.5 rounded shrink-0 ${a.type === "uwp" ? "text-[#7eb6ff] border border-[#7eb6ff44]" : "text-text-mute border border-line"}`}>
+                <span className={`text-[11px] px-1.5 py-0.5 rounded shrink-0 ${a.type === "uwp" ? "text-[#7eb6ff] border border-[#7eb6ff44]" : "text-text-mute border border-line"}`}>
                   {a.type}
                 </span>
                 <div className="flex-1 min-w-0">
                   <div className="text-[13px] text-text truncate">{a.name}</div>
-                  <div className="text-[11px] text-text-mute truncate">
+                  <div className="text-[12px] text-text-mute truncate">
                     {[a.pub, fmtSize(a.size), fmtDate(a.date)].filter(Boolean).join(" · ")}
                   </div>
                 </div>
                 <div className={`flex items-center gap-1.5 shrink-0 transition ${busy === a.name ? "opacity-100" : "opacity-60 group-hover:opacity-100"}`}>
                   {busy === a.name && <Spinner />}
                   <motion.button whileTap={{ scale: 0.95 }} onClick={() => uninstall(a)} disabled={working}
-                    className="px-3 h-8 rounded-lg text-[12px] text-text-dim hover:text-text border border-line hover:border-line-2 transition disabled:opacity-30">
+                    className="px-3 h-8 rounded-lg text-[13px] text-text-dim hover:text-text border border-line hover:border-line-2 transition disabled:opacity-30">
                     Quitar
                   </motion.button>
                   <motion.button whileTap={{ scale: 0.95 }} onClick={() => force(a)} disabled={working}
-                    className="px-3 h-8 rounded-lg text-[12px] text-[#ff7a90] hover:text-[#ff5470] border border-[#ff547033] hover:border-[#ff547066] transition disabled:opacity-30">
+                    className="px-3 h-8 rounded-lg text-[13px] text-[#ff7a90] hover:text-[#ff5470] border border-[#ff547033] hover:border-[#ff547066] transition disabled:opacity-30">
                     Forzar
                   </motion.button>
                 </div>

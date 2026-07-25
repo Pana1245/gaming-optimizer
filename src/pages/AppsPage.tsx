@@ -27,7 +27,10 @@ export default function AppsPage() {
   const [installed, setInstalled] = useState<Set<string>>(new Set());
   const logRef = useRef<HTMLDivElement>(null);
   const mounted = useRef(true);
-  useEffect(() => () => { mounted.current = false; }, []);
+  useEffect(() => {
+    mounted.current = true;
+    return () => { mounted.current = false; };
+  }, []);
   const scrollRef = useScrollMemory<HTMLDivElement>("apps");
 
   const setAll = (v: boolean) => {
@@ -98,14 +101,14 @@ export default function AppsPage() {
                 <div className="flex items-center gap-2.5 mb-2.5">
                   <span className="w-1.5 h-1.5 rounded-full" style={{ background: c.color }} />
                   <h2 className="section-label">{c.category}</h2>
-                  <span className="text-[11px] text-text-mute">{selCount}/{c.apps.length}</span>
+                  <span className="text-[12px] text-text-mute">{selCount}/{c.apps.length}</span>
                   <button
                     onClick={() => setSel((s) => {
                       const n = { ...s };
                       c.apps.forEach((a) => (n[a.id] = !allOn));
                       return n;
                     })}
-                    className="ml-auto text-[11px] text-text-mute hover:text-accent transition"
+                    className="ml-auto text-[12px] text-text-mute hover:text-accent transition"
                   >
                     {allOn ? "Quitar" : "Todo"}
                   </button>
@@ -125,7 +128,7 @@ export default function AppsPage() {
                           alt="" className="w-4 h-4 rounded-sm opacity-90"
                           onError={(e) => ((e.target as HTMLImageElement).style.visibility = "hidden")} />
                         <span className={`text-[13px] truncate ${on ? "text-text" : "text-text-dim"}`}>{a.name}</span>
-                        {inst && <span title="Ya instalado" className="ml-auto text-[10px] text-accent shrink-0">✓ instalado</span>}
+                        {inst && <span title="Ya instalado" className="ml-auto text-[11px] text-accent shrink-0">✓ instalado</span>}
                       </div>
                     );
                   })}
@@ -137,7 +140,7 @@ export default function AppsPage() {
 
         <div className="flex flex-col min-h-0">
           <span className="section-label mb-2.5">Progreso</span>
-          <div ref={logRef} className="flex-1 overflow-y-auto rounded-xl bg-surface border border-line p-4 font-mono text-[12px] leading-relaxed text-text-dim whitespace-pre-wrap">
+          <div ref={logRef} className="flex-1 overflow-y-auto rounded-xl bg-surface border border-line p-4 font-mono text-[13px] leading-relaxed text-text-dim whitespace-pre-wrap">
             {log.join("\n")}
           </div>
         </div>

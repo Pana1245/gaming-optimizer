@@ -20,7 +20,7 @@ export default function TitleBar() {
     >
       <div data-tauri-drag-region className="flex items-center gap-2 px-3 pointer-events-none">
         <img src="/wolf.png" alt="" className="w-5 h-5" />
-        <span className="text-[12px] font-medium text-text-dim tracking-wide">Gaming Optimizer</span>
+        <span className="text-[13px] font-medium text-text-dim tracking-wide">Gaming Optimizer</span>
       </div>
       <div className="flex h-full">
         <Btn onClick={() => win.minimize()}>

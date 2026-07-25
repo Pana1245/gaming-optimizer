@@ -59,7 +59,7 @@ export default function Sidebar({ items, footer, active, onSelect }: Props) {
         />
         <div className="leading-tight">
           <div className="text-[13px] font-semibold text-text">Gaming Optimizer</div>
-          <div className="text-[10px] text-text-mute">v2.0</div>
+          <div className="text-[11px] text-text-mute">v2.0</div>
         </div>
       </div>
       <nav className="flex-1 flex flex-col gap-0.5 overflow-y-auto min-h-0 pr-0.5">{items.map(Row)}</nav>

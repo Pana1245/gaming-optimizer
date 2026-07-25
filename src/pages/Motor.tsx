@@ -19,7 +19,10 @@ export default function Motor() {
   const [ledger, setLedger] = useState<LedgerEntry[]>([]);
   const logRef = useRef<HTMLDivElement>(null);
   const mounted = useRef(true);
-  useEffect(() => () => { mounted.current = false; }, []);
+  useEffect(() => {
+    mounted.current = true;
+    return () => { mounted.current = false; };
+  }, []);
   const listRef = useScrollMemory<HTMLDivElement>("motor");
 
   useEffect(() => {
@@ -92,7 +95,7 @@ export default function Motor() {
       <div className="flex gap-1 mb-4 p-1 rounded-lg bg-surface border border-line w-max">
         {(["apply", "history"] as const).map((t) => (
           <button key={t} onClick={() => setTab(t)}
-            className={`px-3 h-7 rounded-md text-[12.5px] transition ${tab === t ? "bg-white/[0.06] text-text" : "text-text-dim hover:text-text"}`}>
+            className={`px-3 h-7 rounded-md text-[13.5px] transition ${tab === t ? "bg-white/[0.06] text-text" : "text-text-dim hover:text-text"}`}>
             {t === "apply" ? "Aplicar" : `Historial${activeCount ? ` (${activeCount})` : ""}`}
           </button>
         ))}
@@ -121,7 +124,7 @@ export default function Motor() {
 
             <div className="flex flex-col min-h-0">
               <span className="section-label mb-2.5">Verificación</span>
-              <div ref={logRef} className="flex-1 overflow-y-auto rounded-xl bg-surface border border-line p-4 font-mono text-[12px] leading-relaxed text-text-dim whitespace-pre-wrap">
+              <div ref={logRef} className="flex-1 overflow-y-auto rounded-xl bg-surface border border-line p-4 font-mono text-[13px] leading-relaxed text-text-dim whitespace-pre-wrap">
                 {log.join("\n")}
               </div>
             </div>
@@ -158,12 +161,12 @@ export default function Motor() {
                       style={{ background: e.verified ? "#00e676" : "#ff5470" }} />
                     <div className="flex-1 min-w-0">
                       <div className="text-[13px] text-text truncate">{e.name}</div>
-                      <div className="text-[11px] text-text-mute font-mono truncate">
+                      <div className="text-[12px] text-text-mute font-mono truncate">
                         {showVal(e.prior)} → {e.value} · {fmtTime(e.ts)}
                       </div>
                     </div>
                     {e.undone ? (
-                      <span className="text-[11px] text-text-mute shrink-0">deshecho</span>
+                      <span className="text-[12px] text-text-mute shrink-0">deshecho</span>
                     ) : (
                       <button disabled={busy} onClick={() => undo(e)} className="btn btn-ghost shrink-0">Deshacer</button>
                     )}

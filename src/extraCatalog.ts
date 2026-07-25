@@ -5,10 +5,9 @@ export const EXTRA_TWEAKS: Record<string, Tweak[]> = {
   gaming: [
     {
       name: "Plan de energía Ultimate Performance",
-      script: String.raw`powercfg -duplicatescheme e9a42b02-d5df-448d-aa00-03f14749eb61 2>$null | Out-Null
-$p = powercfg -list | Select-String 'Ultimate' | Select-Object -First 1
-if($p){ $g = ($p -split '\s+')[3]; powercfg /setactive $g; Write-Output 'Ultimate Performance activado' }
-else { Write-Output 'No disponible en esta edicion' }`,
+      script: String.raw`$dup = powercfg -duplicatescheme e9a42b02-d5df-448d-aa00-03f14749eb61 2>$null
+if($dup -match '([0-9a-fA-F]{8}-([0-9a-fA-F]{4}-){3}[0-9a-fA-F]{12})'){ powercfg /setactive $matches[1]; Write-Output 'Ultimate Performance activado' }
+else { Write-Output 'No disponible en esta edicion (requiere Win10 Pro/Workstation o Win11)' }`,
     },
     {
       name: "MSI mode en la GPU (menos latencia)",

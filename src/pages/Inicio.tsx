@@ -82,9 +82,9 @@ export default function Inicio() {
               <div key={e.scope + e.name} className="flex items-center gap-3 px-4 py-3">
                 <div className="flex-1 min-w-0">
                   <div className={`text-[13px] ${e.enabled ? "text-text" : "text-text-mute"}`}>{e.name}</div>
-                  <div className="text-[11px] text-text-mute truncate font-mono">{e.cmd}</div>
+                  <div className="text-[12px] text-text-mute truncate font-mono">{e.cmd}</div>
                 </div>
-                <span className="text-[10px] text-text-mute border border-line rounded px-1.5 py-0.5">{e.scope}</span>
+                <span className="text-[11px] text-text-mute border border-line rounded px-1.5 py-0.5">{e.scope}</span>
                 <button
                   onClick={() => toggle(e)} disabled={busy === e.name}
                   className={`relative w-10 h-[22px] rounded-full transition-colors shrink-0 ${e.enabled ? "bg-accent" : "bg-line-2"}`}>

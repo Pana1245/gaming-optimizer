@@ -13,7 +13,7 @@ export default function StatusBar() {
   }, []);
 
   return (
-    <div className="h-6 shrink-0 flex items-center justify-between px-3 bg-[#050505] border-t border-line text-[11px] text-text-mute select-none">
+    <div className="h-6 shrink-0 flex items-center justify-between px-3 bg-[#050505] border-t border-line text-[12px] text-text-mute select-none">
       <div className="flex items-center gap-2 min-w-0">
         <span className="w-1.5 h-1.5 rounded-full bg-accent shrink-0" />
         <span className="truncate">

@@ -1,0 +1,126 @@
+import type { RegOp } from "../engineTweaks";
+import { runPowershell } from "./api";
+
+const GFX = String.raw`HKLM:\SYSTEM\CurrentControlSet\Control\GraphicsDrivers`;
+const GAMES = String.raw`HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Multimedia\SystemProfile\Tasks\Games`;
+const GAMECFG = String.raw`HKCU:\System\GameConfigStore`;
+const DWM = String.raw`HKLM:\SOFTWARE\Microsoft\Windows\Dwm`;
+
+// Optimizaciones universales de GPU (cualquier marca). Se aplican por el Motor →
+// reversibles desde el Historial.
+export const GPU_OPS: RegOp[] = [
+  { id: "gpu_hags", group: "GPU", name: "GPU Scheduling por hardware (HAGS)",
+    desc: "Deja que la GPU gestione su planificación: menos latencia y overhead de CPU.",
+    key: GFX, prop: "HwSchMode", type: "DWord", value: 2 },
+  { id: "gpu_prio", group: "GPU", name: "Prioridad de GPU alta para juegos",
+    desc: "Sube la prioridad de GPU de las tareas multimedia/juego.",
+    key: GAMES, prop: "GPU Priority", type: "DWord", value: 8 },
+  { id: "gpu_dvr", group: "GPU", name: "Desactivar Game DVR",
+    desc: "Apaga la grabación en segundo plano de Windows que roba FPS.",
+    key: GAMECFG, prop: "GameDVR_Enabled", type: "DWord", value: 0 },
+  { id: "gpu_tdr", group: "GPU", name: "Evitar cuelgues del driver bajo carga (TDR)", risk: "advanced",
+    desc: "Sube TdrDelay a 10s: da más tiempo a la GPU antes de reiniciar el driver. Útil si tenés crasheos 'el driver dejó de responder y se recuperó'.",
+    key: GFX, prop: "TdrDelay", type: "DWord", value: 10 },
+  { id: "gpu_mpo", group: "GPU", name: "Desactivar MPO (arregla parpadeos / stutter)", risk: "advanced",
+    desc: "Multi-Plane Overlay causa parpadeos o tirones en algunas GPUs y setups multimonitor. Desactivarlo lo soluciona.",
+    key: DWM, prop: "OverlayTestMode", type: "DWord", value: 5 },
+];
+
+export const isNvidia = (gpu: string) => /nvidia|geforce|rtx|gtx|quadro/i.test(gpu);
+export const isAmd = (gpu: string) => /amd|radeon|\brx\s?\d|vega|rdna/i.test(gpu);
+
+// ---- NVIDIA: monitor en vivo (nvidia-smi) -----------------------------------
+export interface NvInfo { name: string; temp: number; util: number; clock: number; power: number; memUsed: number; memTotal: number; }
+
+const NV_INFO = String.raw`$smi=Get-Command nvidia-smi -EA SilentlyContinue
+if(-not $smi){ Write-Output 'NONV' } else {
+  $q=& nvidia-smi --query-gpu=name,temperature.gpu,utilization.gpu,clocks.gr,power.draw,memory.used,memory.total --format=csv,noheader,nounits 2>$null | Select-Object -First 1
+  if($q){ Write-Output $q } else { Write-Output 'NONV' }
+}`;
+
+export async function getNvInfo(): Promise<NvInfo | null> {
+  const r = await runPowershell(NV_INFO);
+  const line = r.output.trim();
+  if (!line || line === "NONV") return null;
+  const p = line.split(",").map((s) => s.trim());
+  if (p.length < 7) return null;
+  const num = (s: string) => { const n = parseFloat(s); return Number.isFinite(n) ? n : 0; };
+  return { name: p[0], temp: num(p[1]), util: num(p[2]), clock: num(p[3]), power: num(p[4]), memUsed: num(p[5]), memTotal: num(p[6]) };
+}
+
+// ---- NVIDIA: PowerMizer = Preferir máximo rendimiento (evita downclock) ------
+const NV_CLASS = String.raw`HKLM:\SYSTEM\CurrentControlSet\Control\Class\{4d36e968-e325-11ce-bfc1-08002be10318}`;
+const NV_STORE = String.raw`HKCU:\Software\GamingOptimizer\GpuPrev`;
+
+export const NV_MAXPERF = String.raw`$base='${NV_CLASS}'; $store='${NV_STORE}'
+if(!(Test-Path $store)){ New-Item $store -Force | Out-Null }
+$n=0
+Get-ChildItem $base -EA SilentlyContinue | Where-Object { $_.PSChildName -match '^\d{4}$' } | ForEach-Object {
+  $id=$_.PSChildName; $k=$_.PSPath
+  $desc=(Get-ItemProperty $k -Name DriverDesc -EA SilentlyContinue).DriverDesc
+  if($desc -match 'NVIDIA'){
+    foreach($v in 'PowerMizerEnable','PerfLevelSrc','PowerMizerLevel','PowerMizerLevelAC'){
+      $cur=(Get-ItemProperty $k -Name $v -EA SilentlyContinue).$v
+      Set-ItemProperty $store -Name ($id+'_'+$v) -Value ([string]$cur) -Force
+    }
+    Set-ItemProperty $k -Name PowerMizerEnable   -Value 1      -Type DWord -Force
+    Set-ItemProperty $k -Name PerfLevelSrc       -Value 0x2222 -Type DWord -Force
+    Set-ItemProperty $k -Name PowerMizerLevel    -Value 1      -Type DWord -Force
+    Set-ItemProperty $k -Name PowerMizerLevelAC  -Value 1      -Type DWord -Force
+    $n++
+  }
+}
+if($n -gt 0){ Write-Output ('NVIDIA: maximo rendimiento aplicado a '+$n+' adaptador(es). Reinicia para que tome efecto.') } else { Write-Output 'No encontre adaptador NVIDIA en el registro.' }`;
+
+export const NV_RESTORE = String.raw`$base='${NV_CLASS}'; $store='${NV_STORE}'
+$n=0
+Get-ChildItem $base -EA SilentlyContinue | Where-Object { $_.PSChildName -match '^\d{4}$' } | ForEach-Object {
+  $id=$_.PSChildName; $k=$_.PSPath
+  $desc=(Get-ItemProperty $k -Name DriverDesc -EA SilentlyContinue).DriverDesc
+  if($desc -match 'NVIDIA'){
+    foreach($v in 'PowerMizerEnable','PerfLevelSrc','PowerMizerLevel','PowerMizerLevelAC'){
+      $prev=(Get-ItemProperty $store -Name ($id+'_'+$v) -EA SilentlyContinue).($id+'_'+$v)
+      if([string]::IsNullOrEmpty($prev)){ Remove-ItemProperty $k -Name $v -Force -EA SilentlyContinue }
+      else { Set-ItemProperty $k -Name $v -Value ([int]$prev) -Type DWord -Force }
+    }
+    $n++
+  }
+}
+Write-Output ('NVIDIA: valores del driver restaurados ('+$n+'). Reinicia para que tome efecto.')`;
+
+// ---- AMD: máximo rendimiento (desactiva ULPS + frame-rate target) -----------
+// EnableUlps=0 evita el downclock profundo en reposo; KMD_FRTEnabled=0 quita el
+// limitador de FPS por ahorro. Ambos se guardan para poder restaurarlos.
+export const AMD_MAXPERF = String.raw`$base='${NV_CLASS}'; $store='${NV_STORE}'
+if(!(Test-Path $store)){ New-Item $store -Force | Out-Null }
+$n=0
+Get-ChildItem $base -EA SilentlyContinue | Where-Object { $_.PSChildName -match '^\d{4}$' } | ForEach-Object {
+  $id=$_.PSChildName; $k=$_.PSPath
+  $desc=(Get-ItemProperty $k -Name DriverDesc -EA SilentlyContinue).DriverDesc
+  if($desc -match 'AMD|Radeon'){
+    foreach($v in 'EnableUlps','KMD_FRTEnabled'){
+      $cur=(Get-ItemProperty $k -Name $v -EA SilentlyContinue).$v
+      Set-ItemProperty $store -Name ('AMD_'+$id+'_'+$v) -Value ([string]$cur) -Force
+    }
+    Set-ItemProperty $k -Name EnableUlps     -Value 0 -Type DWord -Force
+    Set-ItemProperty $k -Name KMD_FRTEnabled -Value 0 -Type DWord -Force
+    $n++
+  }
+}
+if($n -gt 0){ Write-Output ('AMD: maximo rendimiento aplicado a '+$n+' adaptador(es). Reinicia para que tome efecto.') } else { Write-Output 'No encontre adaptador AMD/Radeon en el registro.' }`;
+
+export const AMD_RESTORE = String.raw`$base='${NV_CLASS}'; $store='${NV_STORE}'
+$n=0
+Get-ChildItem $base -EA SilentlyContinue | Where-Object { $_.PSChildName -match '^\d{4}$' } | ForEach-Object {
+  $id=$_.PSChildName; $k=$_.PSPath
+  $desc=(Get-ItemProperty $k -Name DriverDesc -EA SilentlyContinue).DriverDesc
+  if($desc -match 'AMD|Radeon'){
+    foreach($v in 'EnableUlps','KMD_FRTEnabled'){
+      $prev=(Get-ItemProperty $store -Name ('AMD_'+$id+'_'+$v) -EA SilentlyContinue).('AMD_'+$id+'_'+$v)
+      if([string]::IsNullOrEmpty($prev)){ Remove-ItemProperty $k -Name $v -Force -EA SilentlyContinue }
+      else { Set-ItemProperty $k -Name $v -Value ([int]$prev) -Type DWord -Force }
+    }
+    $n++
+  }
+}
+Write-Output ('AMD: valores del driver restaurados ('+$n+'). Reinicia para que tome efecto.')`;
