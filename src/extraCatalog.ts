@@ -50,8 +50,11 @@ Write-Output 'Recall desactivado'`,
 $x = "$env:SystemRoot\SysWOW64\OneDriveSetup.exe"
 if(!(Test-Path $x)){ $x = "$env:SystemRoot\System32\OneDriveSetup.exe" }
 if(Test-Path $x){ Start-Process $x '/uninstall' -Wait }
-Remove-Item "$env:UserProfile\OneDrive" -Recurse -Force -ErrorAction SilentlyContinue
-Write-Output 'OneDrive desinstalado'`,
+# IMPORTANTE: NO borrar la carpeta OneDrive si tiene contenido — puede contener
+# Documentos/Escritorio/Imagenes del usuario (redireccion por defecto en Win11).
+$od = "$env:UserProfile\OneDrive"
+if((Test-Path $od) -and -not (Get-ChildItem -LiteralPath $od -Force -Recurse -EA SilentlyContinue)){ Remove-Item -LiteralPath $od -Recurse -Force -EA SilentlyContinue }
+Write-Output 'OneDrive desinstalado (tus archivos en la carpeta OneDrive se conservan).'`,
     },
   ],
 };

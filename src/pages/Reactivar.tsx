@@ -91,6 +91,8 @@ foreach($n in $svc.Keys){ $p="HKLM:\SYSTEM\CurrentControlSet\Services\$n"; if(Te
 # 3) Reactivar la proteccion en tiempo real (si Tamper Protection lo permite).
 Set-MpPreference -DisableRealtimeMonitoring $false -EA SilentlyContinue
 Set-MpPreference -DisableBehaviorMonitoring $false -EA SilentlyContinue
+# 4) Volver a habilitar las tareas programadas de Defender.
+foreach($t in '\Microsoft\Windows\Windows Defender\Windows Defender Cache Maintenance','\Microsoft\Windows\Windows Defender\Windows Defender Cleanup','\Microsoft\Windows\Windows Defender\Windows Defender Scheduled Scan','\Microsoft\Windows\Windows Defender\Windows Defender Verification'){ Enable-ScheduledTask -TaskPath (Split-Path $t) -TaskName (Split-Path $t -Leaf) -EA SilentlyContinue | Out-Null }
 Write-Output OK`,
   },
   {
@@ -107,7 +109,7 @@ Write-Output OK`,
       en: "✓ Permissions restored. Close and reopen the apps that were failing.",
     },
     script: String.raw`$base='HKCU:\SOFTWARE\Microsoft\Windows\CurrentVersion\CapabilityAccessManager\ConsentStore'
-$perms=@('location','userAccountInformation','contacts','appointments','phoneCall','phoneCallHistory','email','userDataTasks','chat','radios','bluetoothSync','appDiagnostics','documentsLibrary','picturesLibrary','broadFileSystemAccess','backgroundSpatialPerception','gazeInput','activity','trackerPlugin','graphicsCaptureProgrammatic','graphicsCaptureWithoutBorder','microphone','webcam','videosLibrary')
+$perms=@('location','userAccountInformation','contacts','appointments','phoneCall','phoneCallHistory','email','userDataTasks','chat','radios','bluetoothSync','appDiagnostics','documentsLibrary','picturesLibrary','broadFileSystemAccess','backgroundSpatialPerception','gazeInput','activity','trackerPlugin','graphicsCaptureProgrammatic','graphicsCaptureWithoutBorder','microphone','webcam','videosLibrary','userNotificationListener')
 foreach($p in $perms){ $k="$base\$p"; if(Test-Path $k){ Set-ItemProperty $k -Name Value -Value 'Allow' -Type String -Force -EA SilentlyContinue } }
 Write-Output OK`,
   },
