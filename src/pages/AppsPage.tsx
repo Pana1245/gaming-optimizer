@@ -68,14 +68,28 @@ export default function AppsPage() {
     setLog(["Listo."]);
     addLog(`Instalando ${selected.length} aplicaciones vía winget…`);
     let ok = 0;
+    // Considera éxito: exit 0, "ya instalado", o "no hay update aplicable".
+    const isOk = (r: { ok: boolean; output: string }) =>
+      r.ok || /already installed|ya está instalad|no applicable|no aplicable|reboot|reinici/i.test(r.output);
+    const wasAlready = (r: { ok: boolean; output: string }) =>
+      /already installed|ya está instalad/i.test(r.output);
+
     for (let i = 0; i < selected.length; i++) {
       const app = selected[i];
       addLog(`▸ ${app.name}`);
-      const cmd = `winget install --id "${app.id}" --exact --silent --accept-package-agreements --accept-source-agreements --disable-interactivity`;
-      const r = await runPowershell(cmd);
+      // --source winget: evita que winget consulte la fuente msstore (Microsoft Store),
+      // que en PCs sin sus términos aceptados falla con --disable-interactivity aunque el
+      // paquete esté en la fuente winget. Todos los ids del catálogo son de la fuente winget.
+      // --force: instalación forzosa — instala aunque haya otra versión y omite chequeos no críticos.
+      const cmd = `winget install --id "${app.id}" --exact --source winget --silent --force --accept-package-agreements --accept-source-agreements --disable-interactivity`;
+      let r = await runPowershell(cmd);
+      // Reintento una vez ante fallo transitorio (red, bloqueo temporal del instalador).
+      if (!isOk(r)) {
+        await new Promise((res) => setTimeout(res, 1500));
+        r = await runPowershell(cmd);
+      }
       if (!mounted.current) return;
-      const already = /already installed|ya está instalad/i.test(r.output);
-      if (r.ok || already) { ok++; addLog(already ? "  ✓ Ya estaba instalado" : "  ✓ Instalado"); }
+      if (isOk(r)) { ok++; addLog(wasAlready(r) ? "  ✓ Ya estaba instalado" : "  ✓ Instalado"); }
       else addLog(`  ✗ ${(r.output.split("\n").find((l) => l.trim()) || "Error").slice(0, 80)}`);
       setProgress((i + 1) / selected.length);
     }
