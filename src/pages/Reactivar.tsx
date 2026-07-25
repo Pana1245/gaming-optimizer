@@ -36,6 +36,61 @@ Get-PnpDevice -Class Bluetooth -EA SilentlyContinue | Where-Object { $_.Status -
 Write-Output OK`,
   },
   {
+    id: "impresora",
+    emoji: "🖨️",
+    title: { es: "Impresora", en: "Printer" },
+    desc: {
+      es: "¿No podés imprimir? Reactiva el servicio de impresión de Windows (Cola de impresión).",
+      en: "Can't print? Re-enables the Windows print service (Print Spooler).",
+    },
+    btn: { es: "Reactivar impresora", en: "Re-enable printer" },
+    done: {
+      es: "✓ Servicio de impresión activado. Ya deberías poder imprimir.",
+      en: "✓ Print service on. You should be able to print now.",
+    },
+    script: String.raw`Set-Service Spooler -StartupType Automatic -EA SilentlyContinue
+Start-Service Spooler -EA SilentlyContinue
+Write-Output OK`,
+  },
+  {
+    id: "busqueda",
+    emoji: "🔎",
+    title: { es: "Búsqueda de Windows", en: "Windows Search" },
+    desc: {
+      es: "¿La búsqueda del menú Inicio no encuentra nada? Reactiva el buscador de Windows.",
+      en: "Start menu search finds nothing? Re-enables Windows Search.",
+    },
+    btn: { es: "Reactivar búsqueda", en: "Re-enable search" },
+    done: {
+      es: "✓ Búsqueda activada. Puede tardar unos minutos en indexar los archivos.",
+      en: "✓ Search on. It may take a few minutes to index your files.",
+    },
+    script: String.raw`Set-Service WSearch -StartupType Automatic -EA SilentlyContinue
+Start-Service WSearch -EA SilentlyContinue
+Write-Output OK`,
+  },
+  {
+    id: "antivirus",
+    emoji: "🛡️",
+    title: { es: "Antivirus (Windows Defender)", en: "Antivirus (Windows Defender)" },
+    desc: {
+      es: "¿Se apagó el antivirus de Windows? Volvé a protegerte reactivando Windows Defender.",
+      en: "Did the Windows antivirus turn off? Protect yourself again by re-enabling Windows Defender.",
+    },
+    btn: { es: "Reactivar antivirus", en: "Re-enable antivirus" },
+    done: {
+      es: "✓ Antivirus reactivado. Reiniciá la PC para que Windows Defender se encienda del todo.",
+      en: "✓ Antivirus re-enabled. Restart the PC so Windows Defender fully turns on.",
+    },
+    script: String.raw`$pol='HKLM:\SOFTWARE\Policies\Microsoft\Windows Defender'
+Remove-ItemProperty $pol -Name 'DisableAntiSpyware','DisableAntiVirus' -Force -EA SilentlyContinue
+$rt="$pol\Real-Time Protection"
+if(Test-Path $rt){ Remove-Item $rt -Recurse -Force -EA SilentlyContinue }
+Set-MpPreference -DisableRealtimeMonitoring $false -EA SilentlyContinue
+Set-MpPreference -DisableBehaviorMonitoring $false -EA SilentlyContinue
+Write-Output OK`,
+  },
+  {
     id: "permisos",
     emoji: "🔐",
     title: { es: "Permisos de las aplicaciones", en: "App permissions" },
