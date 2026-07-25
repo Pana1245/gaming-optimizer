@@ -5,11 +5,13 @@ import NeonCard, { HudTitle } from "../components/NeonCard";
 import { Spinner, IndeterminateBar } from "../components/Feedback";
 
 const SCRIPTS = {
-  list: `$root="C:\\OptimizacionBackup"; if(Test-Path $root){ Get-ChildItem $root -Directory | Sort-Object Name -Descending | Select-Object -ExpandProperty Name }`,
-  checkpoint: `Enable-ComputerRestore -Drive "C:\\" -ErrorAction SilentlyContinue
+  list: `$root="$env:SystemDrive\\OptimizacionBackup"; if(Test-Path $root){ Get-ChildItem $root -Directory | Sort-Object Name -Descending | Select-Object -ExpandProperty Name }`,
+  checkpoint: `Enable-ComputerRestore -Drive "$env:SystemDrive\\" -ErrorAction SilentlyContinue
+New-Item -Path "HKLM:\\SOFTWARE\\Microsoft\\Windows NT\\CurrentVersion\\SystemRestore" -Force | Out-Null
+Set-ItemProperty -Path "HKLM:\\SOFTWARE\\Microsoft\\Windows NT\\CurrentVersion\\SystemRestore" -Name "SystemRestorePointCreationFrequency" -Value 0 -Type DWord -Force -ErrorAction SilentlyContinue
 Checkpoint-Computer -Description "Gaming Optimizer (manual)" -RestorePointType "MODIFY_SETTINGS"
 Write-Output "Punto de restauracion creado correctamente."`,
-  restore: `$root="C:\\OptimizacionBackup"
+  restore: `$root="$env:SystemDrive\\OptimizacionBackup"
 if(!(Test-Path $root)){ Write-Output "No hay backups disponibles."; return }
 $last = Get-ChildItem $root -Directory | Sort-Object Name -Descending | Select-Object -First 1
 if(!$last){ Write-Output "No hay backups disponibles."; return }

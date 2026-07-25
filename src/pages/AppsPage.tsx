@@ -66,6 +66,16 @@ export default function AppsPage() {
     setRunning(true);
     setProgress(0);
     setLog(["Listo."]);
+    // Verifica que winget (App Installer) exista antes de empezar: en PCs sin él,
+    // cada install fallaría con un error críptico.
+    const wingetOk = await runPowershell(`if (Get-Command winget -ErrorAction SilentlyContinue) { "OK" } else { "NO" }`);
+    if (!mounted.current) return;
+    if (!/OK/.test(wingetOk.output)) {
+      addLog("✗ winget (App Installer) no está instalado en esta PC.");
+      addLog('  Instalalo gratis desde Microsoft Store buscando "App Installer" y reintentá.');
+      setRunning(false);
+      return;
+    }
     addLog(`Instalando ${selected.length} aplicaciones vía winget…`);
     let ok = 0;
     // Considera éxito: exit 0, "ya instalado", o "no hay update aplicable".

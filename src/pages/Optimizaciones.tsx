@@ -32,11 +32,14 @@ const ADVANCED = new Set([
 
 const BACKUP = `
 $date    = Get-Date -Format 'yyyy-MM-dd_HH-mm-ss'
-$backDir = "C:\\OptimizacionBackup\\$date"
+$backDir = "$env:SystemDrive\\OptimizacionBackup\\$date"
 New-Item -ItemType Directory -Path $backDir -Force | Out-Null
 Write-Output "Creando punto de restauracion..."
 try {
-    Enable-ComputerRestore -Drive "C:\\" -ErrorAction Stop
+    Enable-ComputerRestore -Drive "$env:SystemDrive\\" -ErrorAction Stop
+    # Windows limita a 1 punto/24h; ponemos la frecuencia en 0 para que se cree siempre.
+    New-Item -Path "HKLM:\\SOFTWARE\\Microsoft\\Windows NT\\CurrentVersion\\SystemRestore" -Force | Out-Null
+    Set-ItemProperty -Path "HKLM:\\SOFTWARE\\Microsoft\\Windows NT\\CurrentVersion\\SystemRestore" -Name "SystemRestorePointCreationFrequency" -Value 0 -Type DWord -Force -ErrorAction SilentlyContinue
     Checkpoint-Computer -Description "Gaming Optimizer - $date" -RestorePointType "MODIFY_SETTINGS" -ErrorAction Stop
     Write-Output "Punto de restauracion creado OK"
 } catch { Write-Output "AVISO: no se pudo crear punto de restauracion" }
