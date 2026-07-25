@@ -103,6 +103,17 @@ const STR: Record<string, { es: string; en: string }> = {
   "gm.noGames": { es: "Sin juegos. Agregá alguno arriba.", en: "No games. Add one above." },
   "gm.activity": { es: "Actividad", en: "Activity" },
 
+  // ── Actualizaciones ──
+  "update.check": { es: "Buscar actualizaciones", en: "Check for updates" },
+  "update.checking": { es: "Buscando…", en: "Checking…" },
+  "update.upToDate": { es: "Estás al día ✓", en: "You're up to date ✓" },
+  "update.error": { es: "No se pudo verificar", en: "Couldn't check" },
+  "update.available": { es: "Actualización disponible", en: "Update available" },
+  "update.now": { es: "Actualizar ahora", en: "Update now" },
+  "update.installing": { es: "Instalando…", en: "Installing…" },
+  "update.later": { es: "Después", en: "Later" },
+  "update.body": { es: "Hay una nueva versión de Gaming Optimizer disponible. Se descargará e instalará automáticamente.", en: "A new version of Gaming Optimizer is available. It will download and install automatically." },
+
   // ── Comunes (extra) ──
   "common.apply": { es: "Aplicar", en: "Apply" },
   "common.restore": { es: "Restaurar", en: "Restore" },

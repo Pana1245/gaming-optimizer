@@ -1,39 +1,21 @@
-import { useEffect, useState } from "react";
-import { check, type Update } from "@tauri-apps/plugin-updater";
-import { relaunch } from "@tauri-apps/plugin-process";
 import Modal from "./Modal";
+import { useUpdater } from "../lib/updater";
+import { useI18n } from "../lib/i18n";
 
 export default function UpdateBanner() {
-  const [upd, setUpd] = useState<Update | null>(null);
-  const [installing, setInstalling] = useState(false);
-
-  useEffect(() => {
-    // Chequea una actualización al iniciar (silencioso si falla)
-    check().then((u) => { if (u) setUpd(u); }).catch(() => {});
-  }, []);
-
-  const install = async () => {
-    if (!upd) return;
-    setInstalling(true);
-    try {
-      await upd.downloadAndInstall();
-      await relaunch();
-    } catch {
-      setInstalling(false);
-      setUpd(null);
-    }
-  };
+  const { upd, installing, install, dismiss } = useUpdater();
+  const { t } = useI18n();
 
   return (
     <Modal
       open={!!upd}
-      title={`Actualización disponible${upd?.version ? ` · v${upd.version}` : ""}`}
-      onClose={() => setUpd(null)}
+      title={`${t("update.available")}${upd?.version ? ` · v${upd.version}` : ""}`}
+      onClose={dismiss}
       onConfirm={install}
-      confirmText={installing ? "Instalando…" : "Actualizar ahora"}
-      closeText="Después"
+      confirmText={installing ? t("update.installing") : t("update.now")}
+      closeText={t("update.later")}
     >
-      {upd?.body?.trim() || "Hay una nueva versión de Gaming Optimizer disponible. Se descargará e instalará automáticamente."}
+      {upd?.body?.trim() || t("update.body")}
     </Modal>
   );
 }
