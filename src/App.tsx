@@ -21,8 +21,9 @@ import Perfiles from "./pages/Perfiles";
 import Red from "./pages/Red";
 import Graficos from "./pages/Graficos";
 import Herramientas from "./pages/Herramientas";
+import Reactivar from "./pages/Reactivar";
 import {
-  IconRocket, IconShieldCheck, IconGamepad, IconBroom, IconPower, IconApps, IconTrash, IconReset, IconWrench, IconChart, IconBook, IconGauge, IconLayers, IconGlobe, IconGpu, IconTools,
+  IconRocket, IconShieldCheck, IconGamepad, IconBroom, IconPower, IconApps, IconTrash, IconReset, IconWrench, IconChart, IconBook, IconGauge, IconLayers, IconGlobe, IconGpu, IconTools, IconLifeRing,
 } from "./components/icons";
 
 const MAIN: NavItem[] = [
@@ -39,6 +40,7 @@ const MAIN: NavItem[] = [
   { id: "uninstall", label: "nav.uninstall", icon: <IconTrash /> },
   { id: "restore", label: "nav.restore", icon: <IconReset /> },
   { id: "repair", label: "nav.repair", icon: <IconWrench /> },
+  { id: "reactivate", label: "nav.reactivate", icon: <IconLifeRing /> },
   { id: "tools", label: "nav.tools", icon: <IconTools /> },
 ];
 const FOOTER: NavItem[] = [
@@ -62,6 +64,7 @@ function renderPage(page: string) {
     case "restore": return <RestaurarPage />;
     case "repair": return <Reparar />;
     case "tools": return <Herramientas />;
+    case "reactivate": return <Reactivar />;
     case "system": return <Sistema />;
     case "guide": return <Guia />;
     default: return null;

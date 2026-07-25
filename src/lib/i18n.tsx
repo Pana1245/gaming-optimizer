@@ -19,6 +19,7 @@ const STR: Record<string, { es: string; en: string }> = {
   "nav.restore": { es: "Restaurar", en: "Restore" },
   "nav.repair": { es: "Reparar", en: "Repair" },
   "nav.tools": { es: "Herramientas", en: "Tools" },
+  "nav.reactivate": { es: "Reactivar", en: "Re-enable" },
   "nav.system": { es: "Sistema", en: "System" },
   "nav.guide": { es: "Guía", en: "Guide" },
 
@@ -51,6 +52,8 @@ const STR: Record<string, { es: string; en: string }> = {
   "page.repair.sub": { es: "Herramientas para reparar Windows cuando algo falla.", en: "Tools to repair Windows when something breaks." },
   "page.tools.title": { es: "Herramientas", en: "Tools" },
   "page.tools.sub": { es: "Utilidades: controlar Windows Update y desbloquear archivos en uso.", en: "Utilities: control Windows Update and unlock files in use." },
+  "page.reactivate.title": { es: "Reactivar", en: "Re-enable" },
+  "page.reactivate.sub": { es: "¿Se te desactivó algo al optimizar? Volvé a activarlo con un clic, sin saber nada de técnica.", en: "Something got turned off while optimizing? Turn it back on with one click — no tech knowledge needed." },
   "page.system.title": { es: "Sistema", en: "System" },
   "page.system.sub": { es: "Uso de hardware en tiempo real", en: "Real-time hardware usage" },
   "page.guide.title": { es: "Guía", en: "Guide" },

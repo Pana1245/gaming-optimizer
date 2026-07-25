@@ -34,6 +34,9 @@ export const IconTrash = () => (
 export const IconWrench = () => (
   <svg {...base}><path d="M14.7 6.3a4 4 0 0 0-5.2 5.2L3 18l3 3 6.5-6.5a4 4 0 0 0 5.2-5.2l-2.4 2.4-2.4-.6-.6-2.4z" /></svg>
 );
+export const IconLifeRing = () => (
+  <svg {...base}><circle cx="12" cy="12" r="10" /><circle cx="12" cy="12" r="4" /><path d="m4.9 4.9 4.2 4.2M14.9 14.9l4.2 4.2M14.9 9.1l4.2-4.2M9.1 14.9l-4.2 4.2" /></svg>
+);
 export const IconShieldCheck = () => (
   <svg {...base}><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" /><path d="m9 12 2 2 4-4" /></svg>
 );
