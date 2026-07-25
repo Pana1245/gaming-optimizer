@@ -94,7 +94,7 @@ export function GameModeProvider({ children }: { children: ReactNode }) {
       if (proRef.current) {
         await runPowershell(prioScript(g));
         const bg = await runPowershell(BG_LOWER);
-        const ram = await clearStandbyRam();
+        const ram = await clearStandbyRam(localStorage.getItem("lang") || "es");
         const bgN = bg.output.match(/BG=(\d+)/)?.[1] ?? "0";
         addLog(`⚡ Pro: prioridad Alta · ${bgN} apps de fondo bajadas · ${ram.ok ? "RAM liberada" : "RAM sin cambios"}`);
       }
