@@ -335,11 +335,13 @@ fn ledger_write(content: String) -> bool {
     std::fs::write(f, content).is_ok()
 }
 
-// ---- RAM Booster: purga la lista standby de memoria (cache en RAM) ----------
-/// Libera la memoria en standby (archivos cacheados). Requiere admin.
+// ---- RAM Booster: baja el uso real de RAM (working sets + cache + standby) ---
+/// Libera RAM como los "memory cleaners": vacia el working set de cada proceso,
+/// descarga la cache de archivos del sistema y purga la standby list. Requiere admin.
 #[cfg(windows)]
 #[tauri::command]
-fn clear_standby_ram() -> RunResult {
+fn clear_standby_ram(lang: String) -> RunResult {
+    let en = lang == "en";
     use windows::core::{s, w};
     use windows::Win32::Foundation::{CloseHandle, HANDLE, LUID};
     use windows::Win32::Security::{
@@ -347,44 +349,95 @@ fn clear_standby_ram() -> RunResult {
         TOKEN_ADJUST_PRIVILEGES, TOKEN_PRIVILEGES, TOKEN_QUERY,
     };
     use windows::Win32::System::LibraryLoader::{GetProcAddress, LoadLibraryA};
-    use windows::Win32::System::Threading::{GetCurrentProcess, OpenProcessToken};
+    use windows::Win32::System::Threading::{
+        GetCurrentProcess, OpenProcess, OpenProcessToken, PROCESS_QUERY_INFORMATION, PROCESS_SET_QUOTA,
+    };
+    use windows::Win32::System::ProcessStatus::EmptyWorkingSet;
+    use windows::Win32::System::Memory::SetSystemFileCacheSize;
+    use windows::Win32::System::SystemInformation::{GlobalMemoryStatusEx, MEMORYSTATUSEX};
+    use windows::Win32::System::Diagnostics::ToolHelp::{
+        CreateToolhelp32Snapshot, Process32FirstW, Process32NextW, PROCESSENTRY32W, TH32CS_SNAPPROCESS,
+    };
+
+    // RAM disponible (bytes) y % de carga en este instante.
+    unsafe fn read_mem() -> (u32, u64) {
+        let mut ms = MEMORYSTATUSEX { dwLength: core::mem::size_of::<MEMORYSTATUSEX>() as u32, ..Default::default() };
+        let _ = GlobalMemoryStatusEx(&mut ms);
+        (ms.dwMemoryLoad, ms.ullAvailPhys)
+    }
+
     unsafe {
-        // Habilitar SeProfileSingleProcessPrivilege (necesario para purgar la lista).
+        // Habilitar privilegios: SeProfileSingleProcessPrivilege (standby) + SeIncreaseQuotaPrivilege (cache).
         let mut token = HANDLE::default();
         if OpenProcessToken(GetCurrentProcess(), TOKEN_ADJUST_PRIVILEGES | TOKEN_QUERY, &mut token).is_ok() {
-            let mut luid = LUID::default();
-            if LookupPrivilegeValueW(None, w!("SeProfileSingleProcessPrivilege"), &mut luid).is_ok() {
-                let tp = TOKEN_PRIVILEGES {
-                    PrivilegeCount: 1,
-                    Privileges: [LUID_AND_ATTRIBUTES { Luid: luid, Attributes: SE_PRIVILEGE_ENABLED }],
-                };
-                let _ = AdjustTokenPrivileges(token, false, Some(&tp), 0, None, None);
+            for name in [w!("SeProfileSingleProcessPrivilege"), w!("SeIncreaseQuotaPrivilege")] {
+                let mut luid = LUID::default();
+                if LookupPrivilegeValueW(None, name, &mut luid).is_ok() {
+                    let tp = TOKEN_PRIVILEGES {
+                        PrivilegeCount: 1,
+                        Privileges: [LUID_AND_ATTRIBUTES { Luid: luid, Attributes: SE_PRIVILEGE_ENABLED }],
+                    };
+                    let _ = AdjustTokenPrivileges(token, false, Some(&tp), 0, None, None);
+                }
             }
             let _ = CloseHandle(token);
         }
-        // NtSetSystemInformation(SystemMemoryListInformation=80, MemoryPurgeStandbyList=4).
-        let ntdll = match LoadLibraryA(s!("ntdll.dll")) {
-            Ok(h) => h,
-            Err(e) => return RunResult { ok: false, output: e.to_string() },
-        };
-        let Some(proc) = GetProcAddress(ntdll, s!("NtSetSystemInformation")) else {
-            return RunResult { ok: false, output: "NtSetSystemInformation no disponible".into() };
-        };
-        let func: extern "system" fn(i32, *mut core::ffi::c_void, u32) -> i32 = std::mem::transmute(proc);
-        let mut command: i32 = 4;
-        let status = func(80, &mut command as *mut _ as *mut core::ffi::c_void, 4);
-        if status == 0 {
-            RunResult { ok: true, output: "Memoria standby liberada".into() }
+
+        let (load_before, avail_before) = read_mem();
+
+        // 1) Vaciar el working set de cada proceso (esto es lo que baja el "usado").
+        if let Ok(snap) = CreateToolhelp32Snapshot(TH32CS_SNAPPROCESS, 0) {
+            let mut entry = PROCESSENTRY32W { dwSize: core::mem::size_of::<PROCESSENTRY32W>() as u32, ..Default::default() };
+            if Process32FirstW(snap, &mut entry).is_ok() {
+                loop {
+                    let pid = entry.th32ProcessID;
+                    if pid != 0 {
+                        if let Ok(h) = OpenProcess(PROCESS_QUERY_INFORMATION | PROCESS_SET_QUOTA, false, pid) {
+                            let _ = EmptyWorkingSet(h);
+                            let _ = CloseHandle(h);
+                        }
+                    }
+                    if Process32NextW(snap, &mut entry).is_err() { break; }
+                }
+            }
+            let _ = CloseHandle(snap);
+        }
+
+        // 2) Descargar la cache de archivos del sistema.
+        let _ = SetSystemFileCacheSize(usize::MAX, usize::MAX, 0);
+
+        // 3) Purgar la standby list. NtSetSystemInformation(SystemMemoryListInformation=80, MemoryPurgeStandbyList=4).
+        let mut purge_ok = false;
+        if let Ok(ntdll) = LoadLibraryA(s!("ntdll.dll")) {
+            if let Some(procaddr) = GetProcAddress(ntdll, s!("NtSetSystemInformation")) {
+                let func: extern "system" fn(i32, *mut core::ffi::c_void, u32) -> i32 = core::mem::transmute(procaddr);
+                let mut command: i32 = 4;
+                purge_ok = func(80, &mut command as *mut _ as *mut core::ffi::c_void, 4) == 0;
+            }
+        }
+
+        let (load_after, avail_after) = read_mem();
+        let freed_mb = avail_after.saturating_sub(avail_before) / (1024 * 1024);
+
+        let freed_word = if en { "Freed" } else { "Liberado" };
+        let suffix = if purge_ok {
+            ""
+        } else if en {
+            " (standby: needs admin)"
         } else {
-            RunResult { ok: false, output: format!("Error NTSTATUS {status:#x} (¿sin admin?)") }
+            " (standby: requiere admin)"
+        };
+        RunResult {
+            ok: true,
+            output: format!("{} {} MB · RAM {}% → {}%{}", freed_word, freed_mb, load_before, load_after, suffix),
         }
     }
 }
 
 #[cfg(not(windows))]
 #[tauri::command]
-fn clear_standby_ram() -> RunResult {
-    RunResult { ok: false, output: "solo Windows".into() }
+fn clear_standby_ram(_lang: String) -> RunResult {
+    RunResult { ok: false, output: "only Windows".into() }
 }
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]

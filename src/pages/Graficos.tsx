@@ -5,6 +5,7 @@ import { getSystemInfo, runPowershell } from "../lib/api";
 import { applyOp, loadLedger, saveLedger } from "../lib/engine";
 import { GPU_OPS, isNvidia, isAmd, getNvInfo, NV_MAXPERF, NV_RESTORE, AMD_MAXPERF, AMD_RESTORE, type NvInfo } from "../lib/gpu";
 import { notify } from "../lib/notify";
+import { useI18n } from "../lib/i18n";
 
 function Metric({ label, value, unit, color }: { label: string; value: number; unit: string; color: string }) {
   return (
@@ -18,13 +19,14 @@ function Metric({ label, value, unit, color }: { label: string; value: number; u
 }
 
 export default function Graficos() {
+  const { t, lang } = useI18n();
   const [gpu, setGpu] = useState("");
   const [nv, setNv] = useState<NvInfo | null>(null);
   const [sel, setSel] = useState<Record<string, boolean>>(() =>
     Object.fromEntries(GPU_OPS.map((o) => [o.id, o.risk !== "advanced"])));
   const [busy, setBusy] = useState(false);
   const [vendorBusy, setVendorBusy] = useState(false);
-  const [log, setLog] = useState<string[]>(["Listo. Elegí las optimizaciones y aplicá — todo reversible desde el Motor."]);
+  const [log, setLog] = useState<string[]>(() => [t("gpu.logReady")]);
   const logRef = useRef<HTMLDivElement>(null);
   const mounted = useRef(true);
 
@@ -54,21 +56,21 @@ export default function Graficos() {
     const ops = GPU_OPS.filter((o) => sel[o.id]);
     if (ops.length === 0) return;
     setBusy(true);
-    addLog(`\n— Aplicando ${ops.length} optimizaciones de GPU —`);
+    addLog(`\n${t("gpu.applyingN")}`);
     try {
       const ledger = await loadLedger();
       let ok = 0;
       for (const op of ops) {
         const e = await applyOp(op);
         ledger.push(e);
-        addLog(`${e.verified ? "✓" : "✗"} ${op.name}`);
+        addLog(`${e.verified ? "✓" : "✗"} ${lang === "en" ? t(`gpu.op.${op.id}.name`) : op.name}`);
         if (e.verified) ok++;
       }
       await saveLedger(ledger);
-      addLog(`${ok}/${ops.length} verificados. Reversibles desde Motor → Historial. Reiniciá para aplicar HAGS/MPO.`);
-      notify("🖥️ GPU optimizada", `${ok} cambios aplicados (reversibles).`);
+      addLog(`${ok}/${ops.length} ${t("gpu.verified")}`);
+      notify(t("gpu.notifyTitle"), `${ok} ${t("gpu.notifyBody")}`);
     } catch (err) {
-      addLog(`✗ Error al aplicar: ${err instanceof Error ? err.message : String(err)}`);
+      addLog(`✗ ${t("gpu.applyErr")} ${err instanceof Error ? err.message : String(err)}`);
     } finally {
       setBusy(false);
     }
@@ -81,7 +83,7 @@ export default function Graficos() {
       const r = await runPowershell(script);
       addLog(r.output.trim());
     } catch (err) {
-      addLog(`✗ Error: ${err instanceof Error ? err.message : String(err)}`);
+      addLog(`✗ ${t("gpu.errPrefix")} ${err instanceof Error ? err.message : String(err)}`);
     } finally {
       setVendorBusy(false);
     }
@@ -94,36 +96,36 @@ export default function Graficos() {
       {/* GPU detectada + monitor NVIDIA */}
       <NeonCard className="mb-4">
         <div className="flex items-center gap-3 mb-1">
-          <span className="section-label">GPU detectada</span>
+          <span className="section-label">{t("gpu.detected")}</span>
         </div>
-        <div className="text-[15px] font-semibold text-text">{gpu || "Detectando…"}</div>
+        <div className="text-[15px] font-semibold text-text">{gpu || t("gpu.detecting")}</div>
         {nvidia && nv && (
           <div className="flex gap-2.5 mt-3">
-            <Metric label="Temp" value={nv.temp} unit="°C" color={nv.temp < 70 ? "#00e676" : nv.temp < 84 ? "#ffd24a" : "#ff5470"} />
-            <Metric label="Uso" value={nv.util} unit="%" color="#3b9eff" />
-            <Metric label="Reloj" value={nv.clock} unit="MHz" color="#c084fc" />
-            <Metric label="Consumo" value={Math.round(nv.power)} unit="W" color="#ff8a65" />
+            <Metric label={t("gpu.m.temp")} value={nv.temp} unit="°C" color={nv.temp < 70 ? "#00e676" : nv.temp < 84 ? "#ffd24a" : "#ff5470"} />
+            <Metric label={t("gpu.m.usage")} value={nv.util} unit="%" color="#3b9eff" />
+            <Metric label={t("gpu.m.clock")} value={nv.clock} unit="MHz" color="#c084fc" />
+            <Metric label={t("gpu.m.power")} value={Math.round(nv.power)} unit="W" color="#ff8a65" />
             <Metric label="VRAM" value={Math.round(nv.memUsed / 1024 * 10) / 10} unit={`/ ${Math.round(nv.memTotal / 1024)} GB`} color="#00e676" />
           </div>
         )}
-        {nvidia && !nv && <p className="text-[12.5px] text-text-mute mt-2">Leyendo nvidia-smi… (si no aparece, tu driver no lo expone)</p>}
-        {amd && <p className="text-[12.5px] text-text-mute mt-2">GPU AMD/Radeon detectada — abajo tenés su ajuste de máximo rendimiento. (El monitor en vivo por ahora es solo NVIDIA.)</p>}
-        {!nvidia && !amd && gpu && <p className="text-[12.5px] text-text-mute mt-2">Las optimizaciones universales de abajo funcionan en tu GPU. El ajuste fino de Intel se hace desde su panel de control.</p>}
+        {nvidia && !nv && <p className="text-[12.5px] text-text-mute mt-2">{t("gpu.readingNv")}</p>}
+        {amd && <p className="text-[12.5px] text-text-mute mt-2">{t("gpu.amdNote")}</p>}
+        {!nvidia && !amd && gpu && <p className="text-[12.5px] text-text-mute mt-2">{t("gpu.otherNote")}</p>}
       </NeonCard>
 
       {/* Optimizaciones universales */}
       <NeonCard className="mb-4">
         <div className="flex items-center justify-between mb-2">
-          <span className="section-label">Optimizaciones de GPU (cualquier marca)</span>
+          <span className="section-label">{t("gpu.universal")}</span>
           <button onClick={applyUniversal} disabled={busy} className="btn btn-primary">
-            {busy ? "Aplicando…" : "Aplicar seleccionadas"}
+            {busy ? t("gpu.applying") : t("gpu.applySelected")}
           </button>
         </div>
         <div className="space-y-0.5">
           {GPU_OPS.map((o) => (
             <EnergyCheckbox key={o.id} checked={!!sel[o.id]} onChange={(v) => setSel((s) => ({ ...s, [o.id]: v }))}
-              label={o.name} desc={o.desc} risk={o.risk === "advanced" ? "advanced" : "safe"}
-              badge={o.risk === "advanced" ? "avanzado" : undefined} />
+              label={lang === "en" ? t(`gpu.op.${o.id}.name`) : o.name} desc={lang === "en" ? t(`gpu.op.${o.id}.desc`) : o.desc} risk={o.risk === "advanced" ? "advanced" : "safe"}
+              badge={o.risk === "advanced" ? t("gpu.advanced") : undefined} />
           ))}
         </div>
       </NeonCard>
@@ -134,18 +136,18 @@ export default function Graficos() {
           <div className="flex items-start justify-between gap-4">
             <div>
               <div className="text-[14px] font-semibold text-text flex items-center gap-2">
-                <span style={{ color: "#76b900" }}>▲</span> Máximo rendimiento NVIDIA
+                <span style={{ color: "#76b900" }}>▲</span> {t("gpu.nvMax")}
               </div>
               <p className="text-[12.5px] text-text-mute mt-1 max-w-[440px]">
-                Pone PowerMizer en <b>"Preferir máximo rendimiento"</b>: la GPU deja de bajar sus relojes en reposo, evitando caídas de FPS por downclock. Se guarda el valor previo para poder restaurarlo.
+                {t("gpu.nvDesc")}
               </p>
             </div>
             <div className="flex flex-col gap-2 shrink-0">
-              <button onClick={() => runVendor(NV_MAXPERF, "NVIDIA · máximo rendimiento")} disabled={vendorBusy} className="btn btn-primary">
-                {vendorBusy ? "…" : "Aplicar"}
+              <button onClick={() => runVendor(NV_MAXPERF(lang === "en"), t("gpu.nvApply"))} disabled={vendorBusy} className="btn btn-primary">
+                {vendorBusy ? "…" : t("common.apply")}
               </button>
-              <button onClick={() => runVendor(NV_RESTORE, "NVIDIA · restaurar driver")} disabled={vendorBusy} className="btn btn-ghost">
-                Restaurar
+              <button onClick={() => runVendor(NV_RESTORE(lang === "en"), t("gpu.nvRestore"))} disabled={vendorBusy} className="btn btn-ghost">
+                {t("common.restore")}
               </button>
             </div>
           </div>
@@ -158,18 +160,18 @@ export default function Graficos() {
           <div className="flex items-start justify-between gap-4">
             <div>
               <div className="text-[14px] font-semibold text-text flex items-center gap-2">
-                <span style={{ color: "#ed1c24" }}>●</span> Máximo rendimiento AMD
+                <span style={{ color: "#ed1c24" }}>●</span> {t("gpu.amdMax")}
               </div>
               <p className="text-[12.5px] text-text-mute mt-1 max-w-[440px]">
-                Desactiva <b>ULPS</b> (downclock profundo en reposo) y el <b>limitador de FPS por ahorro</b> del driver, para relojes más estables bajo carga. Se guardan los valores previos para restaurarlos.
+                {t("gpu.amdDesc")}
               </p>
             </div>
             <div className="flex flex-col gap-2 shrink-0">
-              <button onClick={() => runVendor(AMD_MAXPERF, "AMD · máximo rendimiento")} disabled={vendorBusy} className="btn btn-primary">
-                {vendorBusy ? "…" : "Aplicar"}
+              <button onClick={() => runVendor(AMD_MAXPERF(lang === "en"), t("gpu.amdApply"))} disabled={vendorBusy} className="btn btn-primary">
+                {vendorBusy ? "…" : t("common.apply")}
               </button>
-              <button onClick={() => runVendor(AMD_RESTORE, "AMD · restaurar driver")} disabled={vendorBusy} className="btn btn-ghost">
-                Restaurar
+              <button onClick={() => runVendor(AMD_RESTORE(lang === "en"), t("gpu.amdRestore"))} disabled={vendorBusy} className="btn btn-ghost">
+                {t("common.restore")}
               </button>
             </div>
           </div>

@@ -5,15 +5,19 @@ import { PROFILES, type Profile } from "../profiles";
 import { applyOp, loadLedger, saveLedger } from "../lib/engine";
 import { runPowershell } from "../lib/api";
 import { notify } from "../lib/notify";
+import { useI18n } from "../lib/i18n";
 
 const Bolt = () => (
   <svg width="11" height="11" viewBox="0 0 24 24" fill="currentColor"><path d="M13 2 4.5 13.5H11l-1 8.5 8.5-11.5H12z" /></svg>
 );
 
 export default function Perfiles() {
+  const { t, lang } = useI18n();
+  const nameOf = (p: Profile) => (lang === "en" ? p.nameEn : p.name);
+  const planOf = (p: Profile) => (lang === "en" ? p.planLabelEn : p.planLabel);
   const [activeId, setActiveId] = useState<string | null>(() => localStorage.getItem("profile_active"));
   const [applyingId, setApplyingId] = useState<string | null>(null);
-  const [log, setLog] = useState<string[]>(["Elegí un perfil y aplicalo con un clic. Todo queda reversible en el Motor → Historial."]);
+  const [log, setLog] = useState<string[]>(() => [t("profiles.logIntro")]);
   const logRef = useRef<HTMLDivElement>(null);
   const busy = applyingId !== null;
 
@@ -24,7 +28,7 @@ export default function Perfiles() {
 
   const apply = async (p: Profile) => {
     setApplyingId(p.id);
-    addLog(`\n— Aplicando perfil ${p.emoji} ${p.name} —`);
+    addLog(`\n${t("profiles.applyingPre")} ${p.emoji} ${nameOf(p)} —`);
     try {
       const ledger = await loadLedger();
       let ok = 0;
@@ -35,14 +39,14 @@ export default function Perfiles() {
         if (e.verified) ok++;
       }
       await saveLedger(ledger);
-      const plan = await runPowershell(p.planScript);
-      addLog(`✓ ${plan.output.trim() || p.planLabel}`);
-      addLog(`${ok}/${p.ops.length} cambios verificados. Reversible desde Motor → Historial.`);
+      await runPowershell(p.planScript);
+      addLog(`✓ ${planOf(p)}`);
+      addLog(`${ok}/${p.ops.length} ${t("profiles.verified")}`);
       localStorage.setItem("profile_active", p.id);
       setActiveId(p.id);
-      notify(`${p.emoji} Perfil ${p.name} aplicado`, `${ok} cambios + plan ${p.planLabel}.`);
+      notify(`${p.emoji} ${t("profiles.notifyPre")} ${nameOf(p)} ${t("profiles.notifyApplied")}`, `${ok} ${t("profiles.notifyBody")} ${planOf(p)}.`);
     } catch (err) {
-      addLog(`✗ Error al aplicar el perfil: ${err instanceof Error ? err.message : String(err)}`);
+      addLog(`✗ ${t("profiles.applyErr")} ${err instanceof Error ? err.message : String(err)}`);
     } finally {
       setApplyingId(null);
     }
@@ -84,19 +88,19 @@ export default function Perfiles() {
                 </div>
                 <div className="min-w-0">
                   <div className="flex items-center gap-2">
-                    <h3 className="text-[16px] font-semibold text-text">{p.name}</h3>
+                    <h3 className="text-[16px] font-semibold text-text">{nameOf(p)}</h3>
                     {active && (
                       <span className="text-[9px] font-bold tracking-[0.12em] px-2 py-[3px] rounded-full"
-                        style={{ background: `${p.color}1f`, color: p.color, boxShadow: `inset 0 0 0 1px ${p.color}44` }}>ACTIVO</span>
+                        style={{ background: `${p.color}1f`, color: p.color, boxShadow: `inset 0 0 0 1px ${p.color}44` }}>{t("profiles.active")}</span>
                     )}
                   </div>
-                  <p className="text-[12.5px] text-text-mute mt-0.5 leading-snug">{p.desc}</p>
+                  <p className="text-[12.5px] text-text-mute mt-0.5 leading-snug">{lang === "en" ? p.descEn : p.desc}</p>
                 </div>
               </div>
 
               {/* viñetas */}
               <ul className="space-y-1.5 flex-1">
-                {p.bullets.map((b) => (
+                {(lang === "en" ? p.bulletsEn : p.bullets).map((b) => (
                   <li key={b} className="text-[12.5px] text-text-dim flex items-start gap-2.5">
                     <span className="mt-[6px] w-1.5 h-1.5 rounded-full shrink-0" style={{ background: p.color, boxShadow: `0 0 6px ${p.color}aa` }} />
                     <span className="leading-snug">{b}</span>
@@ -107,7 +111,7 @@ export default function Perfiles() {
               {/* footer */}
               <div className="flex items-center justify-between gap-3 pt-3.5 mt-3.5 border-t border-white/[0.06]">
                 <span className="text-[11.5px] text-text-mute flex items-center gap-1.5" style={{ color: `${p.color}cc` }}>
-                  <Bolt /> {p.planLabel}
+                  <Bolt /> {planOf(p)}
                 </span>
                 <button
                   onClick={() => apply(p)}
@@ -117,7 +121,7 @@ export default function Perfiles() {
                     ? { background: `${p.color}1f`, color: p.color, boxShadow: `inset 0 0 0 1px ${p.color}55` }
                     : { background: p.color, color: "#05140c", boxShadow: `0 4px 16px ${p.color}33` }}
                 >
-                  {isApplying ? "Aplicando…" : active ? "✓ Activo" : "Aplicar"}
+                  {isApplying ? t("profiles.applying") : active ? t("profiles.activeBtn") : t("common.apply")}
                 </button>
               </div>
             </motion.div>
@@ -128,10 +132,10 @@ export default function Perfiles() {
       {/* registro */}
       <div className="mt-4 shrink-0">
         <div className="flex items-center justify-between mb-2">
-          <span className="section-label">Registro</span>
+          <span className="section-label">{t("common.log")}</span>
           {activeProfile && (
             <span className="text-[12px] text-text-mute">
-              Perfil activo: <span style={{ color: activeProfile.color }}>{activeProfile.emoji} {activeProfile.name}</span>
+              {t("profiles.activeLabel")} <span style={{ color: activeProfile.color }}>{activeProfile.emoji} {nameOf(activeProfile)}</span>
             </span>
           )}
         </div>

@@ -52,7 +52,7 @@ export async function getNvInfo(): Promise<NvInfo | null> {
 const NV_CLASS = String.raw`HKLM:\SYSTEM\CurrentControlSet\Control\Class\{4d36e968-e325-11ce-bfc1-08002be10318}`;
 const NV_STORE = String.raw`HKCU:\Software\GamingOptimizer\GpuPrev`;
 
-export const NV_MAXPERF = String.raw`$base='${NV_CLASS}'; $store='${NV_STORE}'
+export const NV_MAXPERF = (en: boolean) => String.raw`$base='${NV_CLASS}'; $store='${NV_STORE}'
 if(!(Test-Path $store)){ New-Item $store -Force | Out-Null }
 $n=0
 Get-ChildItem $base -EA SilentlyContinue | Where-Object { $_.PSChildName -match '^\d{4}$' } | ForEach-Object {
@@ -70,9 +70,9 @@ Get-ChildItem $base -EA SilentlyContinue | Where-Object { $_.PSChildName -match 
     $n++
   }
 }
-if($n -gt 0){ Write-Output ('NVIDIA: maximo rendimiento aplicado a '+$n+' adaptador(es). Reinicia para que tome efecto.') } else { Write-Output 'No encontre adaptador NVIDIA en el registro.' }`;
+if($n -gt 0){ Write-Output ('${en ? "NVIDIA: maximum performance applied to " : "NVIDIA: maximo rendimiento aplicado a "}'+$n+'${en ? " adapter(s). Restart to take effect." : " adaptador(es). Reinicia para que tome efecto."}') } else { Write-Output '${en ? "No NVIDIA adapter found in the registry." : "No encontre adaptador NVIDIA en el registro."}' }`;
 
-export const NV_RESTORE = String.raw`$base='${NV_CLASS}'; $store='${NV_STORE}'
+export const NV_RESTORE = (en: boolean) => String.raw`$base='${NV_CLASS}'; $store='${NV_STORE}'
 $n=0
 Get-ChildItem $base -EA SilentlyContinue | Where-Object { $_.PSChildName -match '^\d{4}$' } | ForEach-Object {
   $id=$_.PSChildName; $k=$_.PSPath
@@ -86,12 +86,12 @@ Get-ChildItem $base -EA SilentlyContinue | Where-Object { $_.PSChildName -match 
     $n++
   }
 }
-Write-Output ('NVIDIA: valores del driver restaurados ('+$n+'). Reinicia para que tome efecto.')`;
+Write-Output ('${en ? "NVIDIA: driver values restored (" : "NVIDIA: valores del driver restaurados ("}'+$n+'${en ? "). Restart to take effect." : "). Reinicia para que tome efecto."}')`;
 
 // ---- AMD: máximo rendimiento (desactiva ULPS + frame-rate target) -----------
 // EnableUlps=0 evita el downclock profundo en reposo; KMD_FRTEnabled=0 quita el
 // limitador de FPS por ahorro. Ambos se guardan para poder restaurarlos.
-export const AMD_MAXPERF = String.raw`$base='${NV_CLASS}'; $store='${NV_STORE}'
+export const AMD_MAXPERF = (en: boolean) => String.raw`$base='${NV_CLASS}'; $store='${NV_STORE}'
 if(!(Test-Path $store)){ New-Item $store -Force | Out-Null }
 $n=0
 Get-ChildItem $base -EA SilentlyContinue | Where-Object { $_.PSChildName -match '^\d{4}$' } | ForEach-Object {
@@ -107,9 +107,9 @@ Get-ChildItem $base -EA SilentlyContinue | Where-Object { $_.PSChildName -match 
     $n++
   }
 }
-if($n -gt 0){ Write-Output ('AMD: maximo rendimiento aplicado a '+$n+' adaptador(es). Reinicia para que tome efecto.') } else { Write-Output 'No encontre adaptador AMD/Radeon en el registro.' }`;
+if($n -gt 0){ Write-Output ('${en ? "AMD: maximum performance applied to " : "AMD: maximo rendimiento aplicado a "}'+$n+'${en ? " adapter(s). Restart to take effect." : " adaptador(es). Reinicia para que tome efecto."}') } else { Write-Output '${en ? "No AMD/Radeon adapter found in the registry." : "No encontre adaptador AMD/Radeon en el registro."}' }`;
 
-export const AMD_RESTORE = String.raw`$base='${NV_CLASS}'; $store='${NV_STORE}'
+export const AMD_RESTORE = (en: boolean) => String.raw`$base='${NV_CLASS}'; $store='${NV_STORE}'
 $n=0
 Get-ChildItem $base -EA SilentlyContinue | Where-Object { $_.PSChildName -match '^\d{4}$' } | ForEach-Object {
   $id=$_.PSChildName; $k=$_.PSPath
@@ -123,4 +123,4 @@ Get-ChildItem $base -EA SilentlyContinue | Where-Object { $_.PSChildName -match 
     $n++
   }
 }
-Write-Output ('AMD: valores del driver restaurados ('+$n+'). Reinicia para que tome efecto.')`;
+Write-Output ('${en ? "AMD: driver values restored (" : "AMD: valores del driver restaurados ("}'+$n+'${en ? "). Restart to take effect." : "). Reinicia para que tome efecto."}')`;

@@ -48,7 +48,7 @@ export default function Panel() {
   const [ramMsg, setRamMsg] = useState<string | null>(null);
   const [boosting, setBoosting] = useState(false);
   const { enabled, playing } = useGameMode();
-  const { t } = useI18n();
+  const { t, lang } = useI18n();
   const mounted = useRef(true);
 
   useEffect(() => {
@@ -65,13 +65,8 @@ export default function Panel() {
     setBoosting(true);
     setRamMsg(null);
     try {
-      const before = (await getStats()).ram;
-      const r = await clearStandbyRam();
-      await new Promise((res) => setTimeout(res, 800));
-      const after = (await getStats()).ram;
-      const freed = Math.max(0, before - after);
-      if (mounted.current)
-        setRamMsg(r.ok ? `✓ ${t("panel.freed")} ${before.toFixed(0)}% → ${after.toFixed(0)}%${freed >= 1 ? ` (−${freed.toFixed(0)} pts)` : ""}` : `✗ ${r.output}`);
+      const r = await clearStandbyRam(lang);
+      if (mounted.current) setRamMsg(r.ok ? `✓ ${r.output}` : `✗ ${r.output}`);
     } catch (err) {
       if (mounted.current) setRamMsg(`✗ ${err instanceof Error ? err.message : String(err)}`);
     } finally {

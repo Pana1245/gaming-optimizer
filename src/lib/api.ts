@@ -28,7 +28,7 @@ export const ledgerWrite = (content: string) => invoke<boolean>("ledger_write", 
 export const startGameWatch = (games: string[]) => invoke("start_game_watch", { games });
 export const stopGameWatch = () => invoke("stop_game_watch");
 
-export const clearStandbyRam = () => invoke<RunResult>("clear_standby_ram");
+export const clearStandbyRam = (lang: string) => invoke<RunResult>("clear_standby_ram", { lang });
 
 let _streamId = 0;
 /** Ejecuta PowerShell con salida en vivo. Llama onLine por cada línea; resuelve al terminar. */
