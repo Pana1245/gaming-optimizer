@@ -30,16 +30,44 @@ const ADVANCED = new Set([
   "Desanclar todas las apps del menu Inicio",
 ]);
 
-const BACKUP = `
-$date    = Get-Date -Format 'yyyy-MM-dd_HH-mm-ss'
-$backDir = "$env:SystemDrive\\OptimizacionBackup\\$date"
+const BACKUP = String.raw`$date    = Get-Date -Format 'yyyy-MM-dd_HH-mm-ss'
+$backDir = "$env:SystemDrive\OptimizacionBackup\$date"
 New-Item -ItemType Directory -Path $backDir -Force | Out-Null
+
+# Backup REAL del registro: exporta a .reg las ramas que tocan las optimizaciones,
+# para que "Restaurar" pueda reimportarlas (RestaurarPage hace 'reg import').
+$keys = [ordered]@{
+  'explorer-advanced' = 'HKCU\Software\Microsoft\Windows\CurrentVersion\Explorer\Advanced'
+  'personalize'       = 'HKCU\Software\Microsoft\Windows\CurrentVersion\Themes\Personalize'
+  'gameconfigstore'   = 'HKCU\System\GameConfigStore'
+  'gamebar'           = 'HKCU\Software\Microsoft\GameBar'
+  'mouse'             = 'HKCU\Control Panel\Mouse'
+  'desktop'           = 'HKCU\Control Panel\Desktop'
+  'dwm'               = 'HKCU\Software\Microsoft\Windows\DWM'
+  'advertising'       = 'HKCU\Software\Microsoft\Windows\CurrentVersion\AdvertisingInfo'
+  'consentstore'      = 'HKCU\SOFTWARE\Microsoft\Windows\CurrentVersion\CapabilityAccessManager\ConsentStore'
+  'backgroundapps'    = 'HKCU\Software\Microsoft\Windows\CurrentVersion\BackgroundAccessApplications'
+  'graphicsdrivers'   = 'HKLM\SYSTEM\CurrentControlSet\Control\GraphicsDrivers'
+  'systemprofile'     = 'HKLM\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Multimedia\SystemProfile'
+  'sessionmanager'    = 'HKLM\SYSTEM\CurrentControlSet\Control\Session Manager\kernel'
+  'cv-policies'       = 'HKLM\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies'
+  'policies-windows'  = 'HKLM\SOFTWARE\Policies\Microsoft\Windows'
+  'powersettings'     = 'HKLM\SYSTEM\CurrentControlSet\Control\Power\PowerSettings'
+  'tcpip-interfaces'  = 'HKLM\SYSTEM\CurrentControlSet\Services\Tcpip\Parameters\Interfaces'
+}
+$n = 0
+foreach($k in $keys.GetEnumerator()){
+  reg export $($k.Value) "$backDir\$($k.Name).reg" /y > $null 2>&1
+  if($LASTEXITCODE -eq 0){ $n++ }
+}
+Write-Output "Backup del registro: $n ramas exportadas"
+
 Write-Output "Creando punto de restauracion..."
 try {
-    Enable-ComputerRestore -Drive "$env:SystemDrive\\" -ErrorAction Stop
+    Enable-ComputerRestore -Drive "$env:SystemDrive\" -ErrorAction Stop
     # Windows limita a 1 punto/24h; ponemos la frecuencia en 0 para que se cree siempre.
-    New-Item -Path "HKLM:\\SOFTWARE\\Microsoft\\Windows NT\\CurrentVersion\\SystemRestore" -Force | Out-Null
-    Set-ItemProperty -Path "HKLM:\\SOFTWARE\\Microsoft\\Windows NT\\CurrentVersion\\SystemRestore" -Name "SystemRestorePointCreationFrequency" -Value 0 -Type DWord -Force -ErrorAction SilentlyContinue
+    New-Item -Path "HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion\SystemRestore" -Force | Out-Null
+    Set-ItemProperty -Path "HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion\SystemRestore" -Name "SystemRestorePointCreationFrequency" -Value 0 -Type DWord -Force -ErrorAction SilentlyContinue
     Checkpoint-Computer -Description "Gaming Optimizer - $date" -RestorePointType "MODIFY_SETTINGS" -ErrorAction Stop
     Write-Output "Punto de restauracion creado OK"
 } catch { Write-Output "AVISO: no se pudo crear punto de restauracion" }
