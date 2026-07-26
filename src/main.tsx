@@ -5,14 +5,17 @@ import App from './App.tsx'
 import { I18nProvider } from './lib/i18n'
 import { GameModeProvider } from './lib/gameMode'
 import { UpdaterProvider } from './lib/updater'
+import { InstallerProvider } from './lib/installer'
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
     <I18nProvider>
       <UpdaterProvider>
-        <GameModeProvider>
-          <App />
-        </GameModeProvider>
+        <InstallerProvider>
+          <GameModeProvider>
+            <App />
+          </GameModeProvider>
+        </InstallerProvider>
       </UpdaterProvider>
     </I18nProvider>
   </StrictMode>,

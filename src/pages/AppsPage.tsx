@@ -2,35 +2,10 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { motion } from "framer-motion";
 import { APP_CATALOG } from "../apps";
 import { runPowershell } from "../lib/api";
-import { notify } from "../lib/notify";
+import { useInstaller } from "../lib/installer";
 import { useScrollMemory } from "../lib/useScrollMemory";
 import { HudTitle } from "../components/NeonCard";
 import Modal from "../components/Modal";
-
-// Instala una app DES-ELEVADA (como el usuario normal, sin admin) vía una tarea
-// programada de nivel limitado. Necesario para apps per-usuario como Spotify, cuyo
-// instalador se niega a correr elevado. Devuelve 'GO_OK' o 'GO_FAIL <detalle>'.
-const deElevatedInstall = (id: string) => String.raw`$id = '${id.replace(/'/g, "''")}'
-$tmp  = "$env:TEMP\go_" + [guid]::NewGuid().ToString('N')
-$out  = "$tmp.out"; $code = "$tmp.code"
-$inner = "winget install --id '$id' --exact --source winget --silent --force --accept-package-agreements --accept-source-agreements --disable-interactivity *>&1 | Out-File -LiteralPath '$out' -Encoding utf8; " + '$LASTEXITCODE | Set-Content -LiteralPath ' + "'$code'"
-$b64  = [Convert]::ToBase64String([Text.Encoding]::Unicode.GetBytes($inner))
-$tn   = "GO_Install_" + [guid]::NewGuid().ToString('N')
-$act  = New-ScheduledTaskAction -Execute 'powershell.exe' -Argument ("-NoProfile -WindowStyle Hidden -EncodedCommand " + $b64)
-$usr  = [Security.Principal.WindowsIdentity]::GetCurrent().Name
-$prin = New-ScheduledTaskPrincipal -UserId $usr -LogonType Interactive -RunLevel Limited
-try {
-  Register-ScheduledTask -TaskName $tn -Action $act -Principal $prin -Force -ErrorAction Stop | Out-Null
-  Start-ScheduledTask -TaskName $tn
-  $w = 0
-  while ((($t = Get-ScheduledTask -TaskName $tn -EA SilentlyContinue)) -and ($t.State -ne 'Ready') -and ($w -lt 300)) { Start-Sleep -Seconds 2; $w += 2 }
-} catch { Write-Output ('GO_FAIL ' + $_.Exception.Message); exit }
-Unregister-ScheduledTask -TaskName $tn -Confirm:$false -EA SilentlyContinue
-$rc   = if (Test-Path $code) { (Get-Content $code -Raw).Trim() } else { '' }
-$otxt = if (Test-Path $out)  { (Get-Content $out -Raw) } else { '' }
-Remove-Item $out, $code -Force -EA SilentlyContinue
-if ($rc -eq '0' -or $otxt -match 'already installed|ya está instalad') { Write-Output 'GO_OK' }
-else { Write-Output ('GO_FAIL ' + (($otxt -replace '\s+', ' ').Trim())) }`;
 
 const INSTALLED_NAMES = `$names=@()
 $roots=@('HKLM:\\Software\\Microsoft\\Windows\\CurrentVersion\\Uninstall\\*','HKLM:\\Software\\Wow6432Node\\Microsoft\\Windows\\CurrentVersion\\Uninstall\\*','HKCU:\\Software\\Microsoft\\Windows\\CurrentVersion\\Uninstall\\*')
@@ -44,19 +19,22 @@ const itemV = {
 };
 
 export default function AppsPage() {
+  // El estado de la instalación vive en el InstallerProvider (global) para que no se
+  // corte ni pierda el progreso al cambiar de sección.
+  const { running, log, progress, done, install, clearDone } = useInstaller();
   const [sel, setSel] = useState<Record<string, boolean>>({});
-  const [log, setLog] = useState<string[]>(["Listo."]);
-  const [progress, setProgress] = useState(0);
-  const [running, setRunning] = useState(false);
-  const [done, setDone] = useState<string | null>(null);
   const [installed, setInstalled] = useState<Set<string>>(new Set());
   const logRef = useRef<HTMLDivElement>(null);
   const mounted = useRef(true);
+  const scrollRef = useScrollMemory<HTMLDivElement>("apps");
+
   useEffect(() => {
     mounted.current = true;
     return () => { mounted.current = false; };
   }, []);
-  const scrollRef = useScrollMemory<HTMLDivElement>("apps");
+
+  // Auto-scroll del log (incluso al volver a la sección con una instalación en curso).
+  useEffect(() => { logRef.current?.scrollTo(0, logRef.current.scrollHeight); }, [log]);
 
   const setAll = (v: boolean) => {
     const n: Record<string, boolean> = {};
@@ -66,6 +44,7 @@ export default function AppsPage() {
 
   useEffect(() => {
     runPowershell(INSTALLED_NAMES).then((r) => {
+      if (!mounted.current) return;
       const hay = r.output.toLowerCase();
       const set = new Set<string>();
       APP_CATALOG.forEach((c) => c.apps.forEach((a) => {
@@ -80,63 +59,6 @@ export default function AppsPage() {
     () => APP_CATALOG.flatMap((c) => c.apps).filter((a) => sel[a.id]),
     [sel]
   );
-
-  const addLog = (s: string) => setLog((l) => {
-    const n = [...l, s];
-    queueMicrotask(() => logRef.current?.scrollTo(0, logRef.current.scrollHeight));
-    return n;
-  });
-
-  const install = async () => {
-    setRunning(true);
-    setProgress(0);
-    setLog(["Listo."]);
-    // Verifica que winget (App Installer) exista antes de empezar: en PCs sin él,
-    // cada install fallaría con un error críptico.
-    const wingetOk = await runPowershell(`if (Get-Command winget -ErrorAction SilentlyContinue) { "OK" } else { "NO" }`);
-    if (!mounted.current) return;
-    if (!/OK/.test(wingetOk.output)) {
-      addLog("✗ winget (App Installer) no está instalado en esta PC.");
-      addLog('  Instalalo gratis desde Microsoft Store buscando "App Installer" y reintentá.');
-      setRunning(false);
-      return;
-    }
-    addLog(`Instalando ${selected.length} aplicaciones vía winget…`);
-    let ok = 0;
-    // Considera éxito: exit 0, "ya instalado", o "no hay update aplicable".
-    const isOk = (r: { ok: boolean; output: string }) =>
-      r.ok || /already installed|ya está instalad|no applicable|no aplicable|reboot|reinici/i.test(r.output);
-    const wasAlready = (r: { ok: boolean; output: string }) =>
-      /already installed|ya está instalad/i.test(r.output);
-
-    for (let i = 0; i < selected.length; i++) {
-      const app = selected[i];
-      addLog(`▸ ${app.name}`);
-      // --source winget: evita que winget consulte la fuente msstore (Microsoft Store),
-      // que en PCs sin sus términos aceptados falla con --disable-interactivity aunque el
-      // paquete esté en la fuente winget. Todos los ids del catálogo son de la fuente winget.
-      // --force: instalación forzosa — instala aunque haya otra versión y omite chequeos no críticos.
-      const cmd = `winget install --id "${app.id}" --exact --source winget --silent --force --accept-package-agreements --accept-source-agreements --disable-interactivity`;
-      let r = await runPowershell(cmd);
-      let viaUser = false;
-      // Si falla elevado, reintenta DES-ELEVADO (como usuario normal): apps per-usuario
-      // como Spotify rechazan correr como admin y solo así se instalan.
-      if (!isOk(r)) {
-        addLog("  ↩ reintentando sin admin (modo usuario)…");
-        const d = await runPowershell(deElevatedInstall(app.id));
-        if (d.output.includes("GO_OK")) { r = { ok: true, output: "" }; viaUser = true; }
-        else r = { ok: false, output: d.output.replace(/GO_FAIL/g, "").trim() || r.output };
-      }
-      if (!mounted.current) return;
-      if (isOk(r)) { ok++; addLog(wasAlready(r) ? "  ✓ Ya estaba instalado" : viaUser ? "  ✓ Instalado (modo usuario)" : "  ✓ Instalado"); }
-      else addLog(`  ✗ ${(r.output.split("\n").find((l) => l.trim()) || "Error").slice(0, 80)}`);
-      setProgress((i + 1) / selected.length);
-    }
-    addLog(`Completado: ${ok}/${selected.length} aplicaciones.`);
-    setRunning(false);
-    notify("Instalación completada", `${ok}/${selected.length} aplicaciones instaladas.`);
-    setDone(`${ok}/${selected.length} aplicaciones instaladas.`);
-  };
 
   return (
     <div className="h-full flex flex-col px-8 py-7">
@@ -212,13 +134,13 @@ export default function AppsPage() {
             <button disabled={running} onClick={() => setAll(false)} className="btn btn-ghost">Deseleccionar</button>
             <span className="text-[13px] text-text-mute ml-1">{selected.length} sel.</span>
           </div>
-          <button disabled={running || selected.length === 0} onClick={install} className="btn btn-primary px-6">
+          <button disabled={running || selected.length === 0} onClick={() => install(selected)} className="btn btn-primary px-6">
             {running ? "Instalando…" : `Instalar (${selected.length})`}
           </button>
         </div>
       </div>
 
-      <Modal open={!!done} title="Instalación completada" onClose={() => setDone(null)}>{done || ""}</Modal>
+      <Modal open={!!done} title="Instalación completada" onClose={clearDone}>{done || ""}</Modal>
     </div>
   );
 }
