@@ -46,42 +46,40 @@ export default function Motor() {
     const newEntries: LedgerEntry[] = [];
     let ok = 0;
     for (const op of selected) {
-      addLog(`▸ ${op.name}`);
+      if (mounted.current) addLog(`▸ ${op.name}`);
       const e = await applyOp(op);
-      if (!mounted.current) return;
       newEntries.push(e);
-      if (e.verified) {
-        ok++;
-        addLog(`  ✓ verificado  (${showVal(e.prior)} → ${e.value})`);
-      } else {
-        addLog(`  ✗ no se pudo verificar (quedó distinto al valor esperado)`);
-      }
+      if (e.verified) ok++;
+      if (mounted.current)
+        addLog(e.verified ? `  ✓ verificado  (${showVal(e.prior)} → ${e.value})` : `  ✗ no se pudo verificar (quedó distinto al valor esperado)`);
     }
+    // Persistir SIEMPRE, aunque el usuario haya navegado durante el apply: los cambios
+    // ya se hicieron en el registro; no guardarlos los dejaría aplicados pero sin
+    // registro (imposibles de deshacer desde el Historial).
     const updated = [...ledger, ...newEntries];
-    setLedger(updated);
     await saveLedger(updated);
-    addLog(`\n${ok}/${selected.length} aplicados y verificados. Quedaron en el Historial (reversibles).`);
-    setBusy(false);
+    if (mounted.current) {
+      setLedger(updated);
+      addLog(`\n${ok}/${selected.length} aplicados y verificados. Quedaron en el Historial (reversibles).`);
+      setBusy(false);
+    }
   };
 
   const undo = async (e: LedgerEntry) => {
     setBusy(true);
     await undoEntry(e);
-    if (!mounted.current) return;
     const updated = ledger.map((x) => (x.id === e.id ? { ...x, undone: true } : x));
-    setLedger(updated);
     await saveLedger(updated);
-    setBusy(false);
+    if (mounted.current) { setLedger(updated); setBusy(false); }
   };
 
   const undoAll = async () => {
     setBusy(true);
     const active = ledger.filter((e) => !e.undone);
-    for (const e of active) { await undoEntry(e); if (!mounted.current) return; }
+    for (const e of active) await undoEntry(e);
     const updated = ledger.map((x) => ({ ...x, undone: true }));
-    setLedger(updated);
     await saveLedger(updated);
-    setBusy(false);
+    if (mounted.current) { setLedger(updated); setBusy(false); }
   };
 
   const activeCount = ledger.filter((e) => !e.undone).length;

@@ -192,12 +192,13 @@ fn stats(state: tauri::State<AppState>) -> Stats {
     let used = sys.used_memory() as f32;
     let ram = if total > 0.0 { used / total * 100.0 } else { 0.0 };
 
-    // Uso del disco del sistema (C:)
+    // Uso del disco del sistema (la unidad real de Windows, no siempre C:)
+    let sysdrive = std::env::var("SystemDrive").unwrap_or_else(|_| "C:".into()).to_uppercase();
     let disks = sysinfo::Disks::new_with_refreshed_list();
     let mut disk = 0.0f32;
     for d in disks.list() {
-        let mp = d.mount_point().to_string_lossy();
-        if mp.starts_with("C:") {
+        let mp = d.mount_point().to_string_lossy().to_uppercase();
+        if mp.starts_with(&sysdrive) {
             let dt = d.total_space() as f32;
             if dt > 0.0 {
                 disk = (dt - d.available_space() as f32) / dt * 100.0;
@@ -234,9 +235,15 @@ async fn system_info() -> SysInfo {
     let cores = sys.physical_core_count().unwrap_or(threads);
     let ram_gb = (sys.total_memory() as f64) / 1_073_741_824.0;
     let os_long = System::long_os_version().unwrap_or_default();
+    // Toma el ultimo componente numerico del string de version, sea "22631",
+    // "10.0.22631" o "10 22631" — antes fallaba con puntos y devolvia 0 (=> Win10
+    // en maquinas Win11, ocultando los tweaks os:11).
     let build: u32 = System::os_version()
-        .and_then(|v| v.split(' ').last().map(|s| s.to_string()))
-        .and_then(|b| b.parse().ok())
+        .and_then(|v| {
+            v.split(|c: char| c == '.' || c == ' ')
+                .filter_map(|s| s.parse::<u32>().ok())
+                .last()
+        })
         .unwrap_or(0);
     let win_ver = if build >= 22000 { 11 } else { 10 };
 
