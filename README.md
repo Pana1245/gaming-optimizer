@@ -48,6 +48,25 @@ Además: **auto-actualización** (con botón manual "Buscar actualizaciones"), *
 
 ---
 
+## 📸 Capturas
+
+<div align="center">
+  <img src="docs/img/panel.png" width="82%" alt="Panel de Gaming Optimizer" />
+</div>
+
+<table>
+  <tr>
+    <td width="50%"><img src="docs/img/optimizaciones.png" alt="Optimizaciones" /><p align="center"><b>Optimizaciones</b></p></td>
+    <td width="50%"><img src="docs/img/graficos.png" alt="Gráficos · GPU" /><p align="center"><b>Gráficos · GPU</b></p></td>
+  </tr>
+  <tr>
+    <td width="50%"><img src="docs/img/red.png" alt="Red · DNS" /><p align="center"><b>Red · DNS</b></p></td>
+    <td width="50%"><img src="docs/img/reactivar.png" alt="Reactivar" /><p align="center"><b>Reactivar 🛟</b></p></td>
+  </tr>
+</table>
+
+---
+
 ## 🛠️ Stack
 
 - **Frontend:** React + TypeScript + Tailwind CSS v4 + Framer Motion
