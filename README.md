@@ -2,13 +2,24 @@
 
 # 🐺 Gaming Optimizer
 
-**Optimizador de Windows para gaming** — rápido, reversible y con un diseño minimalista.
+**Optimizador de Windows para gaming** — rápido, **reversible** y con un diseño minimalista.
 
 ![Plataforma](https://img.shields.io/badge/Windows-10%20%7C%2011-0078D6?logo=windows)
 ![Stack](https://img.shields.io/badge/Tauri%20%2B%20React%20%2B%20Rust-24C8DB)
+![Idioma](https://img.shields.io/badge/ES%20%7C%20EN-bilingüe-9C27B0)
 ![Licencia](https://img.shields.io/badge/Licencia-MIT-00e676)
 
 </div>
+
+---
+
+## ⬇️ Descargar
+
+Bajá el instalador desde la sección [**Releases**](https://github.com/Pana1245/gaming-optimizer/releases/latest) →
+`GamingOptimizer_x64-setup.exe`.
+
+> **SmartScreen** puede avisar *"Windows protegió tu PC"* porque el instalador está auto-firmado.
+> Elegí **"Más información" → "Ejecutar de todas formas"**. Una vez instalado, se **auto-actualiza** solo.
 
 ---
 
@@ -16,18 +27,24 @@
 
 | Sección | Qué hace |
 |---|---|
-| 🚀 **Optimizaciones** | +60 tweaks de rendimiento, red y privacidad. Crea backup + punto de restauración automático. Etiquetas de riesgo 🟢/🟡. |
+| 📊 **Panel** | Dashboard con anillos CPU/RAM, puntaje de optimización, temperaturas y **RAM Booster** (baja el uso de RAM de verdad: working sets + caché + standby). |
+| 🎯 **Perfiles** | Configuraciones completas con un clic (Competitivo, Streaming, Equilibrado, Ahorro). Todo reversible. |
+| 🚀 **Optimizaciones** | +60 tweaks de rendimiento, red y privacidad. Backup + punto de restauración automático. Etiquetas de riesgo 🟢/🟡. |
+| 🖥️ **Gráficos** | Tweaks universales de GPU + máximo rendimiento NVIDIA/AMD y monitor en vivo por `nvidia-smi`. |
 | 🛡️ **Motor de Cambios** | Aplica tweaks **leyendo el valor previo, verificando que quedó, y con historial para deshacer uno por uno**. Auditado y reversible. |
 | 🎮 **Auto Game-Mode** | Un daemon detecta cuándo abrís un juego, activa el modo gamer y **revierte solo** al cerrarlo. |
+| 🌐 **Red** | Test de latencia + cambio de DNS (lista curada de resolutores públicos). |
 | 🧹 **Limpieza** | Analiza y libera espacio (temporales, cachés, papelera…). Muestra los MB liberados. |
-| ⏻ **Inicio** | Gestor de programas de arranque con interruptores. |
-| 📦 **Instalar Apps** | ~96 apps vía `winget`, detecta las ya instaladas. |
+| ⏻ **Inicio** | Gestor de programas de arranque con interruptores (no destructivo). |
+| 📦 **Instalar Apps** | ~97 apps vía `winget` — **instalación forzosa** que evita el bug de la Microsoft Store, con reintento. |
 | 🗑️ **Desinstalar** | Quita programas + **Force Removal** de restos (estilo Geek Uninstaller). Quita bloatware. |
 | ↩️ **Restaurar** | Restaura backups del registro y puntos de restauración. |
 | 🔧 **Reparar** | SFC, DISM (salida **en vivo**), reset de red, reiniciar Explorer. |
+| 🛟 **Reactivar** | Para el usuario **no técnico**: vuelve a activar con un clic lo que se haya desactivado — Bluetooth, permisos de apps, impresora, búsqueda, antivirus, plan de energía, OneDrive. |
+| 🔧 **Herramientas** | Control de Windows Update + desbloqueo de archivos en uso (Restart Manager). |
 | 📊 **Sistema** | Monitor CPU/RAM/SSD en tiempo real + info de hardware. |
 
-Además: **auto-actualización**, **notificaciones**, **idioma ES/EN**, barra de título custom y guía integrada.
+Además: **auto-actualización** (con botón manual "Buscar actualizaciones"), **notificaciones**, **idioma ES/EN**, barra de título custom y guía integrada.
 
 ---
 
@@ -35,7 +52,7 @@ Además: **auto-actualización**, **notificaciones**, **idioma ES/EN**, barra de
 
 - **Frontend:** React + TypeScript + Tailwind CSS v4 + Framer Motion
 - **Backend:** Rust (Tauri v2)
-- **Tamaño:** ~10–16 MB · usa el WebView2 del sistema (no empaqueta navegador)
+- **Tamaño:** ~5 MB de instalador · usa el WebView2 del sistema (no empaqueta navegador)
 
 ## 🚀 Build desde el código
 
@@ -45,12 +62,11 @@ npm install
 npm run tauri build
 ```
 
-El ejecutable queda en `src-tauri/target/release/`.
+El instalador queda en `src-tauri/target/release/bundle/nsis/`.
 
 ## 🔄 Auto-actualización
 
-La app consulta las **Releases** de este repo y se actualiza sola. Cada versión publica:
-`*-setup.exe`, `*-setup.exe.sig` y `latest.json`.
+La app consulta las **Releases** de este repo y se actualiza sola (o con el botón **Buscar actualizaciones** de la barra inferior). Cada versión publica tres assets: `*-setup.exe`, `*-setup.exe.sig` y `latest.json`.
 
 ---
 
@@ -62,9 +78,10 @@ Ver [`CREDITS.md`](CREDITS.md).
 
 ## ⚠️ Aviso
 
-Esta herramienta modifica ajustes del sistema (registro, servicios, etc.). Aunque crea backups
-automáticos, **usala bajo tu responsabilidad**. Requiere permisos de administrador.
+Esta herramienta modifica ajustes del sistema (registro, servicios, etc.) y requiere permisos de
+administrador. Aunque crea backups automáticos y casi todo es reversible (Motor + sección Reactivar),
+algunos tweaks marcados como avanzados 🟡 son agresivos — **usala bajo tu responsabilidad**.
 
 ## 📄 Licencia
 
-MIT © Dani Dev
+MIT © Dani Dev — ver [`LICENSE`](LICENSE).
