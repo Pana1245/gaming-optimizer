@@ -100,29 +100,43 @@ export function GameModeProvider({ children }: { children: ReactNode }) {
 
   const setPro = (v: boolean) => { localStorage.setItem("gm_pro", v ? "1" : "0"); setProState(v); };
 
+  // Cola secuencial de operaciones. game-on y game-off son asíncronos; sin esto
+  // podían intercalarse (si el juego se cierra mientras game-on aún aplica
+  // cambios, game-off terminaba primero y game-on seguía optimizando sin juego).
+  // Encolando, siempre corren de a uno y en orden de llegada.
+  const opChain = useRef<Promise<void>>(Promise.resolve());
+  const enqueue = (fn: () => Promise<void>) => {
+    opChain.current = opChain.current.then(fn).catch(() => {});
+    return opChain.current;
+  };
+
   // Listeners de eventos del daemon — una sola vez, a nivel app.
   useEffect(() => {
     const uns: UnlistenFn[] = [];
-    listen<string>("game-on", async (e) => {
+    listen<string>("game-on", (e) => {
       const g = e.payload;
-      setPlaying(g);
-      addLog(`🎮 ${g} detectado → activando Modo Gamer`);
-      notify("🎮 Modo Gamer activado", `Detecté ${g}. Optimizando para jugar.`);
-      await runPowershell(GAMER_ON);
-      if (proRef.current) {
-        await runPowershell(prioScript(g));
-        const bg = await runPowershell(BG_LOWER);
-        const ram = await clearStandbyRam(localStorage.getItem("lang") || "es");
-        const bgN = bg.output.match(/BG=(\d+)/)?.[1] ?? "0";
-        addLog(`⚡ Pro: prioridad Alta · ${bgN} apps de fondo bajadas · ${ram.ok ? "RAM liberada" : "RAM sin cambios"}`);
-      }
+      enqueue(async () => {
+        setPlaying(g);
+        addLog(`🎮 ${g} detectado → activando Modo Gamer`);
+        notify("🎮 Modo Gamer activado", `Detecté ${g}. Optimizando para jugar.`);
+        await runPowershell(GAMER_ON);
+        if (proRef.current) {
+          await runPowershell(prioScript(g));
+          const bg = await runPowershell(BG_LOWER);
+          const ram = await clearStandbyRam(localStorage.getItem("lang") || "es");
+          const bgN = bg.output.match(/BG=(\d+)/)?.[1] ?? "0";
+          addLog(`⚡ Pro: prioridad Alta · ${bgN} apps de fondo bajadas · ${ram.ok ? "RAM liberada" : "RAM sin cambios"}`);
+        }
+      });
     }).then((u) => uns.push(u));
-    listen("game-off", async () => {
-      addLog("↩ Juego cerrado → restaurando");
-      notify("Modo Gamer desactivado", "El juego se cerró. Volví al estado normal.");
-      await runPowershell(GAMER_OFF);
-      if (proRef.current) await runPowershell(BG_RESTORE);
-      setPlaying(null);
+    listen("game-off", () => {
+      enqueue(async () => {
+        addLog("↩ Juego cerrado → restaurando");
+        notify("Modo Gamer desactivado", "El juego se cerró. Volví al estado normal.");
+        await runPowershell(GAMER_OFF);
+        if (proRef.current) await runPowershell(BG_RESTORE);
+        setPlaying(null);
+      });
     }).then((u) => uns.push(u));
     return () => uns.forEach((u) => u());
   }, []);
