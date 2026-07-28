@@ -41,9 +41,13 @@ export async function runStream(script: string, onLine: (line: string) => void):
   let resolveDone!: (d: StreamDone) => void;
   const done = new Promise<StreamDone>((res) => { resolveDone = res; });
   const unDone = await listen<StreamDone>(`ps-done-${id}`, (e) => resolveDone(e.payload));
-  await invoke("run_powershell_stream", { script, id });
-  const result = await done;
-  unLine();
-  unDone();
-  return result;
+  // finally: si invoke rechaza, igual liberamos los listeners (antes quedaban
+  // registrados el resto de la sesión en cada fallo).
+  try {
+    await invoke("run_powershell_stream", { script, id });
+    return await done;
+  } finally {
+    unLine();
+    unDone();
+  }
 }
