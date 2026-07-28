@@ -39,8 +39,8 @@ export default function Perfiles() {
         if (e.verified) ok++;
       }
       await saveLedger(ledger);
-      await runPowershell(p.planScript);
-      addLog(`✓ ${planOf(p)}`);
+      const planRes = await runPowershell(p.planScript);
+      addLog(planRes.ok ? `✓ ${planOf(p)}` : `✗ ${planOf(p)} — no se pudo cambiar el plan de energía`);
       addLog(`${ok}/${p.ops.length} ${t("profiles.verified")}`);
       localStorage.setItem("profile_active", p.id);
       setActiveId(p.id);
