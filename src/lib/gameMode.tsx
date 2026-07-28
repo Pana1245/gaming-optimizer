@@ -14,7 +14,7 @@ $cr=(Get-ItemProperty $sysp -Name SystemResponsiveness -EA SilentlyContinue).Sys
 if($null -eq $cr){ $cr=20 }
 Set-ItemProperty $p PrevResp $cr -Force
 $hp=powercfg -list | Select-String 'Ultimate|High performance|Alto rendimiento' | Select-Object -First 1
-if($hp -and "$hp" -match '${GUID_RX}'){ powercfg /setactive $matches[1] } else { powercfg /setactive SCHEME_MIN }
+if($hp -and "$hp" -match '${GUID_RX}'){ powercfg /setactive $matches[1] } else { powercfg /setactive SCHEME_MAX }
 Set-ItemProperty $sysp SystemResponsiveness 0 -Type DWord -Force -EA SilentlyContinue
 Write-Output OK`;
 
