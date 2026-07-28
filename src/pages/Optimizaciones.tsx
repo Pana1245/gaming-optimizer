@@ -176,7 +176,7 @@ export default function Optimizaciones() {
     setRunning(false);
     setCanReboot(true);
     notify("Optimización completada", `${ok}/${list.length} optimizaciones aplicadas.`);
-    setDone(`${ok}/${list.length} optimizaciones aplicadas.\nReiniciá el PC para aplicar todos los cambios.`);
+    setDone(`${ok}/${list.length} optimizaciones aplicadas.\nReiniciá el PC para aplicar todos los cambios.\n\nPara revertir: "Restaurar" deshace los cambios del registro. Los cambios de servicios/drivers/sistema se revierten con "Restaurar sistema de Windows" (punto de restauración). Las apps/bloatware eliminados se reinstalan a mano.`);
   };
 
   const reboot = () => runPowershell("shutdown /r /t 3");
@@ -275,7 +275,7 @@ export default function Optimizaciones() {
 
       <Modal open={confirm} title="Confirmar optimización" onClose={() => setConfirm(false)}
         onConfirm={run} confirmText="Aplicar" closeText="Cancelar">
-        {`Se aplicarán ${count} optimizaciones.\nSe creará un backup automático antes de empezar.`}
+        {`Se aplicarán ${count} optimizaciones.\n\nAntes se crea un backup del registro (reversible con 1 clic desde "Restaurar") y un punto de restauración del sistema.\n\nOjo: el backup del registro no revierte servicios deshabilitados, apps/bloatware eliminados ni cambios de arranque (HPET/BCD). Para esos, usá "Restaurar sistema de Windows".`}
       </Modal>
       <Modal open={!!done} title="Resultado" onClose={() => { setDone(null); setCanReboot(false); }}
         onConfirm={canReboot ? () => { reboot(); setDone(null); setCanReboot(false); } : undefined}
