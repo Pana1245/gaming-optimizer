@@ -32,12 +32,18 @@ if($apps.Count -eq 0){'[]'}else{$apps|ConvertTo-Json -Compress -Depth 3}`;
 
 const esc = (s: string) => (s || "").replace(/'/g, "''");
 
+// La cadena de desinstalación viene del registro (dato NO confiable) y este
+// script corre ELEVADO. Interpolarla en un here-string permitía romperlo (una
+// línea '@) e inyectar comandos de administrador. La codificamos en base64 y la
+// decodificamos como dato puro dentro de PS: el literal base64 no puede cerrar
+// el string ni inyectar nada.
+const b64utf8 = (s: string) =>
+  btoa(String.fromCharCode(...new TextEncoder().encode(s || "")));
+
 const uninstallScript = (a: App) => {
   if (a.type === "uwp")
     return `Get-AppxPackage -Name '${esc(a.name)}' -EA SilentlyContinue | Remove-AppxPackage -EA SilentlyContinue; Write-Output 'OK'`;
-  return `$u=@'
-${a.uninstall}
-'@
+  return `$u=[System.Text.Encoding]::UTF8.GetString([System.Convert]::FromBase64String('${b64utf8(a.uninstall)}')).Trim()
 if($u -match 'msiexec'){ $u=$u -replace '/I','/X' -replace '/i','/x'; Start-Process cmd -ArgumentList '/c',"$u /quiet /norestart" -Wait -WindowStyle Hidden }
 else { Start-Process cmd -ArgumentList '/c',$u -Wait -WindowStyle Hidden }
 Write-Output 'Desinstalador ejecutado'`;
