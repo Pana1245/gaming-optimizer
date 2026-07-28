@@ -52,7 +52,12 @@ function parse(output: string): { prior: string; now: string } {
 /** Lee el valor previo, aplica, y verifica. Devuelve el registro para el ledger. */
 export async function applyOp(op: RegOp): Promise<LedgerEntry> {
   const r = await runPowershell(buildApply(op));
+  if (!r.ok) throw new Error(r.output || "PowerShell no pudo aplicar el cambio");
   const { prior, now } = parse(r.output);
+  // Si no se leyó el valor previo de un DWord, no persistimos una entrada
+  // "reversible" engañosa: deshacerla escribiría 0 (Number("")) en el registro.
+  if (prior === "" && op.type === "DWord")
+    throw new Error("No se pudo leer el valor previo; se aborta para no dañar el registro al deshacer");
   return {
     id: `${Date.now()}_${op.id}`,
     tweakId: op.id, name: op.name, key: op.key, prop: op.prop, type: op.type,

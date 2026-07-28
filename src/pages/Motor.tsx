@@ -47,11 +47,16 @@ export default function Motor() {
     let ok = 0;
     for (const op of selected) {
       if (mounted.current) addLog(`▸ ${op.name}`);
-      const e = await applyOp(op);
-      newEntries.push(e);
-      if (e.verified) ok++;
-      if (mounted.current)
-        addLog(e.verified ? `  ✓ verificado  (${showVal(e.prior)} → ${e.value})` : `  ✗ no se pudo verificar (quedó distinto al valor esperado)`);
+      try {
+        const e = await applyOp(op);
+        newEntries.push(e);
+        if (e.verified) ok++;
+        if (mounted.current)
+          addLog(e.verified ? `  ✓ verificado  (${showVal(e.prior)} → ${e.value})` : `  ✗ no se pudo verificar (quedó distinto al valor esperado)`);
+      } catch (err) {
+        // No persistimos la entrada: si falló el apply, no debe quedar como reversible.
+        if (mounted.current) addLog(`  ✗ error: ${err instanceof Error ? err.message : String(err)}`);
+      }
     }
     // Persistir SIEMPRE, aunque el usuario haya navegado durante el apply: los cambios
     // ya se hicieron en el registro; no guardarlos los dejaría aplicados pero sin
