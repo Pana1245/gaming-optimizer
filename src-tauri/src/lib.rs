@@ -32,7 +32,10 @@ pub struct StreamDone {
 async fn run_powershell(script: String, timeout_secs: Option<u64>) -> RunResult {
     tauri::async_runtime::spawn_blocking(move || {
         use wait_timeout::ChildExt;
-        let full = format!("$ProgressPreference='SilentlyContinue';\n{script}");
+        // Forzar salida UTF-8: el backend lee stdout como UTF-8, pero powershell.exe
+        // escribe en el codepage OEM de la consola → los acentos volvían como '?'
+        // (en literales y en nombres del registro). Con esto se decodifican bien.
+        let full = format!("$ProgressPreference='SilentlyContinue';\ntry{{[Console]::OutputEncoding=[System.Text.UTF8Encoding]::new($false)}}catch{{}}\n{script}");
         // UTF-16LE -> base64 (formato que espera -EncodedCommand)
         let utf16: Vec<u8> = full.encode_utf16().flat_map(|u| u.to_le_bytes()).collect();
         let encoded = general_purpose::STANDARD.encode(utf16);
@@ -92,7 +95,10 @@ async fn run_powershell(script: String, timeout_secs: Option<u64>) -> RunResult 
 #[tauri::command]
 async fn run_powershell_stream(app: tauri::AppHandle, script: String, id: String) {
     tauri::async_runtime::spawn_blocking(move || {
-        let full = format!("$ProgressPreference='SilentlyContinue';\n{script}");
+        // Forzar salida UTF-8: el backend lee stdout como UTF-8, pero powershell.exe
+        // escribe en el codepage OEM de la consola → los acentos volvían como '?'
+        // (en literales y en nombres del registro). Con esto se decodifican bien.
+        let full = format!("$ProgressPreference='SilentlyContinue';\ntry{{[Console]::OutputEncoding=[System.Text.UTF8Encoding]::new($false)}}catch{{}}\n{script}");
         let utf16: Vec<u8> = full.encode_utf16().flat_map(|u| u.to_le_bytes()).collect();
         let encoded = general_purpose::STANDARD.encode(utf16);
 
