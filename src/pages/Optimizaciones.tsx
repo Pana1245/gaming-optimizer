@@ -145,6 +145,15 @@ export default function Optimizaciones() {
     addLog("PASO 1/2 — Creando backup...");
     const bk = await runPowershell(BACKUP);
     bk.output.split("\n").forEach((l) => l.trim() && addLog("  " + l.trim()));
+    // No aplicar nada si el backup no dejó un respaldo utilizable: sin esto, un
+    // fallo de permisos/espacio/registro modificaba el sistema sin backup.
+    const exported = Number(bk.output.match(/Backup del registro: (\d+) ramas/)?.[1] ?? 0);
+    if (!bk.ok || exported === 0) {
+      addLog("✗ El backup falló — no se aplicó ninguna optimización.");
+      setRunning(false);
+      setDone("No se aplicaron optimizaciones porque el backup del registro falló.\nRevisá permisos o espacio en disco e intentá de nuevo.");
+      return;
+    }
     addLog(`PASO 2/2 — Aplicando ${list.length} optimizaciones...`);
     let ok = 0;
     for (let i = 0; i < list.length; i++) {
