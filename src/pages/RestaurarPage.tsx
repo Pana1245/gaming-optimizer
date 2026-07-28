@@ -6,15 +6,20 @@ import { Spinner, IndeterminateBar } from "../components/Feedback";
 
 const SCRIPTS = {
   list: `$root="$env:SystemDrive\\OptimizacionBackup"; if(Test-Path $root){ Get-ChildItem $root -Directory | Sort-Object Name -Descending | Select-Object -ExpandProperty Name }`,
-  checkpoint: `Enable-ComputerRestore -Drive "$env:SystemDrive\\" -ErrorAction SilentlyContinue
-New-Item -Path "HKLM:\\SOFTWARE\\Microsoft\\Windows NT\\CurrentVersion\\SystemRestore" -Force | Out-Null
-Set-ItemProperty -Path "HKLM:\\SOFTWARE\\Microsoft\\Windows NT\\CurrentVersion\\SystemRestore" -Name "SystemRestorePointCreationFrequency" -Value 0 -Type DWord -Force -ErrorAction SilentlyContinue
+  checkpoint: `$srKey = "HKLM:\\SOFTWARE\\Microsoft\\Windows NT\\CurrentVersion\\SystemRestore"
+Enable-ComputerRestore -Drive "$env:SystemDrive\\" -ErrorAction SilentlyContinue
+New-Item -Path $srKey -Force | Out-Null
+$prevFreq = (Get-ItemProperty -Path $srKey -Name "SystemRestorePointCreationFrequency" -EA SilentlyContinue).SystemRestorePointCreationFrequency
+Set-ItemProperty -Path $srKey -Name "SystemRestorePointCreationFrequency" -Value 0 -Type DWord -Force -ErrorAction SilentlyContinue
 try {
   Checkpoint-Computer -Description "Gaming Optimizer (manual)" -RestorePointType "MODIFY_SETTINGS" -ErrorAction Stop
   Write-Output "Punto de restauracion creado correctamente."
 } catch {
   Write-Output ("No se pudo crear el punto de restauracion: " + $_.Exception.Message)
   Write-Output "Verifica que la Proteccion del sistema este activada y que haya espacio en disco."
+} finally {
+  if($null -eq $prevFreq){ Remove-ItemProperty -Path $srKey -Name "SystemRestorePointCreationFrequency" -Force -EA SilentlyContinue }
+  else { Set-ItemProperty -Path $srKey -Name "SystemRestorePointCreationFrequency" -Value $prevFreq -Type DWord -Force -EA SilentlyContinue }
 }`,
   restore: `$root="$env:SystemDrive\\OptimizacionBackup"
 if(!(Test-Path $root)){ Write-Output "No hay backups disponibles."; return }

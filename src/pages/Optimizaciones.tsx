@@ -63,14 +63,22 @@ foreach($k in $keys.GetEnumerator()){
 Write-Output "Backup del registro: $n ramas exportadas"
 
 Write-Output "Creando punto de restauracion..."
+$srKey = "HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion\SystemRestore"
+$prevFreq = $null
 try {
     Enable-ComputerRestore -Drive "$env:SystemDrive\" -ErrorAction Stop
     # Windows limita a 1 punto/24h; ponemos la frecuencia en 0 para que se cree siempre.
-    New-Item -Path "HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion\SystemRestore" -Force | Out-Null
-    Set-ItemProperty -Path "HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion\SystemRestore" -Name "SystemRestorePointCreationFrequency" -Value 0 -Type DWord -Force -ErrorAction SilentlyContinue
+    New-Item -Path $srKey -Force | Out-Null
+    $prevFreq = (Get-ItemProperty -Path $srKey -Name "SystemRestorePointCreationFrequency" -EA SilentlyContinue).SystemRestorePointCreationFrequency
+    Set-ItemProperty -Path $srKey -Name "SystemRestorePointCreationFrequency" -Value 0 -Type DWord -Force -ErrorAction SilentlyContinue
     Checkpoint-Computer -Description "Gaming Optimizer - $date" -RestorePointType "MODIFY_SETTINGS" -ErrorAction Stop
     Write-Output "Punto de restauracion creado OK"
 } catch { Write-Output "AVISO: no se pudo crear punto de restauracion" }
+finally {
+    # Dejar la frecuencia como estaba: no queremos que el sistema cree un punto en cada trigger.
+    if($null -eq $prevFreq){ Remove-ItemProperty -Path $srKey -Name "SystemRestorePointCreationFrequency" -Force -EA SilentlyContinue }
+    else { Set-ItemProperty -Path $srKey -Name "SystemRestorePointCreationFrequency" -Value $prevFreq -Type DWord -Force -EA SilentlyContinue }
+}
 Write-Output "Backup en: $backDir"
 `;
 
