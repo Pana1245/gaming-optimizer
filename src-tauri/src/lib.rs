@@ -61,6 +61,16 @@ async fn run_powershell(script: String, timeout_secs: Option<u64>) -> RunResult 
         let status = match child.wait_timeout(dur) {
             Ok(Some(s)) => s,
             Ok(None) => {
+                // Matar todo el árbol: powershell.exe pudo lanzar winget, instaladores
+                // o Start-Process que seguirían modificando el equipo tras el timeout.
+                #[cfg(windows)]
+                {
+                    let pid = child.id();
+                    let mut tk = Command::new("taskkill");
+                    tk.args(["/F", "/T", "/PID", &pid.to_string()]);
+                    tk.creation_flags(CREATE_NO_WINDOW);
+                    let _ = tk.output();
+                }
                 let _ = child.kill();
                 let _ = child.wait();
                 return RunResult { ok: false, output: "Tiempo de espera agotado".into() };
