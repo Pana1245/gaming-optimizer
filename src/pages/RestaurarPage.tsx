@@ -9,8 +9,13 @@ const SCRIPTS = {
   checkpoint: `Enable-ComputerRestore -Drive "$env:SystemDrive\\" -ErrorAction SilentlyContinue
 New-Item -Path "HKLM:\\SOFTWARE\\Microsoft\\Windows NT\\CurrentVersion\\SystemRestore" -Force | Out-Null
 Set-ItemProperty -Path "HKLM:\\SOFTWARE\\Microsoft\\Windows NT\\CurrentVersion\\SystemRestore" -Name "SystemRestorePointCreationFrequency" -Value 0 -Type DWord -Force -ErrorAction SilentlyContinue
-Checkpoint-Computer -Description "Gaming Optimizer (manual)" -RestorePointType "MODIFY_SETTINGS"
-Write-Output "Punto de restauracion creado correctamente."`,
+try {
+  Checkpoint-Computer -Description "Gaming Optimizer (manual)" -RestorePointType "MODIFY_SETTINGS" -ErrorAction Stop
+  Write-Output "Punto de restauracion creado correctamente."
+} catch {
+  Write-Output ("No se pudo crear el punto de restauracion: " + $_.Exception.Message)
+  Write-Output "Verifica que la Proteccion del sistema este activada y que haya espacio en disco."
+}`,
   restore: `$root="$env:SystemDrive\\OptimizacionBackup"
 if(!(Test-Path $root)){ Write-Output "No hay backups disponibles."; return }
 $last = Get-ChildItem $root -Directory | Sort-Object Name -Descending | Select-Object -First 1
