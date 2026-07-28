@@ -18,6 +18,13 @@ pub struct RunResult {
     pub output: String,
 }
 
+/// Resultado final de un script en streaming: éxito y código de salida real.
+#[derive(Serialize, Clone)]
+pub struct StreamDone {
+    pub ok: bool,
+    pub code: i32,
+}
+
 /// Ejecuta un script PowerShell oculto (-EncodedCommand evita problemas de escaping).
 /// `timeout_secs` es opcional (por defecto 600s) para cortar scripts colgados sin
 /// matar operaciones largas legítimas (instalaciones, backups).
@@ -89,34 +96,71 @@ async fn run_powershell_stream(app: tauri::AppHandle, script: String, id: String
         let line_ev = format!("ps-line-{id}");
         let done_ev = format!("ps-done-{id}");
 
-        match cmd.spawn() {
-            Ok(mut child) => {
-                if let Some(out) = child.stdout.take() {
-                    // Leer byte a byte y emitir en cada \n o \r (captura el % de SFC/DISM)
-                    let mut buf = Vec::new();
-                    for b in out.bytes() {
-                        match b {
-                            Ok(b'\n') | Ok(b'\r') => {
-                                if !buf.is_empty() {
-                                    let line = String::from_utf8_lossy(&buf).trim_end().to_string();
-                                    if !line.is_empty() { let _ = app.emit(&line_ev, line); }
-                                    buf.clear();
-                                }
+        let mut child = match cmd.spawn() {
+            Ok(c) => c,
+            Err(e) => {
+                let _ = app.emit(&line_ev, format!("Error: {e}"));
+                let _ = app.emit(&done_ev, StreamDone { ok: false, code: -1 });
+                return;
+            }
+        };
+
+        // Drenar stderr en un hilo aparte para no perder los errores ni bloquear.
+        let stderr = child.stderr.take();
+        let app_err = app.clone();
+        let line_ev_err = line_ev.clone();
+        let t_err = std::thread::spawn(move || {
+            if let Some(se) = stderr {
+                let mut buf = Vec::new();
+                for b in se.bytes() {
+                    match b {
+                        Ok(b'\n') | Ok(b'\r') => {
+                            if !buf.is_empty() {
+                                let line = String::from_utf8_lossy(&buf).trim_end().to_string();
+                                if !line.is_empty() { let _ = app_err.emit(&line_ev_err, line); }
+                                buf.clear();
                             }
-                            Ok(byte) => buf.push(byte),
-                            Err(_) => break,
                         }
-                    }
-                    if !buf.is_empty() {
-                        let line = String::from_utf8_lossy(&buf).trim_end().to_string();
-                        if !line.is_empty() { let _ = app.emit(&line_ev, line); }
+                        Ok(byte) => buf.push(byte),
+                        Err(_) => break,
                     }
                 }
-                let _ = child.wait();
+                if !buf.is_empty() {
+                    let line = String::from_utf8_lossy(&buf).trim_end().to_string();
+                    if !line.is_empty() { let _ = app_err.emit(&line_ev_err, line); }
+                }
             }
-            Err(e) => { let _ = app.emit(&line_ev, format!("Error: {e}")); }
+        });
+
+        if let Some(out) = child.stdout.take() {
+            // Leer byte a byte y emitir en cada \n o \r (captura el % de SFC/DISM)
+            let mut buf = Vec::new();
+            for b in out.bytes() {
+                match b {
+                    Ok(b'\n') | Ok(b'\r') => {
+                        if !buf.is_empty() {
+                            let line = String::from_utf8_lossy(&buf).trim_end().to_string();
+                            if !line.is_empty() { let _ = app.emit(&line_ev, line); }
+                            buf.clear();
+                        }
+                    }
+                    Ok(byte) => buf.push(byte),
+                    Err(_) => break,
+                }
+            }
+            if !buf.is_empty() {
+                let line = String::from_utf8_lossy(&buf).trim_end().to_string();
+                if !line.is_empty() { let _ = app.emit(&line_ev, line); }
+            }
         }
-        let _ = app.emit(&done_ev, ());
+
+        let status = child.wait();
+        let _ = t_err.join();
+        let (ok, code) = match status {
+            Ok(s) => (s.success(), s.code().unwrap_or(-1)),
+            Err(_) => (false, -1),
+        };
+        let _ = app.emit(&done_ev, StreamDone { ok, code });
     });
 }
 
