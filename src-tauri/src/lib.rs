@@ -18,6 +18,13 @@ pub struct RunResult {
     pub output: String,
 }
 
+/// Resultado final de un script en streaming: éxito y código de salida real.
+#[derive(Serialize, Clone)]
+pub struct StreamDone {
+    pub ok: bool,
+    pub code: i32,
+}
+
 /// Ejecuta un script PowerShell oculto (-EncodedCommand evita problemas de escaping).
 /// `timeout_secs` es opcional (por defecto 600s) para cortar scripts colgados sin
 /// matar operaciones largas legítimas (instalaciones, backups).
@@ -25,7 +32,10 @@ pub struct RunResult {
 async fn run_powershell(script: String, timeout_secs: Option<u64>) -> RunResult {
     tauri::async_runtime::spawn_blocking(move || {
         use wait_timeout::ChildExt;
-        let full = format!("$ProgressPreference='SilentlyContinue';\n{script}");
+        // Forzar salida UTF-8: el backend lee stdout como UTF-8, pero powershell.exe
+        // escribe en el codepage OEM de la consola → los acentos volvían como '?'
+        // (en literales y en nombres del registro). Con esto se decodifican bien.
+        let full = format!("$ProgressPreference='SilentlyContinue';\ntry{{[Console]::OutputEncoding=[System.Text.UTF8Encoding]::new($false)}}catch{{}}\n{script}");
         // UTF-16LE -> base64 (formato que espera -EncodedCommand)
         let utf16: Vec<u8> = full.encode_utf16().flat_map(|u| u.to_le_bytes()).collect();
         let encoded = general_purpose::STANDARD.encode(utf16);
@@ -51,6 +61,16 @@ async fn run_powershell(script: String, timeout_secs: Option<u64>) -> RunResult 
         let status = match child.wait_timeout(dur) {
             Ok(Some(s)) => s,
             Ok(None) => {
+                // Matar todo el árbol: powershell.exe pudo lanzar winget, instaladores
+                // o Start-Process que seguirían modificando el equipo tras el timeout.
+                #[cfg(windows)]
+                {
+                    let pid = child.id();
+                    let mut tk = Command::new("taskkill");
+                    tk.args(["/F", "/T", "/PID", &pid.to_string()]);
+                    tk.creation_flags(CREATE_NO_WINDOW);
+                    let _ = tk.output();
+                }
                 let _ = child.kill();
                 let _ = child.wait();
                 return RunResult { ok: false, output: "Tiempo de espera agotado".into() };
@@ -75,7 +95,10 @@ async fn run_powershell(script: String, timeout_secs: Option<u64>) -> RunResult 
 #[tauri::command]
 async fn run_powershell_stream(app: tauri::AppHandle, script: String, id: String) {
     tauri::async_runtime::spawn_blocking(move || {
-        let full = format!("$ProgressPreference='SilentlyContinue';\n{script}");
+        // Forzar salida UTF-8: el backend lee stdout como UTF-8, pero powershell.exe
+        // escribe en el codepage OEM de la consola → los acentos volvían como '?'
+        // (en literales y en nombres del registro). Con esto se decodifican bien.
+        let full = format!("$ProgressPreference='SilentlyContinue';\ntry{{[Console]::OutputEncoding=[System.Text.UTF8Encoding]::new($false)}}catch{{}}\n{script}");
         let utf16: Vec<u8> = full.encode_utf16().flat_map(|u| u.to_le_bytes()).collect();
         let encoded = general_purpose::STANDARD.encode(utf16);
 
@@ -89,34 +112,71 @@ async fn run_powershell_stream(app: tauri::AppHandle, script: String, id: String
         let line_ev = format!("ps-line-{id}");
         let done_ev = format!("ps-done-{id}");
 
-        match cmd.spawn() {
-            Ok(mut child) => {
-                if let Some(out) = child.stdout.take() {
-                    // Leer byte a byte y emitir en cada \n o \r (captura el % de SFC/DISM)
-                    let mut buf = Vec::new();
-                    for b in out.bytes() {
-                        match b {
-                            Ok(b'\n') | Ok(b'\r') => {
-                                if !buf.is_empty() {
-                                    let line = String::from_utf8_lossy(&buf).trim_end().to_string();
-                                    if !line.is_empty() { let _ = app.emit(&line_ev, line); }
-                                    buf.clear();
-                                }
+        let mut child = match cmd.spawn() {
+            Ok(c) => c,
+            Err(e) => {
+                let _ = app.emit(&line_ev, format!("Error: {e}"));
+                let _ = app.emit(&done_ev, StreamDone { ok: false, code: -1 });
+                return;
+            }
+        };
+
+        // Drenar stderr en un hilo aparte para no perder los errores ni bloquear.
+        let stderr = child.stderr.take();
+        let app_err = app.clone();
+        let line_ev_err = line_ev.clone();
+        let t_err = std::thread::spawn(move || {
+            if let Some(se) = stderr {
+                let mut buf = Vec::new();
+                for b in se.bytes() {
+                    match b {
+                        Ok(b'\n') | Ok(b'\r') => {
+                            if !buf.is_empty() {
+                                let line = String::from_utf8_lossy(&buf).trim_end().to_string();
+                                if !line.is_empty() { let _ = app_err.emit(&line_ev_err, line); }
+                                buf.clear();
                             }
-                            Ok(byte) => buf.push(byte),
-                            Err(_) => break,
                         }
-                    }
-                    if !buf.is_empty() {
-                        let line = String::from_utf8_lossy(&buf).trim_end().to_string();
-                        if !line.is_empty() { let _ = app.emit(&line_ev, line); }
+                        Ok(byte) => buf.push(byte),
+                        Err(_) => break,
                     }
                 }
-                let _ = child.wait();
+                if !buf.is_empty() {
+                    let line = String::from_utf8_lossy(&buf).trim_end().to_string();
+                    if !line.is_empty() { let _ = app_err.emit(&line_ev_err, line); }
+                }
             }
-            Err(e) => { let _ = app.emit(&line_ev, format!("Error: {e}")); }
+        });
+
+        if let Some(out) = child.stdout.take() {
+            // Leer byte a byte y emitir en cada \n o \r (captura el % de SFC/DISM)
+            let mut buf = Vec::new();
+            for b in out.bytes() {
+                match b {
+                    Ok(b'\n') | Ok(b'\r') => {
+                        if !buf.is_empty() {
+                            let line = String::from_utf8_lossy(&buf).trim_end().to_string();
+                            if !line.is_empty() { let _ = app.emit(&line_ev, line); }
+                            buf.clear();
+                        }
+                    }
+                    Ok(byte) => buf.push(byte),
+                    Err(_) => break,
+                }
+            }
+            if !buf.is_empty() {
+                let line = String::from_utf8_lossy(&buf).trim_end().to_string();
+                if !line.is_empty() { let _ = app.emit(&line_ev, line); }
+            }
         }
-        let _ = app.emit(&done_ev, ());
+
+        let status = child.wait();
+        let _ = t_err.join();
+        let (ok, code) = match status {
+            Ok(s) => (s.success(), s.code().unwrap_or(-1)),
+            Err(_) => (false, -1),
+        };
+        let _ = app.emit(&done_ev, StreamDone { ok, code });
     });
 }
 

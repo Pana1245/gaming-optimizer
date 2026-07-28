@@ -63,14 +63,22 @@ foreach($k in $keys.GetEnumerator()){
 Write-Output "Backup del registro: $n ramas exportadas"
 
 Write-Output "Creando punto de restauracion..."
+$srKey = "HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion\SystemRestore"
+$prevFreq = $null
 try {
     Enable-ComputerRestore -Drive "$env:SystemDrive\" -ErrorAction Stop
     # Windows limita a 1 punto/24h; ponemos la frecuencia en 0 para que se cree siempre.
-    New-Item -Path "HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion\SystemRestore" -Force | Out-Null
-    Set-ItemProperty -Path "HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion\SystemRestore" -Name "SystemRestorePointCreationFrequency" -Value 0 -Type DWord -Force -ErrorAction SilentlyContinue
+    New-Item -Path $srKey -Force | Out-Null
+    $prevFreq = (Get-ItemProperty -Path $srKey -Name "SystemRestorePointCreationFrequency" -EA SilentlyContinue).SystemRestorePointCreationFrequency
+    Set-ItemProperty -Path $srKey -Name "SystemRestorePointCreationFrequency" -Value 0 -Type DWord -Force -ErrorAction SilentlyContinue
     Checkpoint-Computer -Description "Gaming Optimizer - $date" -RestorePointType "MODIFY_SETTINGS" -ErrorAction Stop
     Write-Output "Punto de restauracion creado OK"
 } catch { Write-Output "AVISO: no se pudo crear punto de restauracion" }
+finally {
+    # Dejar la frecuencia como estaba: no queremos que el sistema cree un punto en cada trigger.
+    if($null -eq $prevFreq){ Remove-ItemProperty -Path $srKey -Name "SystemRestorePointCreationFrequency" -Force -EA SilentlyContinue }
+    else { Set-ItemProperty -Path $srKey -Name "SystemRestorePointCreationFrequency" -Value $prevFreq -Type DWord -Force -EA SilentlyContinue }
+}
 Write-Output "Backup en: $backDir"
 `;
 
@@ -145,6 +153,15 @@ export default function Optimizaciones() {
     addLog("PASO 1/2 — Creando backup...");
     const bk = await runPowershell(BACKUP);
     bk.output.split("\n").forEach((l) => l.trim() && addLog("  " + l.trim()));
+    // No aplicar nada si el backup no dejó un respaldo utilizable: sin esto, un
+    // fallo de permisos/espacio/registro modificaba el sistema sin backup.
+    const exported = Number(bk.output.match(/Backup del registro: (\d+) ramas/)?.[1] ?? 0);
+    if (!bk.ok || exported === 0) {
+      addLog("✗ El backup falló — no se aplicó ninguna optimización.");
+      setRunning(false);
+      setDone("No se aplicaron optimizaciones porque el backup del registro falló.\nRevisá permisos o espacio en disco e intentá de nuevo.");
+      return;
+    }
     addLog(`PASO 2/2 — Aplicando ${list.length} optimizaciones...`);
     let ok = 0;
     for (let i = 0; i < list.length; i++) {
@@ -159,7 +176,7 @@ export default function Optimizaciones() {
     setRunning(false);
     setCanReboot(true);
     notify("Optimización completada", `${ok}/${list.length} optimizaciones aplicadas.`);
-    setDone(`${ok}/${list.length} optimizaciones aplicadas.\nReiniciá el PC para aplicar todos los cambios.`);
+    setDone(`${ok}/${list.length} optimizaciones aplicadas.\nReiniciá el PC para aplicar todos los cambios.\n\nPara revertir: "Restaurar" deshace los cambios del registro. Los cambios de servicios/drivers/sistema se revierten con "Restaurar sistema de Windows" (punto de restauración). Las apps/bloatware eliminados se reinstalan a mano.`);
   };
 
   const reboot = () => runPowershell("shutdown /r /t 3");
@@ -258,7 +275,7 @@ export default function Optimizaciones() {
 
       <Modal open={confirm} title="Confirmar optimización" onClose={() => setConfirm(false)}
         onConfirm={run} confirmText="Aplicar" closeText="Cancelar">
-        {`Se aplicarán ${count} optimizaciones.\nSe creará un backup automático antes de empezar.`}
+        {`Se aplicarán ${count} optimizaciones.\n\nAntes se crea un backup del registro (reversible con 1 clic desde "Restaurar") y un punto de restauración del sistema.\n\nOjo: el backup del registro no revierte servicios deshabilitados, apps/bloatware eliminados ni cambios de arranque (HPET/BCD). Para esos, usá "Restaurar sistema de Windows".`}
       </Modal>
       <Modal open={!!done} title="Resultado" onClose={() => { setDone(null); setCanReboot(false); }}
         onConfirm={canReboot ? () => { reboot(); setDone(null); setCanReboot(false); } : undefined}

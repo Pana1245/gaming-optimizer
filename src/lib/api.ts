@@ -30,16 +30,24 @@ export const stopGameWatch = () => invoke("stop_game_watch");
 
 export const clearStandbyRam = (lang: string) => invoke<RunResult>("clear_standby_ram", { lang });
 
+export interface StreamDone { ok: boolean; code: number; }
+
 let _streamId = 0;
-/** Ejecuta PowerShell con salida en vivo. Llama onLine por cada línea; resuelve al terminar. */
-export async function runStream(script: string, onLine: (line: string) => void): Promise<void> {
+/** Ejecuta PowerShell con salida en vivo. Llama onLine por cada línea; resuelve con
+ *  el resultado final (ok + código de salida real) al terminar. */
+export async function runStream(script: string, onLine: (line: string) => void): Promise<StreamDone> {
   const id = `${Date.now()}_${_streamId++}`;
   const unLine = await listen<string>(`ps-line-${id}`, (e) => onLine(e.payload));
-  let resolveDone!: () => void;
-  const done = new Promise<void>((res) => { resolveDone = res; });
-  const unDone = await listen(`ps-done-${id}`, () => resolveDone());
-  await invoke("run_powershell_stream", { script, id });
-  await done;
-  unLine();
-  unDone();
+  let resolveDone!: (d: StreamDone) => void;
+  const done = new Promise<StreamDone>((res) => { resolveDone = res; });
+  const unDone = await listen<StreamDone>(`ps-done-${id}`, (e) => resolveDone(e.payload));
+  // finally: si invoke rechaza, igual liberamos los listeners (antes quedaban
+  // registrados el resto de la sesión en cada fallo).
+  try {
+    await invoke("run_powershell_stream", { script, id });
+    return await done;
+  } finally {
+    unLine();
+    unDone();
+  }
 }

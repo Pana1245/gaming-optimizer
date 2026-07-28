@@ -6,11 +6,21 @@ import { Spinner, IndeterminateBar } from "../components/Feedback";
 
 const SCRIPTS = {
   list: `$root="$env:SystemDrive\\OptimizacionBackup"; if(Test-Path $root){ Get-ChildItem $root -Directory | Sort-Object Name -Descending | Select-Object -ExpandProperty Name }`,
-  checkpoint: `Enable-ComputerRestore -Drive "$env:SystemDrive\\" -ErrorAction SilentlyContinue
-New-Item -Path "HKLM:\\SOFTWARE\\Microsoft\\Windows NT\\CurrentVersion\\SystemRestore" -Force | Out-Null
-Set-ItemProperty -Path "HKLM:\\SOFTWARE\\Microsoft\\Windows NT\\CurrentVersion\\SystemRestore" -Name "SystemRestorePointCreationFrequency" -Value 0 -Type DWord -Force -ErrorAction SilentlyContinue
-Checkpoint-Computer -Description "Gaming Optimizer (manual)" -RestorePointType "MODIFY_SETTINGS"
-Write-Output "Punto de restauracion creado correctamente."`,
+  checkpoint: `$srKey = "HKLM:\\SOFTWARE\\Microsoft\\Windows NT\\CurrentVersion\\SystemRestore"
+Enable-ComputerRestore -Drive "$env:SystemDrive\\" -ErrorAction SilentlyContinue
+New-Item -Path $srKey -Force | Out-Null
+$prevFreq = (Get-ItemProperty -Path $srKey -Name "SystemRestorePointCreationFrequency" -EA SilentlyContinue).SystemRestorePointCreationFrequency
+Set-ItemProperty -Path $srKey -Name "SystemRestorePointCreationFrequency" -Value 0 -Type DWord -Force -ErrorAction SilentlyContinue
+try {
+  Checkpoint-Computer -Description "Gaming Optimizer (manual)" -RestorePointType "MODIFY_SETTINGS" -ErrorAction Stop
+  Write-Output "Punto de restauracion creado correctamente."
+} catch {
+  Write-Output ("No se pudo crear el punto de restauracion: " + $_.Exception.Message)
+  Write-Output "Verifica que la Proteccion del sistema este activada y que haya espacio en disco."
+} finally {
+  if($null -eq $prevFreq){ Remove-ItemProperty -Path $srKey -Name "SystemRestorePointCreationFrequency" -Force -EA SilentlyContinue }
+  else { Set-ItemProperty -Path $srKey -Name "SystemRestorePointCreationFrequency" -Value $prevFreq -Type DWord -Force -EA SilentlyContinue }
+}`,
   restore: `$root="$env:SystemDrive\\OptimizacionBackup"
 if(!(Test-Path $root)){ Write-Output "No hay backups disponibles."; return }
 $last = Get-ChildItem $root -Directory | Sort-Object Name -Descending | Select-Object -First 1
@@ -18,8 +28,14 @@ if(!$last){ Write-Output "No hay backups disponibles."; return }
 Write-Output "Restaurando backup: $($last.Name)"
 $regs = Get-ChildItem $last.FullName -Filter *.reg
 if(!$regs){ Write-Output "El backup no tiene archivos .reg."; return }
-foreach($r in $regs){ reg import $r.FullName 2>&1 | Out-Null; Write-Output ("  OK  " + $r.Name) }
-Write-Output "Registro restaurado. Reinicia el PC para aplicar."`,
+$failed=0
+foreach($r in $regs){
+  $out = & reg import $r.FullName 2>&1
+  if($LASTEXITCODE -eq 0){ Write-Output ("  OK  " + $r.Name) }
+  else { $failed++; Write-Output ("  ERROR  " + $r.Name + ": " + ($out -join ' ')) }
+}
+if($failed -gt 0){ Write-Output ("Restauración incompleta: " + $failed + " archivo(s) fallaron. Nada se marcó como restaurado por completo.") }
+else { Write-Output "Registro restaurado. Reinicia el PC para aplicar." }`,
 };
 
 export default function RestaurarPage() {

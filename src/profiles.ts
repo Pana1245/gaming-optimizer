@@ -27,10 +27,13 @@ const GFX = String.raw`HKLM:\SYSTEM\CurrentControlSet\Control\GraphicsDrivers`;
 const op = (id: string, name: string, key: string, prop: string, value: number, group: string): RegOp =>
   ({ id, name, desc: "", group, key, prop, type: "DWord", value });
 
+// Terminan con `exit $LASTEXITCODE` (el de powercfg) para que el frontend sepa si
+// el plan se aplicó de verdad — powercfg es nativo y su fallo no altera `ok` solo.
 const PLAN_MAX = String.raw`$hp=powercfg -list | Select-String 'Ultimate|High performance|Alto rendimiento' | Select-Object -First 1
-if($hp -and "$hp" -match '([0-9a-fA-F]{8}-([0-9a-fA-F]{4}-){3}[0-9a-fA-F]{12})'){ powercfg /setactive $matches[1]; Write-Output 'Plan: maximo rendimiento' } else { powercfg /setactive SCHEME_MIN; Write-Output 'Plan: alto rendimiento' }`;
-const PLAN_BAL = String.raw`powercfg /setactive SCHEME_BALANCED; Write-Output 'Plan: equilibrado'`;
-const PLAN_SAVE = String.raw`powercfg /setactive SCHEME_MAX; Write-Output 'Plan: ahorro de energia'`;
+if($hp -and "$hp" -match '([0-9a-fA-F]{8}-([0-9a-fA-F]{4}-){3}[0-9a-fA-F]{12})'){ powercfg /setactive $matches[1]; Write-Output 'Plan: maximo rendimiento' } else { powercfg /setactive SCHEME_MAX; Write-Output 'Plan: alto rendimiento' }
+exit $LASTEXITCODE`;
+const PLAN_BAL = String.raw`powercfg /setactive SCHEME_BALANCED; Write-Output 'Plan: equilibrado'; exit $LASTEXITCODE`;
+const PLAN_SAVE = String.raw`powercfg /setactive SCHEME_MIN; Write-Output 'Plan: ahorro de energia'; exit $LASTEXITCODE`;
 
 export const PROFILES: Profile[] = [
   {

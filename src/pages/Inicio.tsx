@@ -54,7 +54,13 @@ export default function Inicio() {
   const toggle = async (e: Entry) => {
     setBusy(e.name);
     setStatus(`${e.enabled ? "Desactivando" : "Activando"} ${e.name}…`);
-    await runPowershell(toggleScript(e, !e.enabled));
+    const r = await runPowershell(toggleScript(e, !e.enabled));
+    if (!r.ok) {
+      // No invertir el switch ni cantar éxito si StartupApproved no cambió.
+      setStatus(`✗ No se pudo ${e.enabled ? "desactivar" : "activar"} ${e.name}`);
+      setBusy(null);
+      return;
+    }
     setItems((list) => list.map((x) => (x.name === e.name && x.scope === e.scope ? { ...x, enabled: !x.enabled } : x)));
     setStatus(`✓ ${e.name} ${e.enabled ? "desactivado" : "activado"}`);
     setBusy(null);

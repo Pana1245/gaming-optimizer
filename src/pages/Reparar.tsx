@@ -6,9 +6,9 @@ import { Spinner, IndeterminateBar } from "../components/Feedback";
 
 const ACTIONS = [
   { id: "sfc", title: "Reparar archivos del sistema (SFC)", desc: "Escanea y repara archivos de Windows dañados. Puede tardar varios minutos.",
-    btn: "Ejecutar SFC", script: String.raw`sfc /scannow 2>&1 | Out-String | Write-Output` },
+    btn: "Ejecutar SFC", script: String.raw`sfc /scannow 2>&1; exit $LASTEXITCODE` },
   { id: "dism", title: "Reparar imagen de Windows (DISM)", desc: "Restaura la salud de la imagen del sistema. Requiere internet.",
-    btn: "Ejecutar DISM", script: String.raw`DISM /Online /Cleanup-Image /RestoreHealth 2>&1 | Out-String | Write-Output` },
+    btn: "Ejecutar DISM", script: String.raw`DISM /Online /Cleanup-Image /RestoreHealth 2>&1; exit $LASTEXITCODE` },
   { id: "net", title: "Resetear la red", desc: "Winsock + IP + caché DNS. Soluciona problemas de conexión.",
     btn: "Resetear red", script: String.raw`netsh winsock reset | Out-Null; netsh int ip reset | Out-Null; ipconfig /flushdns | Out-Null; ipconfig /release | Out-Null; ipconfig /renew | Out-Null; Write-Output "Red reseteada. Reinicia para aplicar."` },
   { id: "explorer", title: "Reiniciar el Explorador", desc: "Refresca la barra de tareas y el escritorio si quedaron colgados.",
@@ -34,9 +34,10 @@ export default function Reparar() {
     addLog(`▸ ${a.title}…`);
     if (a.id === "sfc" || a.id === "dism") addLog("  (puede tardar varios minutos — verás el avance acá)");
     const lines: string[] = [];
-    await runStream(a.script, (line) => { lines.push(line); addLog("  " + line); });
+    const res = await runStream(a.script, (line) => { lines.push(line); addLog("  " + line); });
     const t = lines.join("\n").toLowerCase();
-    let summary = `✓ ${a.title} — completado`;
+    // No damos "completado" por defecto: si el código de salida no fue 0, lo decimos.
+    let summary = res.ok ? `✓ ${a.title} — completado` : `⚠ ${a.title} — terminó con errores (código ${res.code})`;
     if (a.id === "sfc") {
       if (t.includes("did not find any integrity") || t.includes("no encontró ninguna infracción"))
         summary = "✓ SFC: no se encontraron archivos dañados";
