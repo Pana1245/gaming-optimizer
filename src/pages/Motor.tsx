@@ -72,7 +72,12 @@ export default function Motor() {
 
   const undo = async (e: LedgerEntry) => {
     setBusy(true);
-    await undoEntry(e);
+    const ok = await undoEntry(e);
+    if (!ok) {
+      addLog(`✗ No se pudo deshacer ${e.name} — sigue activo.`);
+      if (mounted.current) setBusy(false);
+      return;
+    }
     const updated = ledger.map((x) => (x.id === e.id ? { ...x, undone: true } : x));
     await saveLedger(updated);
     if (mounted.current) { setLedger(updated); setBusy(false); }
@@ -81,10 +86,16 @@ export default function Motor() {
   const undoAll = async () => {
     setBusy(true);
     const active = ledger.filter((e) => !e.undone);
-    for (const e of active) await undoEntry(e);
-    const updated = ledger.map((x) => ({ ...x, undone: true }));
+    // Sólo marcamos como deshecho lo que realmente se pudo revertir.
+    const failed = new Set<string>();
+    for (const e of active) { if (!(await undoEntry(e))) failed.add(e.id); }
+    const updated = ledger.map((x) => (failed.has(x.id) ? x : { ...x, undone: true }));
     await saveLedger(updated);
-    if (mounted.current) { setLedger(updated); setBusy(false); }
+    if (mounted.current) {
+      setLedger(updated);
+      if (failed.size) addLog(`✗ ${failed.size} cambio(s) no se pudieron deshacer y siguen activos.`);
+      setBusy(false);
+    }
   };
 
   const activeCount = ledger.filter((e) => !e.undone).length;
