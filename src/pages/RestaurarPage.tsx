@@ -18,8 +18,14 @@ if(!$last){ Write-Output "No hay backups disponibles."; return }
 Write-Output "Restaurando backup: $($last.Name)"
 $regs = Get-ChildItem $last.FullName -Filter *.reg
 if(!$regs){ Write-Output "El backup no tiene archivos .reg."; return }
-foreach($r in $regs){ reg import $r.FullName 2>&1 | Out-Null; Write-Output ("  OK  " + $r.Name) }
-Write-Output "Registro restaurado. Reinicia el PC para aplicar."`,
+$failed=0
+foreach($r in $regs){
+  $out = & reg import $r.FullName 2>&1
+  if($LASTEXITCODE -eq 0){ Write-Output ("  OK  " + $r.Name) }
+  else { $failed++; Write-Output ("  ERROR  " + $r.Name + ": " + ($out -join ' ')) }
+}
+if($failed -gt 0){ Write-Output ("Restauración incompleta: " + $failed + " archivo(s) fallaron. Nada se marcó como restaurado por completo.") }
+else { Write-Output "Registro restaurado. Reinicia el PC para aplicar." }`,
 };
 
 export default function RestaurarPage() {
