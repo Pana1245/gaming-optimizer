@@ -94,6 +94,11 @@ export function GameModeProvider({ children }: { children: ReactNode }) {
   playingRef.current = playing;
   const proRef = useRef(pro);
   proRef.current = pro;
+  // ¿Se aplicaron las optimizaciones "pro" en la sesión de juego actual? Al cerrar
+  // el juego hay que restaurar según lo que realmente se aplicó, no según el toggle
+  // actual (el usuario pudo apagar Pro mientras jugaba y si no, las prioridades y
+  // apps de fondo quedaban modificadas para siempre).
+  const appliedProRef = useRef(false);
 
   const addLog = (s: string) =>
     setLog((l) => [...l.slice(-60), `[${new Date().toLocaleTimeString()}] ${s}`]);
@@ -125,6 +130,7 @@ export function GameModeProvider({ children }: { children: ReactNode }) {
           const bg = await runPowershell(BG_LOWER);
           const ram = await clearStandbyRam(localStorage.getItem("lang") || "es");
           const bgN = bg.output.match(/BG=(\d+)/)?.[1] ?? "0";
+          appliedProRef.current = true;
           addLog(`⚡ Pro: prioridad Alta · ${bgN} apps de fondo bajadas · ${ram.ok ? "RAM liberada" : "RAM sin cambios"}`);
         }
       });
@@ -134,7 +140,7 @@ export function GameModeProvider({ children }: { children: ReactNode }) {
         addLog("↩ Juego cerrado → restaurando");
         notify("Modo Gamer desactivado", "El juego se cerró. Volví al estado normal.");
         await runPowershell(GAMER_OFF);
-        if (proRef.current) await runPowershell(BG_RESTORE);
+        if (appliedProRef.current) { await runPowershell(BG_RESTORE); appliedProRef.current = false; }
         setPlaying(null);
       });
     }).then((u) => uns.push(u));
@@ -150,7 +156,13 @@ export function GameModeProvider({ children }: { children: ReactNode }) {
       addLog(`Vigilando ${games.length} juegos…${pro ? " (modo pro)" : ""}`);
     } else {
       stopGameWatch();
-      if (playingRef.current) { runPowershell(GAMER_OFF); runPowershell(BG_RESTORE); setPlaying(null); }
+      if (playingRef.current) {
+        enqueue(async () => {
+          await runPowershell(GAMER_OFF);
+          if (appliedProRef.current) { await runPowershell(BG_RESTORE); appliedProRef.current = false; }
+          setPlaying(null);
+        });
+      }
       addLog("Auto Game-Mode desactivado.");
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
