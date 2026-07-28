@@ -28,9 +28,9 @@ const op = (id: string, name: string, key: string, prop: string, value: number, 
   ({ id, name, desc: "", group, key, prop, type: "DWord", value });
 
 const PLAN_MAX = String.raw`$hp=powercfg -list | Select-String 'Ultimate|High performance|Alto rendimiento' | Select-Object -First 1
-if($hp -and "$hp" -match '([0-9a-fA-F]{8}-([0-9a-fA-F]{4}-){3}[0-9a-fA-F]{12})'){ powercfg /setactive $matches[1]; Write-Output 'Plan: maximo rendimiento' } else { powercfg /setactive SCHEME_MIN; Write-Output 'Plan: alto rendimiento' }`;
+if($hp -and "$hp" -match '([0-9a-fA-F]{8}-([0-9a-fA-F]{4}-){3}[0-9a-fA-F]{12})'){ powercfg /setactive $matches[1]; Write-Output 'Plan: maximo rendimiento' } else { powercfg /setactive SCHEME_MAX; Write-Output 'Plan: alto rendimiento' }`;
 const PLAN_BAL = String.raw`powercfg /setactive SCHEME_BALANCED; Write-Output 'Plan: equilibrado'`;
-const PLAN_SAVE = String.raw`powercfg /setactive SCHEME_MAX; Write-Output 'Plan: ahorro de energia'`;
+const PLAN_SAVE = String.raw`powercfg /setactive SCHEME_MIN; Write-Output 'Plan: ahorro de energia'`;
 
 export const PROFILES: Profile[] = [
   {
