@@ -82,7 +82,7 @@ export const NV_RESTORE = (en: boolean) => String.raw`$base='${NV_CLASS}'; $stor
 # Sin un backup válido no tocamos nada: borrar las propiedades del driver podía
 # destruir la configuración legítima del usuario.
 $saved=(Get-ItemProperty $store -Name '_NV_saved' -EA SilentlyContinue).'_NV_saved'
-if($saved -ne '1'){ Write-Output '${en ? "No valid NVIDIA backup to restore; nothing was changed." : "No hay un backup válido de NVIDIA; no se modificó nada."}'; return }
+if($saved -ne '1'){ Write-Output '${en ? "No valid NVIDIA backup to restore; nothing was changed." : "No hay un backup valido de NVIDIA; no se modifico nada."}'; return }
 $n=0
 Get-ChildItem $base -EA SilentlyContinue | Where-Object { $_.PSChildName -match '^\d{4}$' } | ForEach-Object {
   $id=$_.PSChildName; $k=$_.PSPath
@@ -126,7 +126,7 @@ if($n -gt 0){ Set-ItemProperty $store -Name '_AMD_saved' -Value '1' -Force; Writ
 
 export const AMD_RESTORE = (en: boolean) => String.raw`$base='${NV_CLASS}'; $store='${NV_STORE}'
 $saved=(Get-ItemProperty $store -Name '_AMD_saved' -EA SilentlyContinue).'_AMD_saved'
-if($saved -ne '1'){ Write-Output '${en ? "No valid AMD backup to restore; nothing was changed." : "No hay un backup válido de AMD; no se modificó nada."}'; return }
+if($saved -ne '1'){ Write-Output '${en ? "No valid AMD backup to restore; nothing was changed." : "No hay un backup valido de AMD; no se modifico nada."}'; return }
 $n=0
 Get-ChildItem $base -EA SilentlyContinue | Where-Object { $_.PSChildName -match '^\d{4}$' } | ForEach-Object {
   $id=$_.PSChildName; $k=$_.PSPath

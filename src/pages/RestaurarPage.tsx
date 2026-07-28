@@ -34,7 +34,7 @@ foreach($r in $regs){
   if($LASTEXITCODE -eq 0){ Write-Output ("  OK  " + $r.Name) }
   else { $failed++; Write-Output ("  ERROR  " + $r.Name + ": " + ($out -join ' ')) }
 }
-if($failed -gt 0){ Write-Output ("Restauración incompleta: " + $failed + " archivo(s) fallaron. Nada se marcó como restaurado por completo.") }
+if($failed -gt 0){ Write-Output ("Restauracion incompleta: " + $failed + " archivo(s) fallaron. Nada se marco como restaurado por completo.") }
 else { Write-Output "Registro restaurado. Reinicia el PC para aplicar." }`,
 };
 
