@@ -100,22 +100,28 @@ const forceUwp = (a: App) =>
 // pasan en base64 y se usan sólo como -LiteralPath, nunca como código. Nunca
 // ofrece rutas protegidas ni claves de editor "peladas" (Software\<editor>) — eso
 // evita borrar ramas compartidas como Software\Microsoft o %AppData%\Google.
-const scanLeftovers = (a: App) => String.raw`$pub=[Text.Encoding]::UTF8.GetString([Convert]::FromBase64String('${b64utf8(a.pub)}'))
+const scanLeftovers = (a: App) => String.raw`$name=[Text.Encoding]::UTF8.GetString([Convert]::FromBase64String('${b64utf8(a.name)}'))
+$pub=[Text.Encoding]::UTF8.GetString([Convert]::FromBase64String('${b64utf8(a.pub)}'))
 $loc=[Text.Encoding]::UTF8.GetString([Convert]::FromBase64String('${b64utf8(a.location)}'))
 $key=[Text.Encoding]::UTF8.GetString([Convert]::FromBase64String('${b64utf8(a.key)}'))
 $bad=@('microsoft','windows','google','common files','intel','nvidia','amd','realtek','adobe','oracle','mozilla','system','program files','program files (x86)','programdata','users','appdata','local','roaming','temp','default','wow6432node','classes','clients','policies')
 $prot=@($env:ProgramFiles,[Environment]::GetEnvironmentVariable('ProgramFiles(x86)'),$env:ProgramData,$env:windir,$env:APPDATA,$env:LOCALAPPDATA,$env:SystemDrive,'C:\Windows','C:\Users') | ForEach-Object { if($_){ $_.TrimEnd('\').ToLower() } }
 function SafeFolder($p){ if(!$p){return $false}; $t=$p.TrimEnd('\'); if($t.Length -le 12){return $false}; if($prot -contains $t.ToLower()){return $false}; return (Test-Path -LiteralPath $p) }
+# Nombre "limpio" desde el DisplayName: sin (...) y cortado en la primera versión
+# ("7-Zip 26.01 (x64 edition)" -> "7-Zip"). Sirve para apps MSI sin InstallLocation.
+$clean = ($name -replace '\([^)]*\)','')
+$clean = ($clean -replace '(?i)\s+v?\d[\d\.\-]*.*$','').Trim()
 $leaf = if($loc){ Split-Path $loc -Leaf } else { '' }
-$folderTerms = @($leaf,$pub) | Where-Object { $_ -and $_.Length -gt 2 -and ($bad -notcontains $_.ToLower()) } | Select-Object -Unique
-$appTerms = @($leaf) | Where-Object { $_ -and $_.Length -gt 2 -and ($bad -notcontains $_.ToLower()) } | Select-Object -Unique
+$folderTerms = @($leaf,$clean,$pub) | Where-Object { $_ -and $_.Length -gt 2 -and ($bad -notcontains $_.ToLower()) } | Select-Object -Unique
+$appTerms = @($leaf,$clean) | Where-Object { $_ -and $_.Length -gt 2 -and ($bad -notcontains $_.ToLower()) } | Select-Object -Unique
 $found=@()
 if(SafeFolder $loc){ $found += [pscustomobject]@{type='folder'; label='Carpeta de instalación'; path=$loc} }
 if($key){ $found += [pscustomobject]@{type='regkey'; label='Clave de desinstalación'; path=('Registry::'+$key)} }
-foreach($root in @($env:APPDATA,$env:LOCALAPPDATA,$env:ProgramData)){
+foreach($root in @($env:APPDATA,$env:LOCALAPPDATA,$env:ProgramData,$env:ProgramFiles,[Environment]::GetEnvironmentVariable('ProgramFiles(x86)'))){
+  if(!$root){ continue }
   foreach($t in $folderTerms){
     $p = Join-Path $root $t
-    if((SafeFolder $p) -and (@($found.path) -notcontains $p)){ $found += [pscustomobject]@{type='folder'; label='Datos de la app'; path=$p} }
+    if((SafeFolder $p) -and (@($found.path) -notcontains $p)){ $found += [pscustomobject]@{type='folder'; label='Datos / carpeta'; path=$p} }
   }
 }
 foreach($rr in @('HKCU:\Software','HKLM:\Software','HKLM:\Software\Wow6432Node')){
