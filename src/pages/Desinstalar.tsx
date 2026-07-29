@@ -142,28 +142,27 @@ const deleteLeftovers = (items: { type: string; path: string }[]) => String.raw`
 $items=@($json | ConvertFrom-Json)
 $prot=@($env:ProgramFiles,[Environment]::GetEnvironmentVariable('ProgramFiles(x86)'),$env:ProgramData,$env:windir,$env:APPDATA,$env:LOCALAPPDATA,$env:SystemDrive,'C:\Windows','C:\Users') | ForEach-Object { if($_){ $_.TrimEnd('\').ToLower() } }
 $protReg=@('hkcu:\software','hklm:\software','hklm:\software\wow6432node','hklm:\software\microsoft','hkcu:\software\microsoft','hklm:\system','hkcu:\system','hkcu:\control panel')
-$done=0
+$done=0; $stuck=0
 foreach($it in $items){
   $p=$it.path
   if($it.type -eq 'folder'){
     $t=$p.TrimEnd('\')
-    if($t.Length -gt 12 -and ($prot -notcontains $t.ToLower()) -and (Test-Path -LiteralPath $p)){
-      # Cerrar procesos cuyo ejecutable esté dentro de la carpeta (archivos en uso).
-      $pref=$t.ToLower()+'\'
-      Get-Process -EA SilentlyContinue | Where-Object { $_.Path -and $_.Path.ToLower().StartsWith($pref) } | Stop-Process -Force -EA SilentlyContinue
-      Start-Sleep -Milliseconds 300
-      Remove-Item -LiteralPath $p -Recurse -Force -EA SilentlyContinue
-      if(-not (Test-Path -LiteralPath $p)){ $done++ }
-    }
+    if($t.Length -le 12 -or ($prot -contains $t.ToLower())){ continue }
+    if(-not (Test-Path -LiteralPath $p)){ $done++; continue }   # ya no existe (lo borró el desinstalador)
+    # Cerrar procesos cuyo ejecutable esté dentro de la carpeta (archivos en uso).
+    $pref=$t.ToLower()+'\'
+    Get-Process -EA SilentlyContinue | Where-Object { $_.Path -and $_.Path.ToLower().StartsWith($pref) } | Stop-Process -Force -EA SilentlyContinue
+    for($i=0; ($i -lt 3) -and (Test-Path -LiteralPath $p); $i++){ Remove-Item -LiteralPath $p -Recurse -Force -EA SilentlyContinue; if(Test-Path -LiteralPath $p){ Start-Sleep -Milliseconds 500 } }
+    if(-not (Test-Path -LiteralPath $p)){ $done++ } else { $stuck++ }
   } elseif($it.type -eq 'regkey'){
-    if(($protReg -notcontains $p.ToLower().TrimEnd('\')) -and (Test-Path -LiteralPath $p)){
-      Remove-Item -LiteralPath $p -Recurse -Force -EA SilentlyContinue
-      if(-not (Test-Path -LiteralPath $p)){ $done++ }
-    }
+    if($protReg -contains $p.ToLower().TrimEnd('\')){ continue }
+    if(-not (Test-Path -LiteralPath $p)){ $done++; continue }   # ya no existe
+    Remove-Item -LiteralPath $p -Recurse -Force -EA SilentlyContinue
+    if(-not (Test-Path -LiteralPath $p)){ $done++ } else { $stuck++ }
   }
 }
 $total=$items.Count
-if($done -lt $total){ Write-Output ('Restos eliminados: '+$done+'/'+$total+' (algunos estaban en uso o protegidos)') } else { Write-Output ('Restos eliminados: '+$done+'/'+$total) }`;
+if($stuck -gt 0){ Write-Output ('Restos eliminados: '+$done+'/'+$total+' — '+$stuck+' en uso (cerrá la app o reiniciá y reintentá)') } else { Write-Output ('Restos eliminados: '+$done+'/'+$total) }`;
 
 const MS_BLOAT = String.raw`$list='Microsoft.BingNews','Microsoft.BingWeather','Microsoft.GetHelp','Microsoft.Getstarted','Microsoft.Messaging','Microsoft.MicrosoftSolitaireCollection','Microsoft.MicrosoftOfficeHub','Microsoft.People','Microsoft.SkypeApp','Microsoft.ZuneMusic','Microsoft.ZuneVideo','Microsoft.WindowsFeedbackHub','Microsoft.YourPhone','Microsoft.Todos','Clipchamp.Clipchamp','Microsoft.GamingApp','Microsoft.549981C3F5F10','Microsoft.MixedReality.Portal','Microsoft.WindowsMaps'
 $n=0; foreach($a in $list){ if(Get-AppxPackage -Name $a -AllUsers -EA SilentlyContinue){ Get-AppxPackage -Name $a -AllUsers | Remove-AppxPackage -AllUsers -EA SilentlyContinue; $n++ } }
@@ -172,6 +171,24 @@ Write-Output "Apps de Microsoft removidas: $n"`;
 const OEM_BLOAT = String.raw`$list='king.com.CandyCrush*','*.Disney*','*.Facebook*','*.Netflix*','*.TikTok*','*.Spotify*','*.Twitter*','*.Booking*','*WildTangent*','*McAfee*','*.LinkedInforWindows*','*.Dropbox*','*.Roblox*'
 $n=0; foreach($a in $list){ Get-AppxPackage -Name $a -AllUsers -EA SilentlyContinue | ForEach-Object { Remove-AppxPackage -Package $_.PackageFullName -AllUsers -EA SilentlyContinue; $n++ } }
 Write-Output "Bloatware de terceros removido: $n"`;
+
+// Espera a que el desinstalador termine DE VERDAD antes de escanear restos: los
+// uninstallers NSIS se copian a %TEMP% (Au_.exe) y siguen en segundo plano aunque
+// el .exe original ya devolvió control. Espera hasta ~30s (proceso Au_ o procesos
+// corriendo desde la carpeta de la app).
+const waitSettle = (a: App) => String.raw`$loc=[Text.Encoding]::UTF8.GetString([Convert]::FromBase64String('${b64utf8(a.location)}')).TrimEnd('\')
+$w=0
+while($w -lt 40){
+  $busy=$false
+  if($loc -and (Test-Path -LiteralPath $loc)){
+    $pref=$loc.ToLower()+'\'
+    if(Get-Process -EA SilentlyContinue | Where-Object { $_.Path -and $_.Path.ToLower().StartsWith($pref) }){ $busy=$true }
+  }
+  if(Get-Process -Name 'Au_' -EA SilentlyContinue){ $busy=$true }
+  if(-not $busy){ break }
+  Start-Sleep -Milliseconds 750; $w++
+}
+Write-Output 'settled'`;
 
 const fmtDate = (d: string) =>
   /^\d{8}$/.test(d) ? `${d.slice(0, 4)}-${d.slice(4, 6)}-${d.slice(6, 8)}` : "";
@@ -246,6 +263,8 @@ export default function Desinstalar() {
         setWorking(true); setBusy(a.name);
         setStatus(`Desinstalando ${a.name}…`);
         await runPowershell(uninstallScript(a));
+        setStatus(`Esperando a que termine el desinstalador…`);
+        await runPowershell(waitSettle(a));
         setStatus(`Buscando restos de ${a.name}…`);
         const r = await runPowershell(scanLeftovers(a));
         let items: Leftover[] = [];
