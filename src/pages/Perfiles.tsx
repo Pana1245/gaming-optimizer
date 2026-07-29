@@ -42,8 +42,12 @@ export default function Perfiles() {
       const planRes = await runPowershell(p.planScript);
       addLog(planRes.ok ? `✓ ${planOf(p)}` : `✗ ${planOf(p)} — no se pudo cambiar el plan de energía`);
       addLog(`${ok}/${p.ops.length} ${t("profiles.verified")}`);
-      localStorage.setItem("profile_active", p.id);
-      setActiveId(p.id);
+      // Sólo marcamos el perfil como activo si el plan de energía se aplicó de
+      // verdad: si falló, no persistimos un "activo" cuyo plan nunca se aplicó.
+      if (planRes.ok) {
+        localStorage.setItem("profile_active", p.id);
+        setActiveId(p.id);
+      }
       notify(`${p.emoji} ${t("profiles.notifyPre")} ${nameOf(p)} ${t("profiles.notifyApplied")}`, `${ok} ${t("profiles.notifyBody")} ${planOf(p)}.`);
     } catch (err) {
       addLog(`✗ ${t("profiles.applyErr")} ${err instanceof Error ? err.message : String(err)}`);
