@@ -9,23 +9,28 @@ import { Spinner, IndeterminateBar } from "../components/Feedback";
 interface App {
   name: string; pub: string; type: "win32" | "uwp";
   size: number; date: string; location: string; key: string; uninstall: string;
+  scope: "machine" | "user";  // HKLM (confiable) vs HKCU (escribible por el usuario)
 }
 
 const LIST = String.raw`$apps=@()
-$roots=@('HKLM:\Software\Microsoft\Windows\CurrentVersion\Uninstall','HKLM:\Software\Wow6432Node\Microsoft\Windows\CurrentVersion\Uninstall','HKCU:\Software\Microsoft\Windows\CurrentVersion\Uninstall')
+$roots=@(
+ @{p='HKLM:\Software\Microsoft\Windows\CurrentVersion\Uninstall'; s='machine'},
+ @{p='HKLM:\Software\Wow6432Node\Microsoft\Windows\CurrentVersion\Uninstall'; s='machine'},
+ @{p='HKCU:\Software\Microsoft\Windows\CurrentVersion\Uninstall'; s='user'}
+)
 foreach($root in $roots){
- if(Test-Path $root){
-  Get-ChildItem $root -EA SilentlyContinue | ForEach-Object {
+ if(Test-Path $root.p){
+  Get-ChildItem $root.p -EA SilentlyContinue | ForEach-Object {
    $p=Get-ItemProperty $_.PSPath -EA SilentlyContinue
    if($p.DisplayName -and -not $p.SystemComponent){
     $size=if($p.EstimatedSize){[math]::Round($p.EstimatedSize/1024,1)}else{0}
-    $apps+=[pscustomobject]@{name="$($p.DisplayName)";pub="$($p.Publisher)";type='win32';size=$size;date="$($p.InstallDate)";location="$($p.InstallLocation)";key="$($_.Name)";uninstall="$($p.UninstallString)"}
+    $apps+=[pscustomobject]@{name="$($p.DisplayName)";pub="$($p.Publisher)";type='win32';size=$size;date="$($p.InstallDate)";location="$($p.InstallLocation)";key="$($_.Name)";uninstall="$($p.UninstallString)";scope=$root.s}
    }
   }
  }
 }
 Get-AppxPackage -EA SilentlyContinue | Where-Object { -not $_.IsFramework } | ForEach-Object {
- $apps+=[pscustomobject]@{name="$($_.Name)";pub="$($_.Publisher)";type='uwp';size=0;date='';location="$($_.InstallLocation)";key="$($_.PackageFullName)";uninstall="$($_.PackageFullName)"}
+ $apps+=[pscustomobject]@{name="$($_.Name)";pub="$($_.Publisher)";type='uwp';size=0;date='';location="$($_.InstallLocation)";key="$($_.PackageFullName)";uninstall="$($_.PackageFullName)";scope='machine'}
 }
 $apps=$apps | Sort-Object name -Unique
 if($apps.Count -eq 0){'[]'}else{$apps|ConvertTo-Json -Compress -Depth 3}`;
@@ -40,13 +45,47 @@ const esc = (s: string) => (s || "").replace(/'/g, "''");
 const b64utf8 = (s: string) =>
   btoa(String.fromCharCode(...new TextEncoder().encode(s || "")));
 
+// base64 de UTF-16LE — formato que espera `powershell.exe -EncodedCommand`.
+const b64utf16 = (s: string) => {
+  const buf = new Uint8Array(s.length * 2);
+  for (let i = 0; i < s.length; i++) { const c = s.charCodeAt(i); buf[i * 2] = c & 0xff; buf[i * 2 + 1] = c >> 8; }
+  let bin = ""; for (let i = 0; i < buf.length; i++) bin += String.fromCharCode(buf[i]);
+  return btoa(bin);
+};
+
 const uninstallScript = (a: App) => {
   if (a.type === "uwp")
     return `Get-AppxPackage -Name '${esc(a.name)}' -EA SilentlyContinue | Remove-AppxPackage -EA SilentlyContinue; Write-Output 'OK'`;
-  return `$u=[System.Text.Encoding]::UTF8.GetString([System.Convert]::FromBase64String('${b64utf8(a.uninstall)}')).Trim()
+
+  // Cuerpo que ejecuta el desinstalador. La cadena viene del registro (dato no
+  // confiable): se decodifica de base64 como dato puro, nunca se interpola como código.
+  const body = `$u=[System.Text.Encoding]::UTF8.GetString([System.Convert]::FromBase64String('${b64utf8(a.uninstall)}')).Trim()
 if($u -match 'msiexec'){ $u=$u -replace '/I','/X' -replace '/i','/x'; Start-Process cmd -ArgumentList '/c',"$u /quiet /norestart" -Wait -WindowStyle Hidden }
-else { Start-Process cmd -ArgumentList '/c',$u -Wait -WindowStyle Hidden }
-Write-Output 'Desinstalador ejecutado'`;
+else { Start-Process cmd -ArgumentList '/c',$u -Wait -WindowStyle Hidden }`;
+
+  // HKLM (machine): la entrada la escribió un instalador con admin → confiable →
+  // se ejecuta con la elevación de la app (sin prompt extra).
+  if (a.scope === "machine")
+    return `${body}\nWrite-Output 'Desinstalador ejecutado'`;
+
+  // HKCU (user): cualquiera sin admin puede plantar una entrada acá. Correr su
+  // UninstallString con el token elevado de la app sería una escalada de
+  // privilegios. Se ejecuta DES-ELEVADO (como el usuario normal) vía tarea
+  // programada de nivel limitado; si el desinstalador real necesita admin, pedirá
+  // UAC por su cuenta.
+  const innerB64 = b64utf16(body);
+  return String.raw`$tn = "GO_Uninstall_" + [guid]::NewGuid().ToString('N')
+$act = New-ScheduledTaskAction -Execute 'powershell.exe' -Argument '-NoProfile -WindowStyle Hidden -EncodedCommand ${innerB64}'
+$usr = [Security.Principal.WindowsIdentity]::GetCurrent().Name
+$prin = New-ScheduledTaskPrincipal -UserId $usr -LogonType Interactive -RunLevel Limited
+try {
+  Register-ScheduledTask -TaskName $tn -Action $act -Principal $prin -Force -ErrorAction Stop | Out-Null
+  Start-ScheduledTask -TaskName $tn
+  $w = 0
+  while ((($t = Get-ScheduledTask -TaskName $tn -EA SilentlyContinue)) -and ($t.State -ne 'Ready') -and ($w -lt 300)) { Start-Sleep -Seconds 2; $w += 2 }
+} catch { Unregister-ScheduledTask -TaskName $tn -Confirm:$false -EA SilentlyContinue; Write-Output ('No se pudo ejecutar el desinstalador: ' + $_.Exception.Message); return }
+Unregister-ScheduledTask -TaskName $tn -Confirm:$false -EA SilentlyContinue
+Write-Output 'Desinstalador ejecutado (modo usuario)'`;
 };
 
 const forceScript = (a: App) => {
