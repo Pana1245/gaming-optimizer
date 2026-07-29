@@ -148,6 +148,10 @@ foreach($it in $items){
   if($it.type -eq 'folder'){
     $t=$p.TrimEnd('\')
     if($t.Length -gt 12 -and ($prot -notcontains $t.ToLower()) -and (Test-Path -LiteralPath $p)){
+      # Cerrar procesos cuyo ejecutable esté dentro de la carpeta (archivos en uso).
+      $pref=$t.ToLower()+'\'
+      Get-Process -EA SilentlyContinue | Where-Object { $_.Path -and $_.Path.ToLower().StartsWith($pref) } | Stop-Process -Force -EA SilentlyContinue
+      Start-Sleep -Milliseconds 300
       Remove-Item -LiteralPath $p -Recurse -Force -EA SilentlyContinue
       if(-not (Test-Path -LiteralPath $p)){ $done++ }
     }
@@ -158,7 +162,8 @@ foreach($it in $items){
     }
   }
 }
-Write-Output ('Restos eliminados: '+$done+'/'+$items.Count)`;
+$total=$items.Count
+if($done -lt $total){ Write-Output ('Restos eliminados: '+$done+'/'+$total+' (algunos estaban en uso o protegidos)') } else { Write-Output ('Restos eliminados: '+$done+'/'+$total) }`;
 
 const MS_BLOAT = String.raw`$list='Microsoft.BingNews','Microsoft.BingWeather','Microsoft.GetHelp','Microsoft.Getstarted','Microsoft.Messaging','Microsoft.MicrosoftSolitaireCollection','Microsoft.MicrosoftOfficeHub','Microsoft.People','Microsoft.SkypeApp','Microsoft.ZuneMusic','Microsoft.ZuneVideo','Microsoft.WindowsFeedbackHub','Microsoft.YourPhone','Microsoft.Todos','Clipchamp.Clipchamp','Microsoft.GamingApp','Microsoft.549981C3F5F10','Microsoft.MixedReality.Portal','Microsoft.WindowsMaps'
 $n=0; foreach($a in $list){ if(Get-AppxPackage -Name $a -AllUsers -EA SilentlyContinue){ Get-AppxPackage -Name $a -AllUsers | Remove-AppxPackage -AllUsers -EA SilentlyContinue; $n++ } }
@@ -230,15 +235,26 @@ export default function Desinstalar() {
       });
       return;
     }
-    // win32: escanear restos y mostrar vista previa (estilo Geek Uninstaller).
-    setWorking(true); setBusy(a.name);
-    setStatus(`Buscando restos de ${a.name}…`);
-    const r = await runPowershell(scanLeftovers(a));
-    let items: Leftover[] = [];
-    try { const d = JSON.parse(r.output.trim() || "[]"); items = (Array.isArray(d) ? d : [d]) as Leftover[]; } catch {}
-    setBusy(null); setWorking(false); setStatus("");
-    if (items.length === 0) { setStatus(`✓ ${a.name}: no se encontraron restos.`); removeRow(a); return; }
-    setScan({ app: a, items: items.map((it) => ({ ...it, checked: true })) });
+    // win32: Forzar = DESINSTALAR + barrer restos (estilo "Force Removal" de Geek).
+    // Corre primero el desinstalador (cierra la app y borra sus archivos) y recién
+    // después escanea los restos, así no chocan con archivos en uso.
+    setConfirm({
+      title: "Forzar borrado",
+      msg: `Se va a DESINSTALAR "${a.name}" y después borrar los restos que queden (archivos + registro).\n\nPrimero corre su desinstalador y luego te muestro qué sobró para eliminar. No se puede deshacer.`,
+      run: async () => {
+        setConfirm(null);
+        setWorking(true); setBusy(a.name);
+        setStatus(`Desinstalando ${a.name}…`);
+        await runPowershell(uninstallScript(a));
+        setStatus(`Buscando restos de ${a.name}…`);
+        const r = await runPowershell(scanLeftovers(a));
+        let items: Leftover[] = [];
+        try { const d = JSON.parse(r.output.trim() || "[]"); items = (Array.isArray(d) ? d : [d]) as Leftover[]; } catch {}
+        setBusy(null); setWorking(false); setStatus("");
+        if (items.length === 0) { setStatus(`✓ ${a.name}: desinstalado, sin restos.`); removeRow(a); return; }
+        setScan({ app: a, items: items.map((it) => ({ ...it, checked: true })) });
+      },
+    });
   };
 
   const toggleItem = (i: number) =>
