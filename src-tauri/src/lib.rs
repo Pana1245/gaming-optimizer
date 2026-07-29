@@ -148,34 +148,57 @@ async fn run_powershell_stream(app: tauri::AppHandle, script: String, id: String
             }
         });
 
-        if let Some(out) = child.stdout.take() {
-            // Leer byte a byte y emitir en cada \n o \r (captura el % de SFC/DISM)
-            let mut buf = Vec::new();
-            for b in out.bytes() {
-                match b {
-                    Ok(b'\n') | Ok(b'\r') => {
-                        if !buf.is_empty() {
-                            let line = String::from_utf8_lossy(&buf).trim_end().to_string();
-                            if !line.is_empty() { let _ = app.emit(&line_ev, line); }
-                            buf.clear();
+        // stdout también en un hilo, para poder aplicar timeout en el principal.
+        let stdout = child.stdout.take();
+        let app_out = app.clone();
+        let line_ev_out = line_ev.clone();
+        let t_out = std::thread::spawn(move || {
+            if let Some(out) = stdout {
+                // Leer byte a byte y emitir en cada \n o \r (captura el % de SFC/DISM)
+                let mut buf = Vec::new();
+                for b in out.bytes() {
+                    match b {
+                        Ok(b'\n') | Ok(b'\r') => {
+                            if !buf.is_empty() {
+                                let line = String::from_utf8_lossy(&buf).trim_end().to_string();
+                                if !line.is_empty() { let _ = app_out.emit(&line_ev_out, line); }
+                                buf.clear();
+                            }
                         }
+                        Ok(byte) => buf.push(byte),
+                        Err(_) => break,
                     }
-                    Ok(byte) => buf.push(byte),
-                    Err(_) => break,
+                }
+                if !buf.is_empty() {
+                    let line = String::from_utf8_lossy(&buf).trim_end().to_string();
+                    if !line.is_empty() { let _ = app_out.emit(&line_ev_out, line); }
                 }
             }
-            if !buf.is_empty() {
-                let line = String::from_utf8_lossy(&buf).trim_end().to_string();
-                if !line.is_empty() { let _ = app.emit(&line_ev, line); }
-            }
-        }
+        });
 
-        let status = child.wait();
-        let _ = t_err.join();
-        let (ok, code) = match status {
-            Ok(s) => (s.success(), s.code().unwrap_or(-1)),
+        // Timeout generoso (SFC/DISM pueden tardar de verdad). Si se agota, se mata
+        // todo el árbol de procesos para no dejar nada colgado ni sin cancelar.
+        use wait_timeout::ChildExt;
+        let (ok, code) = match child.wait_timeout(std::time::Duration::from_secs(1800)) {
+            Ok(Some(s)) => (s.success(), s.code().unwrap_or(-1)),
+            Ok(None) => {
+                #[cfg(windows)]
+                {
+                    let pid = child.id();
+                    let mut tk = Command::new("taskkill");
+                    tk.args(["/F", "/T", "/PID", &pid.to_string()]);
+                    tk.creation_flags(CREATE_NO_WINDOW);
+                    let _ = tk.output();
+                }
+                let _ = child.kill();
+                let _ = child.wait();
+                let _ = app.emit(&line_ev, "Tiempo de espera agotado; proceso cancelado.".to_string());
+                (false, -1)
+            }
             Err(_) => (false, -1),
         };
+        let _ = t_out.join();
+        let _ = t_err.join();
         let _ = app.emit(&done_ev, StreamDone { ok, code });
     });
 }
