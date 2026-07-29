@@ -88,19 +88,71 @@ Unregister-ScheduledTask -TaskName $tn -Confirm:$false -EA SilentlyContinue
 Write-Output 'Desinstalador ejecutado (modo usuario)'`;
 };
 
-const forceScript = (a: App) => {
-  if (a.type === "uwp")
-    return `Get-AppxPackage -Name '${esc(a.name)}' -AllUsers -EA SilentlyContinue | Remove-AppxPackage -AllUsers -EA SilentlyContinue; Write-Output 'Paquete UWP eliminado'`;
-  // Borrado SEGURO: solo la carpeta de instalacion exacta + la clave de desinstalacion
-  // de ESTA app. No se borra por nombre de editor en carpetas/ramas compartidas
-  // (eso podia eliminar HKLM\Software\Microsoft, %AppData%\Microsoft, etc.).
-  return String.raw`$removed=@()
-$loc='${esc(a.location)}'; $key='${esc(a.key)}'
-$protegidas=@($env:ProgramFiles,[Environment]::GetEnvironmentVariable('ProgramFiles(x86)'),$env:ProgramData,$env:windir,$env:APPDATA,$env:LOCALAPPDATA,$env:SystemDrive,'C:\Windows','C:\Program Files','C:\Program Files (x86)','C:\Users') | ForEach-Object { if($_){ $_.TrimEnd('\') } }
-if($loc){ $locT=$loc.TrimEnd('\'); if((Test-Path $loc) -and ($locT.Length -gt 12) -and ($protegidas -notcontains $locT)){ Remove-Item -LiteralPath $loc -Recurse -Force -EA SilentlyContinue; $removed+="Carpeta: $loc" } }
-if($key){ Remove-Item -LiteralPath "Registry::$key" -Recurse -Force -EA SilentlyContinue; $removed+="Clave de desinstalacion" }
-if($removed.Count -eq 0){ Write-Output 'No se encontraron restos seguros para borrar (ya estaba limpio).' } else { $removed | ForEach-Object { Write-Output $_ } }`;
-};
+interface Leftover { type: "folder" | "regkey"; label: string; path: string; }
+
+// UWP: quitar el paquete de todos los usuarios (no deja restos del registro clásico).
+const forceUwp = (a: App) =>
+  `Get-AppxPackage -Name '${esc(a.name)}' -AllUsers -EA SilentlyContinue | Remove-AppxPackage -AllUsers -EA SilentlyContinue; Write-Output 'Paquete UWP eliminado'`;
+
+// ESCÁNER estilo Geek Uninstaller: busca restos ESPECÍFICOS de la app (carpeta de
+// instalación, clave de desinstalación, carpetas de datos y claves de registro
+// propias) y devuelve los que EXISTEN. Los datos del registro (no confiables) se
+// pasan en base64 y se usan sólo como -LiteralPath, nunca como código. Nunca
+// ofrece rutas protegidas ni claves de editor "peladas" (Software\<editor>) — eso
+// evita borrar ramas compartidas como Software\Microsoft o %AppData%\Google.
+const scanLeftovers = (a: App) => String.raw`$pub=[Text.Encoding]::UTF8.GetString([Convert]::FromBase64String('${b64utf8(a.pub)}'))
+$loc=[Text.Encoding]::UTF8.GetString([Convert]::FromBase64String('${b64utf8(a.location)}'))
+$key=[Text.Encoding]::UTF8.GetString([Convert]::FromBase64String('${b64utf8(a.key)}'))
+$bad=@('microsoft','windows','google','common files','intel','nvidia','amd','realtek','adobe','oracle','mozilla','system','program files','program files (x86)','programdata','users','appdata','local','roaming','temp','default','wow6432node','classes','clients','policies')
+$prot=@($env:ProgramFiles,[Environment]::GetEnvironmentVariable('ProgramFiles(x86)'),$env:ProgramData,$env:windir,$env:APPDATA,$env:LOCALAPPDATA,$env:SystemDrive,'C:\Windows','C:\Users') | ForEach-Object { if($_){ $_.TrimEnd('\').ToLower() } }
+function SafeFolder($p){ if(!$p){return $false}; $t=$p.TrimEnd('\'); if($t.Length -le 12){return $false}; if($prot -contains $t.ToLower()){return $false}; return (Test-Path -LiteralPath $p) }
+$leaf = if($loc){ Split-Path $loc -Leaf } else { '' }
+$folderTerms = @($leaf,$pub) | Where-Object { $_ -and $_.Length -gt 2 -and ($bad -notcontains $_.ToLower()) } | Select-Object -Unique
+$appTerms = @($leaf) | Where-Object { $_ -and $_.Length -gt 2 -and ($bad -notcontains $_.ToLower()) } | Select-Object -Unique
+$found=@()
+if(SafeFolder $loc){ $found += [pscustomobject]@{type='folder'; label='Carpeta de instalación'; path=$loc} }
+if($key){ $found += [pscustomobject]@{type='regkey'; label='Clave de desinstalación'; path=('Registry::'+$key)} }
+foreach($root in @($env:APPDATA,$env:LOCALAPPDATA,$env:ProgramData)){
+  foreach($t in $folderTerms){
+    $p = Join-Path $root $t
+    if((SafeFolder $p) -and (@($found.path) -notcontains $p)){ $found += [pscustomobject]@{type='folder'; label='Datos de la app'; path=$p} }
+  }
+}
+foreach($rr in @('HKCU:\Software','HKLM:\Software','HKLM:\Software\Wow6432Node')){
+  foreach($t in $appTerms){
+    $cands=@("$rr\$t")
+    if($pub -and ($bad -notcontains $pub.ToLower())){ $cands += "$rr\$pub\$t" }
+    foreach($c in $cands){
+      if((Test-Path -LiteralPath $c) -and (@($found.path) -notcontains $c)){ $found += [pscustomobject]@{type='regkey'; label='Registro'; path=$c} }
+    }
+  }
+}
+if($found.Count -eq 0){'[]'}else{$found|ConvertTo-Json -Compress -Depth 3}`;
+
+// Borra SOLO los restos que el usuario confirmó. Re-valida las guardas (defensa en
+// profundidad): nunca borra rutas protegidas ni claves de registro raíz, aunque
+// llegaran en la lista.
+const deleteLeftovers = (items: { type: string; path: string }[]) => String.raw`$json=[Text.Encoding]::UTF8.GetString([Convert]::FromBase64String('${b64utf8(JSON.stringify(items))}'))
+$items=@($json | ConvertFrom-Json)
+$prot=@($env:ProgramFiles,[Environment]::GetEnvironmentVariable('ProgramFiles(x86)'),$env:ProgramData,$env:windir,$env:APPDATA,$env:LOCALAPPDATA,$env:SystemDrive,'C:\Windows','C:\Users') | ForEach-Object { if($_){ $_.TrimEnd('\').ToLower() } }
+$protReg=@('hkcu:\software','hklm:\software','hklm:\software\wow6432node','hklm:\software\microsoft','hkcu:\software\microsoft','hklm:\system','hkcu:\system','hkcu:\control panel')
+$done=0
+foreach($it in $items){
+  $p=$it.path
+  if($it.type -eq 'folder'){
+    $t=$p.TrimEnd('\')
+    if($t.Length -gt 12 -and ($prot -notcontains $t.ToLower()) -and (Test-Path -LiteralPath $p)){
+      Remove-Item -LiteralPath $p -Recurse -Force -EA SilentlyContinue
+      if(-not (Test-Path -LiteralPath $p)){ $done++ }
+    }
+  } elseif($it.type -eq 'regkey'){
+    if(($protReg -notcontains $p.ToLower().TrimEnd('\')) -and (Test-Path -LiteralPath $p)){
+      Remove-Item -LiteralPath $p -Recurse -Force -EA SilentlyContinue
+      if(-not (Test-Path -LiteralPath $p)){ $done++ }
+    }
+  }
+}
+Write-Output ('Restos eliminados: '+$done+'/'+$items.Count)`;
 
 const MS_BLOAT = String.raw`$list='Microsoft.BingNews','Microsoft.BingWeather','Microsoft.GetHelp','Microsoft.Getstarted','Microsoft.Messaging','Microsoft.MicrosoftSolitaireCollection','Microsoft.MicrosoftOfficeHub','Microsoft.People','Microsoft.SkypeApp','Microsoft.ZuneMusic','Microsoft.ZuneVideo','Microsoft.WindowsFeedbackHub','Microsoft.YourPhone','Microsoft.Todos','Clipchamp.Clipchamp','Microsoft.GamingApp','Microsoft.549981C3F5F10','Microsoft.MixedReality.Portal','Microsoft.WindowsMaps'
 $n=0; foreach($a in $list){ if(Get-AppxPackage -Name $a -AllUsers -EA SilentlyContinue){ Get-AppxPackage -Name $a -AllUsers | Remove-AppxPackage -AllUsers -EA SilentlyContinue; $n++ } }
@@ -123,6 +175,7 @@ export default function Desinstalar() {
   const [working, setWorking] = useState(false);
   const [status, setStatus] = useState("");
   const [confirm, setConfirm] = useState<null | { title: string; msg: string; run: () => void }>(null);
+  const [scan, setScan] = useState<null | { app: App; items: (Leftover & { checked: boolean })[] }>(null);
   const scrollRef = useScrollMemory<HTMLDivElement>("uninstall");
 
   const load = async () => {
@@ -153,21 +206,52 @@ export default function Desinstalar() {
     setBusy(null); setWorking(false);
   };
 
-  const force = (a: App) =>
-    setConfirm({
-      title: "Forzar borrado",
-      msg: `Se eliminarán los restos de "${a.name}":\n• Carpeta de instalación\n• Carpetas en ProgramData/AppData\n• Claves de registro\n\nUsalo para programas ya desinstalados o entradas rotas. No se puede deshacer.`,
-      run: async () => {
-        setConfirm(null);
-        setWorking(true); setBusy(a.name);
-        setStatus(`Forzando borrado de ${a.name}…`);
-        const r = await runPowershell(forceScript(a));
-        const lines = r.output.split("\n").map((l) => l.trim()).filter(Boolean);
-        setStatus(`✓ ${a.name}: ${lines.length} resto(s) eliminados`);
-        removeRow(a);
-        setBusy(null); setWorking(false);
-      },
-    });
+  const force = async (a: App) => {
+    // UWP: no hay restos de registro clásico; se quita el paquete directo.
+    if (a.type === "uwp") {
+      setConfirm({
+        title: "Forzar borrado",
+        msg: `Se quitará el paquete "${a.name}" de todos los usuarios.\nNo se puede deshacer.`,
+        run: async () => {
+          setConfirm(null);
+          setWorking(true); setBusy(a.name);
+          setStatus(`Forzando borrado de ${a.name}…`);
+          const r = await runPowershell(forceUwp(a));
+          setStatus(`✓ ${a.name}: ${(r.output.split("\n").pop() || "hecho").trim()}`);
+          removeRow(a);
+          setBusy(null); setWorking(false);
+        },
+      });
+      return;
+    }
+    // win32: escanear restos y mostrar vista previa (estilo Geek Uninstaller).
+    setWorking(true); setBusy(a.name);
+    setStatus(`Buscando restos de ${a.name}…`);
+    const r = await runPowershell(scanLeftovers(a));
+    let items: Leftover[] = [];
+    try { const d = JSON.parse(r.output.trim() || "[]"); items = (Array.isArray(d) ? d : [d]) as Leftover[]; } catch {}
+    setBusy(null); setWorking(false); setStatus("");
+    if (items.length === 0) { setStatus(`✓ ${a.name}: no se encontraron restos.`); removeRow(a); return; }
+    setScan({ app: a, items: items.map((it) => ({ ...it, checked: true })) });
+  };
+
+  const toggleItem = (i: number) =>
+    setScan((s) => (s ? { ...s, items: s.items.map((it, j) => (j === i ? { ...it, checked: !it.checked } : it)) } : s));
+
+  const runDelete = async () => {
+    if (!scan) return;
+    const app = scan.app;
+    const chosen = scan.items.filter((i) => i.checked).map(({ type, path }) => ({ type, path }));
+    setScan(null);
+    if (chosen.length === 0) { removeRow(app); return; }
+    setWorking(true); setBusy(app.name);
+    setStatus(`Borrando restos de ${app.name}…`);
+    const r = await runPowershell(deleteLeftovers(chosen));
+    const last = r.output.split("\n").map((l) => l.trim()).filter(Boolean).pop() || "hecho";
+    setStatus(`✓ ${app.name}: ${last}`);
+    removeRow(app);
+    setBusy(null); setWorking(false);
+  };
 
   return (
     <div className="h-full flex flex-col px-8 py-7">
@@ -230,6 +314,26 @@ export default function Desinstalar() {
       <Modal open={!!confirm} title={confirm?.title || ""} onClose={() => setConfirm(null)}
         onConfirm={confirm?.run} confirmText="Confirmar" closeText="Cancelar">
         {confirm?.msg || ""}
+      </Modal>
+
+      <Modal open={!!scan} title={`Forzar borrado — ${scan?.app.name ?? ""}`}
+        onClose={() => setScan(null)} onConfirm={runDelete}
+        confirmText={`Borrar (${scan?.items.filter((i) => i.checked).length ?? 0})`} closeText="Cancelar">
+        <div>
+          <p className="mb-3">Restos encontrados de esta app. Destildá lo que quieras conservar. <b className="text-text">No se puede deshacer.</b></p>
+          <div className="max-h-56 overflow-y-auto rounded-lg border border-line divide-y divide-line/60">
+            {scan?.items.map((it, i) => (
+              <label key={i} className="flex items-start gap-2.5 px-3 py-2 cursor-pointer hover:bg-white/[0.025]">
+                <input type="checkbox" checked={it.checked} onChange={() => toggleItem(i)}
+                  className="mt-1 shrink-0" style={{ accentColor: "#00e676" }} />
+                <span className="min-w-0">
+                  <span className="text-[11px] text-text-mute">{it.label}</span>
+                  <span className="block text-[12px] text-text-dim font-mono break-all leading-snug">{it.path}</span>
+                </span>
+              </label>
+            ))}
+          </div>
+        </div>
       </Modal>
     </div>
   );
