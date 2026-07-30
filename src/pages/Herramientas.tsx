@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import NeonCard, { HudTitle } from "../components/NeonCard";
+import Modal from "../components/Modal";
 import { runPowershell } from "../lib/api";
 import { useI18n } from "../lib/i18n";
 import {
@@ -14,13 +15,14 @@ const WU_COLOR: Record<string, string> = {
 };
 
 export default function Herramientas() {
-  const { t } = useI18n();
+  const { t, lang } = useI18n();
   const [wu, setWu] = useState<{ state: string; until?: string } | null>(null);
   const [wuBusy, setWuBusy] = useState(false);
   const [path, setPath] = useState("");
   const [scanning, setScanning] = useState(false);
   const [lockers, setLockers] = useState<Locker[] | null>(null);
   const [lockMsg, setLockMsg] = useState<string | null>(null);
+  const [confirmKill, setConfirmKill] = useState<Locker | null>(null);
   const mounted = useRef(true);
 
   const refreshWu = () => getWuStatus().then((s) => mounted.current && setWu(s)).catch(() => {});
@@ -61,9 +63,21 @@ export default function Herramientas() {
     }
   };
 
-  const kill = async (pid: number) => {
+  const doKill = async (l: Locker) => {
+    setConfirmKill(null);
     try {
-      await killProc(pid);
+      const r = await killProc(l.pid);
+      const o = r.output.trim();
+      if (mounted.current) {
+        if (o.startsWith("PROTECTED"))
+          setLockMsg(`✗ ${lang === "en" ? "Protected system process; not closed" : "Proceso crítico del sistema; no se cerró"}: ${l.name}`);
+        else if (o === "GONE")
+          setLockMsg(`✓ ${l.name} ${lang === "en" ? "was already closed" : "ya estaba cerrado"}`);
+        else if (o === "OK")
+          setLockMsg(`✓ ${l.name} ${lang === "en" ? "closed" : "cerrado"}`);
+        else
+          setLockMsg(`✗ ${lang === "en" ? "Couldn't close" : "No se pudo cerrar"} ${l.name}`);
+      }
     } catch (err) {
       if (mounted.current) setLockMsg(`✗ ${t("tools.unlock.killErr")} ${err instanceof Error ? err.message : String(err)}`);
     }
@@ -125,12 +139,23 @@ export default function Herramientas() {
             {lockers.map((l) => (
               <div key={l.pid} className="flex items-center gap-3 px-4 py-2.5">
                 <span className="flex-1 text-[13px] text-text-dim font-mono">{l.name} <span className="text-text-mute">· PID {l.pid}</span></span>
-                <button onClick={() => kill(l.pid)} className="text-[13px] text-[#ff5470] hover:underline shrink-0">{t("tools.unlock.kill")}</button>
+                <button onClick={() => setConfirmKill(l)} className="text-[13px] text-[#ff5470] hover:underline shrink-0">{t("tools.unlock.kill")}</button>
               </div>
             ))}
           </div>
         )}
       </NeonCard>
+
+      <Modal open={!!confirmKill} title={lang === "en" ? "Close process?" : "¿Cerrar proceso?"}
+        onClose={() => setConfirmKill(null)}
+        onConfirm={() => confirmKill && doKill(confirmKill)}
+        confirmText={lang === "en" ? "Close process" : "Cerrar proceso"} closeText="Cancelar">
+        {confirmKill
+          ? `${confirmKill.name} · PID ${confirmKill.pid}\n\n${lang === "en"
+              ? "Forcing a process to close can lose unsaved work. Critical system processes are protected."
+              : "Forzar el cierre de un proceso puede perder trabajo sin guardar. Los procesos críticos del sistema están protegidos."}`
+          : ""}
+      </Modal>
     </div>
   );
 }

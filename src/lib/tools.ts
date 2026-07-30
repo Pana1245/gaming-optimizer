@@ -101,5 +101,14 @@ export async function whoLocks(path: string): Promise<{ status: "ok" | "none" | 
   }
 }
 
+// Cierra un proceso con guardas: nunca mata procesos críticos del sistema y
+// verifica que realmente se haya cerrado. Devuelve OK / GONE / PROTECTED=<name> / FAIL.
 export const killProc = (pid: number) =>
-  runPowershell(`Stop-Process -Id ${pid} -Force -EA SilentlyContinue; Write-Output OK`);
+  runPowershell(String.raw`$id=${pid}
+$crit=@('system','idle','csrss','wininit','winlogon','services','lsass','smss','svchost','fontdrvhost','dwm','registry','memory compression')
+$p=Get-Process -Id $id -EA SilentlyContinue
+if(-not $p){ Write-Output 'GONE'; return }
+if($crit -contains $p.ProcessName.ToLower()){ Write-Output ('PROTECTED=' + $p.ProcessName); return }
+Stop-Process -Id $id -Force -EA SilentlyContinue
+Start-Sleep -Milliseconds 400
+if(Get-Process -Id $id -EA SilentlyContinue){ Write-Output 'FAIL' } else { Write-Output 'OK' }`);
