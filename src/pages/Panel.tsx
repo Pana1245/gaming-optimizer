@@ -25,8 +25,8 @@ function Ring({ pct, color }: { pct: number; color: string }) {
   );
 }
 
-function TempCard({ label, value, color }: { label: string; value: number | null; color: string }) {
-  const { t } = useI18n();
+function TempCard({ label, value, color, approx }: { label: string; value: number | null; color: string; approx?: boolean }) {
+  const { t, lang } = useI18n();
   const status = value === null ? t("panel.tempNA")
     : value < 70 ? t("panel.tempHealthy")
     : value < 85 ? t("panel.tempWarm") : t("panel.tempHot");
@@ -34,9 +34,9 @@ function TempCard({ label, value, color }: { label: string; value: number | null
     <NeonCard className="flex-1">
       <div className="text-[12px] uppercase tracking-wider text-text-mute mb-1">{label}</div>
       <div className="text-[28px] font-bold leading-none" style={{ color: value !== null ? color : "#55555a" }}>
-        {value !== null ? `${value}°C` : "N/D"}
+        {value !== null ? `${approx ? "~" : ""}${value}°C` : "N/D"}
       </div>
-      <div className="text-[11.5px] text-text-mute mt-1.5">{status}</div>
+      <div className="text-[11.5px] text-text-mute mt-1.5">{status}{approx && value !== null ? (lang === "en" ? " · estimated (ACPI)" : " · estimada (ACPI)") : ""}</div>
     </NeonCard>
   );
 }
@@ -109,7 +109,7 @@ export default function Panel() {
         {/* Estado en vivo */}
         <div className="flex flex-col gap-3">
           <div className="flex gap-3">
-            <TempCard label="CPU temp" value={temps.cpu} color="#ff8a65" />
+            <TempCard label="CPU temp" value={temps.cpu} color="#ff8a65" approx />
             <TempCard label="GPU temp" value={temps.gpu} color="#3b9eff" />
           </div>
           <NeonCard>
