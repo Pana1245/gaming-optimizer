@@ -1,7 +1,7 @@
 {
   "$schema": "../node_modules/@tauri-apps/cli/config.schema.json",
   "productName": "GamingOptimizer",
-  "version": "2.1.6",
+  "version": "2.1.7",
   "identifier": "com.danidev.gamingoptimizer",
   "build": {
     "frontendDist": "../dist",
