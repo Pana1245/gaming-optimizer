@@ -69,11 +69,12 @@ Get-ChildItem $base -EA SilentlyContinue | Where-Object { $_.PSChildName -match 
         else { Set-ItemProperty $store -Name ($id+'_'+$v) -Value ([string]$cur) -Force }
       }
     }
-    Set-ItemProperty $k -Name PowerMizerEnable   -Value 1      -Type DWord -Force
-    Set-ItemProperty $k -Name PerfLevelSrc       -Value 0x2222 -Type DWord -Force
-    Set-ItemProperty $k -Name PowerMizerLevel    -Value 1      -Type DWord -Force
-    Set-ItemProperty $k -Name PowerMizerLevelAC  -Value 1      -Type DWord -Force
-    $n++
+    Set-ItemProperty $k -Name PowerMizerEnable   -Value 1      -Type DWord -Force -EA SilentlyContinue
+    Set-ItemProperty $k -Name PerfLevelSrc       -Value 0x2222 -Type DWord -Force -EA SilentlyContinue
+    Set-ItemProperty $k -Name PowerMizerLevel    -Value 1      -Type DWord -Force -EA SilentlyContinue
+    Set-ItemProperty $k -Name PowerMizerLevelAC  -Value 1      -Type DWord -Force -EA SilentlyContinue
+    # Contar sólo si la escritura realmente tomó efecto (no reportar éxito falso).
+    if((Get-ItemProperty $k -Name PowerMizerEnable -EA SilentlyContinue).PowerMizerEnable -eq 1){ $n++ }
   }
 }
 if($n -gt 0){ Set-ItemProperty $store -Name '_NV_saved' -Value '1' -Force; Write-Output ('${en ? "NVIDIA: maximum performance applied to " : "NVIDIA: maximo rendimiento aplicado a "}'+$n+'${en ? " adapter(s). Restart to take effect." : " adaptador(es). Reinicia para que tome efecto."}') } else { Write-Output '${en ? "No NVIDIA adapter found in the registry." : "No encontre adaptador NVIDIA en el registro."}' }`;
@@ -117,9 +118,10 @@ Get-ChildItem $base -EA SilentlyContinue | Where-Object { $_.PSChildName -match 
         else { Set-ItemProperty $store -Name ('AMD_'+$id+'_'+$v) -Value ([string]$cur) -Force }
       }
     }
-    Set-ItemProperty $k -Name EnableUlps     -Value 0 -Type DWord -Force
-    Set-ItemProperty $k -Name KMD_FRTEnabled -Value 0 -Type DWord -Force
-    $n++
+    Set-ItemProperty $k -Name EnableUlps     -Value 0 -Type DWord -Force -EA SilentlyContinue
+    Set-ItemProperty $k -Name KMD_FRTEnabled -Value 0 -Type DWord -Force -EA SilentlyContinue
+    # Contar sólo si la escritura realmente tomó efecto (no reportar éxito falso).
+    if((Get-ItemProperty $k -Name EnableUlps -EA SilentlyContinue).EnableUlps -eq 0){ $n++ }
   }
 }
 if($n -gt 0){ Set-ItemProperty $store -Name '_AMD_saved' -Value '1' -Force; Write-Output ('${en ? "AMD: maximum performance applied to " : "AMD: maximo rendimiento aplicado a "}'+$n+'${en ? " adapter(s). Restart to take effect." : " adaptador(es). Reinicia para que tome efecto."}') } else { Write-Output '${en ? "No AMD/Radeon adapter found in the registry." : "No encontre adaptador AMD/Radeon en el registro."}' }`;

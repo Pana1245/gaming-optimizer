@@ -25,7 +25,12 @@ try{
             if($nm -and $dir){
               $full="$sa\common\$dir"
               if(Test-Path $full -EA SilentlyContinue){
-                $exe=Get-ChildItem $full -Filter *.exe -Recurse -Depth 2 -EA SilentlyContinue | Where-Object { $_.Name -notmatch $skip } | Sort-Object Length -Descending | Select-Object -First 1
+                $cands=Get-ChildItem $full -Filter *.exe -Recurse -Depth 2 -EA SilentlyContinue | Where-Object { $_.Name -notmatch $skip }
+                # Preferir el exe cuyo nombre coincida con la carpeta del juego
+                # (ej. Cyberpunk2077.exe ~ "Cyberpunk 2077"); si no, el más grande.
+                $key=($dir -replace '[^a-zA-Z0-9]','').ToLower()
+                $match=$cands | Where-Object { $k=(($_.BaseName -replace '[^a-zA-Z0-9]','').ToLower()); ($k.Length -gt 2) -and $key -and ($k -like "*$key*" -or $key -like "*$k*") } | Sort-Object Length -Descending | Select-Object -First 1
+                $exe=if($match){ $match } else { $cands | Sort-Object Length -Descending | Select-Object -First 1 }
                 if($exe){ [void]$out.Add([pscustomobject]@{name=$nm; exe=$exe.Name.ToLower(); source='Steam'}) }
               }
             }
