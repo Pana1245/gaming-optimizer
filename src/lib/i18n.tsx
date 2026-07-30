@@ -225,6 +225,18 @@ const STR: Record<string, { es: string; en: string }> = {
   "opt.doneMain": { es: "{ok}/{total} optimizaciones aplicadas.\nReiniciá el PC para aplicar todos los cambios.\n\nPara revertir: \"Restaurar\" deshace los cambios del registro. Los cambios de servicios/drivers/sistema se revierten con \"Restaurar sistema de Windows\" (punto de restauración). Las apps/bloatware eliminados se reinstalan a mano.", en: "{ok}/{total} optimizations applied.\nRestart the PC to apply all changes.\n\nTo revert: \"Restore\" undoes registry changes. Service/driver/system changes are reverted with \"Windows System Restore\" (restore point). Removed apps/bloatware are reinstalled manually." },
   "opt.doneNoNet": { es: "\n\n⚠ No se creó punto de restauración: los cambios de servicios/arranque/apps NO se revierten con Restaurar. Usá Reactivar o reinstalá para eso.", en: "\n\n⚠ No restore point created: service/boot/app changes are NOT reverted by Restore. Use Re-enable or reinstall for those." },
 
+  // ── Restaurar ──
+  "restore.restoreLast": { es: "Restaurar último backup", en: "Restore last backup" },
+  "restore.restoreLastDesc": { es: "Reimporta el registro guardado antes de la última optimización.", en: "Re-imports the registry saved before the last optimization." },
+  "restore.createPoint": { es: "Crear punto de restauración", en: "Create restore point" },
+  "restore.createPointDesc": { es: "Genera un punto de restauración del sistema ahora mismo.", en: "Creates a system restore point right now." },
+  "restore.createBtn": { es: "Crear", en: "Create" },
+  "restore.winRestore": { es: "Restaurar sistema de Windows", en: "Windows System Restore" },
+  "restore.winRestoreDesc": { es: "Abre la herramienta nativa de Windows (rstrui).", en: "Opens the native Windows tool (rstrui)." },
+  "restore.openBtn": { es: "Abrir", en: "Open" },
+  "restore.available": { es: "Backups disponibles", en: "Available backups" },
+  "restore.noBackups": { es: "Todavía no hay backups. Se crean al optimizar.", en: "No backups yet. They're created when you optimize." },
+
   // ── Gráficos ──
   "gpu.detected": { es: "GPU detectada", en: "Detected GPU" },
   "gpu.detecting": { es: "Detectando…", en: "Detecting…" },
