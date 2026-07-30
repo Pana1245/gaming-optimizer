@@ -162,6 +162,16 @@ export default function Optimizaciones() {
       setDone("No se aplicaron optimizaciones porque el backup del registro falló.\nRevisá permisos o espacio en disco e intentá de nuevo.");
       return;
     }
+    // Si el punto de restauración falló Y hay tweaks que el backup del registro NO
+    // revierte (servicios/BCD/AppX/tareas), avisar para no dar falsa confianza.
+    const pointOk = /punto de restauracion creado ok/i.test(bk.output);
+    const risky = list.filter((t) => /Set-Service|bcdedit|Remove-AppxPackage|Register-ScheduledTask|Disable-ScheduledTask/i.test(t.script));
+    const noSafetyNet = !pointOk && risky.length > 0;
+    if (noSafetyNet) {
+      addLog("⚠ No se pudo crear el punto de restauración del sistema.");
+      addLog(`  ${risky.length} cambio(s) seleccionados (servicios / arranque / apps) NO se revierten con el backup del registro.`);
+      addLog("  Sugerencia: activá Protección del Sistema y reintentá, o revertilos a mano (sección Reactivar).");
+    }
     addLog(`PASO 2/2 — Aplicando ${list.length} optimizaciones...`);
     let ok = 0;
     for (let i = 0; i < list.length; i++) {
@@ -176,7 +186,7 @@ export default function Optimizaciones() {
     setRunning(false);
     setCanReboot(true);
     notify("Optimización completada", `${ok}/${list.length} optimizaciones aplicadas.`);
-    setDone(`${ok}/${list.length} optimizaciones aplicadas.\nReiniciá el PC para aplicar todos los cambios.\n\nPara revertir: "Restaurar" deshace los cambios del registro. Los cambios de servicios/drivers/sistema se revierten con "Restaurar sistema de Windows" (punto de restauración). Las apps/bloatware eliminados se reinstalan a mano.`);
+    setDone(`${ok}/${list.length} optimizaciones aplicadas.\nReiniciá el PC para aplicar todos los cambios.\n\nPara revertir: "Restaurar" deshace los cambios del registro. Los cambios de servicios/drivers/sistema se revierten con "Restaurar sistema de Windows" (punto de restauración). Las apps/bloatware eliminados se reinstalan a mano.${noSafetyNet ? "\n\n⚠ No se creó punto de restauración: los cambios de servicios/arranque/apps NO se revierten con Restaurar. Usá Reactivar o reinstalá para eso." : ""}`);
   };
 
   const reboot = () => runPowershell("shutdown /r /t 3");
