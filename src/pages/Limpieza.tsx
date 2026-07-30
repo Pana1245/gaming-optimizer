@@ -5,6 +5,7 @@ import EnergyCheckbox from "../components/EnergyCheckbox";
 import { HudTitle } from "../components/NeonCard";
 import { IndeterminateBar } from "../components/Feedback";
 import Modal from "../components/Modal";
+import { useI18n } from "../lib/i18n";
 
 const sizeOnly = (paths: string) => String.raw`$ps=@(${paths})
 $s=0; foreach($d in $ps){ if(Test-Path $d){ $s += (Get-ChildItem $d -Recurse -Force -EA SilentlyContinue | Measure-Object Length -Sum).Sum } }
@@ -54,10 +55,11 @@ const ITEMS: Item[] = [
 const fmtMB = (mb: number) => (mb >= 1024 ? `${(mb / 1024).toFixed(1)} GB` : `${mb.toFixed(mb < 10 ? 1 : 0)} MB`);
 
 export default function Limpieza() {
+  const { t } = useI18n();
   const [sel, setSel] = useState<Record<string, boolean>>(() =>
     Object.fromEntries(ITEMS.map((i) => [i.id, !i.off])));
   const [sizes, setSizes] = useState<Record<string, number>>({});
-  const [log, setLog] = useState<string[]>(["Listo. Tocá “Analizar” para estimar el espacio a liberar."]);
+  const [log, setLog] = useState<string[]>(() => [t("clean.logIntro")]);
   const [analyzing, setAnalyzing] = useState(false);
   const [running, setRunning] = useState(false);
   const [confirm, setConfirm] = useState(false);
@@ -81,7 +83,7 @@ export default function Limpieza() {
 
   const analyze = async () => {
     setAnalyzing(true);
-    setLog(["Analizando…"]);
+    setLog([t("clean.analyzing")]);
     const found: Record<string, number> = {};
     for (let i = 0; i < selected.length; i++) {
       const it = selected[i];
@@ -90,33 +92,33 @@ export default function Limpieza() {
       const m = r.output.match(/SIZE=([\d.]+)/);
       found[it.id] = m ? parseFloat(m[1]) : 0;
       setSizes({ ...found });
-      addLog(`  ${it.name}: ${fmtMB(found[it.id])}`);
+      addLog(`  ${t(`clean.item.${it.id}`)}: ${fmtMB(found[it.id])}`);
     }
     const tot = Object.values(found).reduce((a, b) => a + b, 0);
-    addLog(`\nEstimado a liberar: ${fmtMB(tot)}`);
+    addLog(`\n${t("clean.estimated")} ${fmtMB(tot)}`);
     setAnalyzing(false);
   };
 
   const run = async () => {
     setConfirm(false);
     setRunning(true);
-    setLog(["Limpiando…"]);
+    setLog([t("clean.cleaning")]);
     let total = 0;
     for (let i = 0; i < selected.length; i++) {
       const it = selected[i];
-      addLog(`▸ ${it.name}`);
+      addLog(`▸ ${t(`clean.item.${it.id}`)}`);
       const r = await runPowershell(it.clean);
       if (!mounted.current) return;
       const m = r.output.match(/FREED=([\d.]+)/);
       const mb = m ? parseFloat(m[1]) : 0;
       total += mb;
-      addLog(`  ✓ ${mb > 0 ? `${fmtMB(mb)} liberados` : "limpiado"}`);
+      addLog(`  ✓ ${mb > 0 ? `${fmtMB(mb)} ${t("clean.freed")}` : t("clean.cleaned")}`);
     }
-    addLog(`\nTotal liberado: ${fmtMB(total)}`);
+    addLog(`\n${t("clean.totalFreed")} ${fmtMB(total)}`);
     setRunning(false);
     setSizes({});
-    notify("Limpieza completada", `Liberaste ${fmtMB(total)} de espacio.`);
-    setDone(`Liberaste ${fmtMB(total)} de espacio en disco.`);
+    notify(t("clean.notifyTitle"), `${t("clean.notifyBody")} ${fmtMB(total)}.`);
+    setDone(`${t("clean.notifyBody")} ${fmtMB(total)} ${t("clean.doneBody")}`);
   };
 
   return (
@@ -128,7 +130,7 @@ export default function Limpieza() {
           <div className="rounded-xl border border-line divide-y divide-line/60">
             {ITEMS.map((it) => (
               <div key={it.id} className="px-3">
-                <EnergyCheckbox label={it.name}
+                <EnergyCheckbox label={t(`clean.item.${it.id}`)}
                   badge={sizes[it.id] !== undefined ? fmtMB(sizes[it.id]) : undefined}
                   checked={!!sel[it.id]}
                   onChange={(v) => setSel((s) => ({ ...s, [it.id]: v }))} />
@@ -138,7 +140,7 @@ export default function Limpieza() {
         </div>
 
         <div className="flex flex-col min-h-0">
-          <span className="section-label mb-2.5">Progreso</span>
+          <span className="section-label mb-2.5">{t("common.progress")}</span>
           <div ref={logRef} className="flex-1 overflow-y-auto rounded-xl bg-surface border border-line p-4 font-mono text-[13px] leading-relaxed text-text-dim whitespace-pre-wrap">
             {log.join("\n")}
           </div>
@@ -149,25 +151,25 @@ export default function Limpieza() {
         {busy && <IndeterminateBar className="mb-4" />}
         <div className="flex items-center justify-between">
           <span className="text-[13px] text-text-mute">
-            {selected.length} seleccionados
-            {totalEstimated > 0 && <span className="text-accent"> · ~{fmtMB(totalEstimated)} a liberar</span>}
+            {selected.length} {t("clean.selected")}
+            {totalEstimated > 0 && <span className="text-accent"> · ~{fmtMB(totalEstimated)} {t("clean.toFree")}</span>}
           </span>
           <div className="flex gap-2">
             <button disabled={busy || selected.length === 0} onClick={analyze} className="btn btn-ghost">
-              {analyzing ? "Analizando…" : "Analizar"}
+              {analyzing ? t("clean.analyzing") : t("clean.analyze")}
             </button>
             <button disabled={busy || selected.length === 0} onClick={() => setConfirm(true)} className="btn btn-primary px-6">
-              {running ? "Limpiando…" : "Limpiar ahora"}
+              {running ? t("clean.cleaning") : t("clean.cleanNow")}
             </button>
           </div>
         </div>
       </div>
 
-      <Modal open={confirm} title="Limpiar disco" onClose={() => setConfirm(false)}
-        onConfirm={run} confirmText="Limpiar" closeText="Cancelar">
-        {`Se borrarán ${selected.length} categorías de archivos basura${totalEstimated > 0 ? ` (~${fmtMB(totalEstimated)})` : ""}.\nNo afecta tus documentos ni programas.`}
+      <Modal open={confirm} title={t("clean.confirmTitle")} onClose={() => setConfirm(false)}
+        onConfirm={run} confirmText={t("clean.confirmBtn")} closeText={t("common.cancel")}>
+        {`${t("clean.confirmBody1")} ${selected.length} ${t("clean.confirmBody2")}${totalEstimated > 0 ? ` (~${fmtMB(totalEstimated)})` : ""}.\n${t("clean.confirmBody3")}`}
       </Modal>
-      <Modal open={!!done} title="Limpieza completada" onClose={() => setDone(null)}>{done || ""}</Modal>
+      <Modal open={!!done} title={t("clean.doneTitle")} onClose={() => setDone(null)}>{done || ""}</Modal>
     </div>
   );
 }
