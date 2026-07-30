@@ -25,22 +25,26 @@ export async function readScore(): Promise<ScoreResult> {
 // ---- Temperaturas CPU/GPU (mejor esfuerzo: depende del hardware/driver) ------
 export interface Temps { cpu: number | null; gpu: number | null; }
 
-// La temp REAL del CPU en Windows sólo se obtiene con un driver de kernel (MSR).
-// Sin bundlear uno, la leemos de LibreHardwareMonitor / OpenHardwareMonitor si el
-// usuario los tiene corriendo (exponen un namespace WMI con sensores precisos).
-// Si no hay ninguno, devolvemos N (la UI muestra N/D) — NUNCA el valor ACPI, que
-// suele estar clavado y engaña.
-const TEMP_SCRIPT = String.raw`$cpu=$null; $gpu=$null
+// Temp REAL de CPU/GPU vía LibreHardwareMonitorLib (bundleada). Lee los sensores
+// por hardware (el driver de kernel lo carga la propia lib; la app corre elevada).
+// No se llama Close() a propósito: deja el driver cargado para que las lecturas
+// siguientes sean rápidas y no se reinstale el servicio en cada poll. Si falla
+// (o no hay admin), cae a nvidia-smi para GPU y N/D para CPU — nunca el valor ACPI.
+const TEMP_SCRIPT = (dll: string) => String.raw`$cpu=$null; $gpu=$null
 try{
-  $s=Get-CimInstance -Namespace root/LibreHardwareMonitor -ClassName Sensor -EA SilentlyContinue
-  if(-not $s){ $s=Get-CimInstance -Namespace root/OpenHardwareMonitor -ClassName Sensor -EA SilentlyContinue }
-  if($s){
-    $cs=$s | Where-Object { $_.SensorType -eq 'Temperature' -and $_.Identifier -match '/(intelcpu|amdcpu|cpu)/' }
-    $pkg=$cs | Where-Object { $_.Name -match 'Package|Tdie|Tctl' } | Select-Object -First 1
-    if(-not $pkg){ $pkg=$cs | Sort-Object Value -Descending | Select-Object -First 1 }
-    if($pkg){ $cpu=[int][math]::Round($pkg.Value,0) }
-    $gs=$s | Where-Object { $_.SensorType -eq 'Temperature' -and $_.Identifier -match '/(gpu|nvidiagpu|atigpu|amdgpu)/' } | Sort-Object Value -Descending | Select-Object -First 1
-    if($gs){ $gpu=[int][math]::Round($gs.Value,0) }
+  Add-Type -Path '${dll}' -EA Stop
+  $c=New-Object LibreHardwareMonitor.Hardware.Computer
+  $c.IsCpuEnabled=$true; $c.IsGpuEnabled=$true
+  $c.Open()
+  foreach($hw in $c.Hardware){
+    $hw.Update()
+    $ht=$hw.HardwareType.ToString()
+    foreach($s in $hw.Sensors){
+      if($s.SensorType -eq [LibreHardwareMonitor.Hardware.SensorType]::Temperature -and $null -ne $s.Value){
+        if($ht -like '*Cpu*' -and $s.Name -eq 'CPU Package'){ $cpu=[int][math]::Round([double]$s.Value,0) }
+        elseif($ht -like '*Gpu*' -and $null -eq $gpu -and ($s.Name -eq 'GPU Core' -or $s.Name -eq 'GPU Temperature' -or $s.Name -eq 'GPU')){ $gpu=[int][math]::Round([double]$s.Value,0) }
+      }
+    }
   }
 }catch{}
 if($null -eq $gpu){ try{ $smi=Get-Command nvidia-smi -EA SilentlyContinue
@@ -49,8 +53,21 @@ if($null -eq $gpu){ try{ $smi=Get-Command nvidia-smi -EA SilentlyContinue
 if($null -eq $cpu){ $cpu='N' }; if($null -eq $gpu){ $gpu='N' }
 Write-Output "CPU=$cpu"; Write-Output "GPU=$gpu"`;
 
+// Ruta de la DLL bundleada (se resuelve una vez y se cachea).
+let _dllPath: string | null | undefined;
+async function lhmDll(): Promise<string | null> {
+  if (_dllPath !== undefined) return _dllPath;
+  try {
+    const { resolveResource } = await import("@tauri-apps/api/path");
+    _dllPath = await resolveResource("resources/LibreHardwareMonitorLib.dll");
+  } catch { _dllPath = null; }
+  return _dllPath;
+}
+
 export async function readTemps(): Promise<Temps> {
-  const r = await runPowershell(TEMP_SCRIPT);
+  const dll = await lhmDll();
+  if (!dll) return { cpu: null, gpu: null };
+  const r = await runPowershell(TEMP_SCRIPT(dll));
   const grab = (tag: string): number | null => {
     const m = r.output.match(new RegExp(`${tag}=(-?\\d+)`));
     if (!m) return null;

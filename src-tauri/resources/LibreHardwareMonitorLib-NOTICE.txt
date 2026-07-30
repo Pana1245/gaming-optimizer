@@ -1,0 +1,4 @@
+LibreHardwareMonitorLib.dll (v0.9.3, net472)
+Fuente: https://github.com/LibreHardwareMonitor/LibreHardwareMonitor
+Licencia: Mozilla Public License 2.0 (MPL-2.0)
+Se incluye para leer la temperatura real del CPU/GPU (sensores por hardware).
