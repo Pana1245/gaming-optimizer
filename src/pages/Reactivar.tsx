@@ -82,8 +82,12 @@ Write-Output OK`,
       es: "✓ Antivirus reactivado. Reiniciá la PC para que Windows Defender se encienda del todo.",
       en: "✓ Antivirus re-enabled. Restart the PC so Windows Defender fully turns on.",
     },
-    script: String.raw`# 1) Quitar las politicas que apagan Defender.
-Remove-Item 'HKLM:\SOFTWARE\Policies\Microsoft\Windows Defender' -Recurse -Force -EA SilentlyContinue
+    script: String.raw`# 1) Quitar SOLO los valores de politica que apagan Defender (no toda la rama,
+#    que puede tener politicas legitimas de empresa u otras configuraciones).
+$pol='HKLM:\SOFTWARE\Policies\Microsoft\Windows Defender'
+if(Test-Path $pol){ foreach($v in 'DisableAntiSpyware','DisableAntiVirus'){ Remove-ItemProperty $pol -Name $v -Force -EA SilentlyContinue } }
+$rt="$pol\Real-Time Protection"
+if(Test-Path $rt){ foreach($v in 'DisableRealtimeMonitoring','DisableBehaviorMonitoring','DisableOnAccessProtection','DisableScanOnRealtimeEnable'){ Remove-ItemProperty $rt -Name $v -Force -EA SilentlyContinue } }
 # 2) Reactivar los servicios de Defender. Set-Service falla (protegidos), asi que
 #    reseteamos su arranque directo en el registro a los valores por defecto.
 $svc=@{ WinDefend=2; WdNisSvc=3; WdNisDrv=3; Sense=3; WdFilter=0; WdBoot=0 }
