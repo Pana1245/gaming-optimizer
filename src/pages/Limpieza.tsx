@@ -18,7 +18,7 @@ foreach($d in $ps){ Remove-Item "$d\*" -Recurse -Force -EA SilentlyContinue }
 $after=0; foreach($d in $ps){ if(Test-Path $d){ $after += (Get-ChildItem $d -Recurse -Force -EA SilentlyContinue | Measure-Object Length -Sum).Sum } }
 Write-Output ("FREED=" + [math]::Round(($before-$after)/1MB,1))`;
 
-interface Item { id: string; name: string; scan: string; clean: string; }
+interface Item { id: string; name: string; scan: string; clean: string; off?: boolean; }
 
 const P = {
   temp: String.raw`"$env:windir\Temp", "$env:TEMP"`,
@@ -38,7 +38,7 @@ $s=if(Test-Path $d){(Get-ChildItem $d -Filter thumbcache_* -Force -EA SilentlyCo
 
 const ITEMS: Item[] = [
   { id: "temp", name: "Archivos temporales (Windows + usuario)", scan: sizeOnly(P.temp), clean: sizeAndClear(P.temp) },
-  { id: "prefetch", name: "Prefetch", scan: sizeOnly(P.prefetch), clean: sizeAndClear(P.prefetch) },
+  { id: "prefetch", name: "Prefetch (Windows lo reconstruye; puede enlentecer los primeros arranques)", scan: sizeOnly(P.prefetch), clean: sizeAndClear(P.prefetch), off: true },
   { id: "wu", name: "Caché de Windows Update", scan: `${WU_SIZE}\nWrite-Output ("SIZE=" + [math]::Round($s/1MB,1))`,
     clean: `$svc=Get-Service wuauserv -EA SilentlyContinue\n$wasRunning=$svc -and $svc.Status -eq 'Running'\n$d="$env:windir\\SoftwareDistribution\\Download"\n$before=if(Test-Path $d){(Get-ChildItem $d -Recurse -Force -EA SilentlyContinue|Measure-Object Length -Sum).Sum}else{0}\nStop-Service wuauserv -Force -EA SilentlyContinue\nRemove-Item "$d\\*" -Recurse -Force -EA SilentlyContinue\n$after=if(Test-Path $d){(Get-ChildItem $d -Recurse -Force -EA SilentlyContinue|Measure-Object Length -Sum).Sum}else{0}\nif($wasRunning){ Start-Service wuauserv -EA SilentlyContinue }\nWrite-Output ("FREED=" + [math]::Round(($before-$after)/1MB,1))` },
   { id: "thumbs", name: "Caché de miniaturas", scan: `${THUMB_SIZE}\nWrite-Output ("SIZE=" + [math]::Round($s/1MB,1))`,
@@ -55,7 +55,7 @@ const fmtMB = (mb: number) => (mb >= 1024 ? `${(mb / 1024).toFixed(1)} GB` : `${
 
 export default function Limpieza() {
   const [sel, setSel] = useState<Record<string, boolean>>(() =>
-    Object.fromEntries(ITEMS.map((i) => [i.id, true])));
+    Object.fromEntries(ITEMS.map((i) => [i.id, !i.off])));
   const [sizes, setSizes] = useState<Record<string, number>>({});
   const [log, setLog] = useState<string[]>(["Listo. Tocá “Analizar” para estimar el espacio a liberar."]);
   const [analyzing, setAnalyzing] = useState(false);
