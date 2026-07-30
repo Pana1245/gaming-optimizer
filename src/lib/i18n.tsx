@@ -237,6 +237,22 @@ const STR: Record<string, { es: string; en: string }> = {
   "restore.available": { es: "Backups disponibles", en: "Available backups" },
   "restore.noBackups": { es: "Todavía no hay backups. Se crean al optimizar.", en: "No backups yet. They're created when you optimize." },
 
+  // ── Sistema ──
+  "sys.info": { es: "Información del equipo", en: "System info" },
+  "sys.cores": { es: "Núcleos", en: "Cores" },
+  "sys.coresVal": { es: "{p} físicos · {l} lógicos", en: "{p} physical · {l} logical" },
+  "sys.loading": { es: "Cargando…", en: "Loading…" },
+
+  // ── Instalar Apps ──
+  "apps.catAll": { es: "Todo", en: "All" },
+  "apps.catRemove": { es: "Quitar", en: "Remove" },
+  "apps.installed": { es: "✓ instalado", en: "✓ installed" },
+  "apps.installedTitle": { es: "Ya instalado", en: "Already installed" },
+  "apps.sel": { es: "sel.", en: "sel." },
+  "apps.installing": { es: "Instalando…", en: "Installing…" },
+  "apps.installBtn": { es: "Instalar", en: "Install" },
+  "apps.doneTitle": { es: "Instalación completada", en: "Installation complete" },
+
   // ── Gráficos ──
   "gpu.detected": { es: "GPU detectada", en: "Detected GPU" },
   "gpu.detecting": { es: "Detectando…", en: "Detecting…" },

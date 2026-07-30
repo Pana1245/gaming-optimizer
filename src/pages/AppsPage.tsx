@@ -6,6 +6,7 @@ import { useInstaller } from "../lib/installer";
 import { useScrollMemory } from "../lib/useScrollMemory";
 import { HudTitle } from "../components/NeonCard";
 import Modal from "../components/Modal";
+import { useI18n } from "../lib/i18n";
 
 const INSTALLED_NAMES = `$names=@()
 $roots=@('HKLM:\\Software\\Microsoft\\Windows\\CurrentVersion\\Uninstall\\*','HKLM:\\Software\\Wow6432Node\\Microsoft\\Windows\\CurrentVersion\\Uninstall\\*','HKCU:\\Software\\Microsoft\\Windows\\CurrentVersion\\Uninstall\\*')
@@ -21,6 +22,7 @@ const itemV = {
 export default function AppsPage() {
   // El estado de la instalación vive en el InstallerProvider (global) para que no se
   // corte ni pierda el progreso al cambiar de sección.
+  const { t } = useI18n();
   const { running, log, progress, done, install, clearDone } = useInstaller();
   const [sel, setSel] = useState<Record<string, boolean>>({});
   const [installed, setInstalled] = useState<Set<string>>(new Set());
@@ -85,7 +87,7 @@ export default function AppsPage() {
                     })}
                     className="ml-auto text-[12px] text-text-mute hover:text-accent transition"
                   >
-                    {allOn ? "Quitar" : "Todo"}
+                    {allOn ? t("apps.catRemove") : t("apps.catAll")}
                   </button>
                 </div>
                 <div className="grid grid-cols-2 gap-x-4 rounded-xl border border-line p-1">
@@ -103,7 +105,7 @@ export default function AppsPage() {
                           alt="" className="w-4 h-4 rounded-sm opacity-90"
                           onError={(e) => ((e.target as HTMLImageElement).style.visibility = "hidden")} />
                         <span className={`text-[13px] truncate ${on ? "text-text" : "text-text-dim"}`}>{a.name}</span>
-                        {inst && <span title="Ya instalado" className="ml-auto text-[11px] text-accent shrink-0">✓ instalado</span>}
+                        {inst && <span title={t("apps.installedTitle")} className="ml-auto text-[11px] text-accent shrink-0">{t("apps.installed")}</span>}
                       </div>
                     );
                   })}
@@ -114,7 +116,7 @@ export default function AppsPage() {
         </motion.div>
 
         <div className="flex flex-col min-h-0">
-          <span className="section-label mb-2.5">Progreso</span>
+          <span className="section-label mb-2.5">{t("common.progress")}</span>
           <div ref={logRef} className="flex-1 overflow-y-auto rounded-xl bg-surface border border-line p-4 font-mono text-[13px] leading-relaxed text-text-dim whitespace-pre-wrap">
             {log.join("\n")}
           </div>
@@ -130,17 +132,17 @@ export default function AppsPage() {
         )}
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <button disabled={running} onClick={() => setAll(true)} className="btn btn-ghost">Seleccionar todo</button>
-            <button disabled={running} onClick={() => setAll(false)} className="btn btn-ghost">Deseleccionar</button>
-            <span className="text-[13px] text-text-mute ml-1">{selected.length} sel.</span>
+            <button disabled={running} onClick={() => setAll(true)} className="btn btn-ghost">{t("common.selectAll")}</button>
+            <button disabled={running} onClick={() => setAll(false)} className="btn btn-ghost">{t("common.deselect")}</button>
+            <span className="text-[13px] text-text-mute ml-1">{selected.length} {t("apps.sel")}</span>
           </div>
           <button disabled={running || selected.length === 0} onClick={() => install(selected)} className="btn btn-primary px-6">
-            {running ? "Instalando…" : `Instalar (${selected.length})`}
+            {running ? t("apps.installing") : `${t("apps.installBtn")} (${selected.length})`}
           </button>
         </div>
       </div>
 
-      <Modal open={!!done} title="Instalación completada" onClose={clearDone}>{done || ""}</Modal>
+      <Modal open={!!done} title={t("apps.doneTitle")} onClose={clearDone}>{done || ""}</Modal>
     </div>
   );
 }
