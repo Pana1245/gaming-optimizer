@@ -40,7 +40,7 @@ const ITEMS: Item[] = [
   { id: "temp", name: "Archivos temporales (Windows + usuario)", scan: sizeOnly(P.temp), clean: sizeAndClear(P.temp) },
   { id: "prefetch", name: "Prefetch", scan: sizeOnly(P.prefetch), clean: sizeAndClear(P.prefetch) },
   { id: "wu", name: "Caché de Windows Update", scan: `${WU_SIZE}\nWrite-Output ("SIZE=" + [math]::Round($s/1MB,1))`,
-    clean: `Stop-Service wuauserv -Force -EA SilentlyContinue\n${WU_SIZE}\nRemove-Item "$d\\*" -Recurse -Force -EA SilentlyContinue\nStart-Service wuauserv -EA SilentlyContinue\nWrite-Output ("FREED=" + [math]::Round($s/1MB,1))` },
+    clean: `$svc=Get-Service wuauserv -EA SilentlyContinue\n$wasRunning=$svc -and $svc.Status -eq 'Running'\n$d="$env:windir\\SoftwareDistribution\\Download"\n$before=if(Test-Path $d){(Get-ChildItem $d -Recurse -Force -EA SilentlyContinue|Measure-Object Length -Sum).Sum}else{0}\nStop-Service wuauserv -Force -EA SilentlyContinue\nRemove-Item "$d\\*" -Recurse -Force -EA SilentlyContinue\n$after=if(Test-Path $d){(Get-ChildItem $d -Recurse -Force -EA SilentlyContinue|Measure-Object Length -Sum).Sum}else{0}\nif($wasRunning){ Start-Service wuauserv -EA SilentlyContinue }\nWrite-Output ("FREED=" + [math]::Round(($before-$after)/1MB,1))` },
   { id: "thumbs", name: "Caché de miniaturas", scan: `${THUMB_SIZE}\nWrite-Output ("SIZE=" + [math]::Round($s/1MB,1))`,
     clean: `${THUMB_SIZE}\n$before=$s\nRemove-Item "$d\\thumbcache_*" -Force -EA SilentlyContinue\n$after=if(Test-Path $d){(Get-ChildItem $d -Filter thumbcache_* -Force -EA SilentlyContinue|Measure-Object Length -Sum).Sum}else{0}\nWrite-Output ("FREED=" + [math]::Round(($before-$after)/1MB,1))` },
   { id: "wer", name: "Reportes de error (WER)", scan: sizeOnly(P.wer), clean: sizeAndClear(P.wer) },
