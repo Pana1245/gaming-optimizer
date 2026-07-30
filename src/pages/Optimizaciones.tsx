@@ -9,6 +9,7 @@ import { useScrollMemory } from "../lib/useScrollMemory";
 import EnergyCheckbox from "../components/EnergyCheckbox";
 import { HudTitle } from "../components/NeonCard";
 import Modal from "../components/Modal";
+import { useI18n } from "../lib/i18n";
 
 // Categorías base + tweaks nuevos fusionados por id + categorías extra (WinUtil)
 const ALL_CATEGORIES = [
@@ -89,6 +90,7 @@ const MODO_GAMER: Record<string, number[]> = {
 };
 
 export default function Optimizaciones() {
+  const { t } = useI18n();
   const [winVer, setWinVer] = useState(11);
   const [sel, setSel] = useState<Record<string, boolean>>({});
   const [log, setLog] = useState<string[]>(["Listo."]);
@@ -149,30 +151,30 @@ export default function Optimizaciones() {
     const list = selectedList();
     setRunning(true);
     setProgress(0);
-    setLog(["Listo."]);
-    addLog("PASO 1/2 — Creando backup...");
+    setLog([t("common.ready")]);
+    addLog(t("opt.step1"));
     const bk = await runPowershell(BACKUP);
     bk.output.split("\n").forEach((l) => l.trim() && addLog("  " + l.trim()));
     // No aplicar nada si el backup no dejó un respaldo utilizable: sin esto, un
     // fallo de permisos/espacio/registro modificaba el sistema sin backup.
     const exported = Number(bk.output.match(/Backup del registro: (\d+) ramas/)?.[1] ?? 0);
     if (!bk.ok || exported === 0) {
-      addLog("✗ El backup falló — no se aplicó ninguna optimización.");
+      addLog(t("opt.backupFailedLog"));
       setRunning(false);
-      setDone("No se aplicaron optimizaciones porque el backup del registro falló.\nRevisá permisos o espacio en disco e intentá de nuevo.");
+      setDone(t("opt.backupFailedDone"));
       return;
     }
     // Si el punto de restauración falló Y hay tweaks que el backup del registro NO
     // revierte (servicios/BCD/AppX/tareas), avisar para no dar falsa confianza.
     const pointOk = /punto de restauracion creado ok/i.test(bk.output);
-    const risky = list.filter((t) => /Set-Service|bcdedit|Remove-AppxPackage|Register-ScheduledTask|Disable-ScheduledTask/i.test(t.script));
+    const risky = list.filter((x) => /Set-Service|bcdedit|Remove-AppxPackage|Register-ScheduledTask|Disable-ScheduledTask/i.test(x.script));
     const noSafetyNet = !pointOk && risky.length > 0;
     if (noSafetyNet) {
-      addLog("⚠ No se pudo crear el punto de restauración del sistema.");
-      addLog(`  ${risky.length} cambio(s) seleccionados (servicios / arranque / apps) NO se revierten con el backup del registro.`);
-      addLog("  Sugerencia: activá Protección del Sistema y reintentá, o revertilos a mano (sección Reactivar).");
+      addLog(t("opt.noPointWarn1"));
+      addLog(`  ${risky.length} ${t("opt.noPointWarn2")}`);
+      addLog("  " + t("opt.noPointWarn3"));
     }
-    addLog(`PASO 2/2 — Aplicando ${list.length} optimizaciones...`);
+    addLog(t("opt.step2").replace("{n}", String(list.length)));
     let ok = 0;
     for (let i = 0; i < list.length; i++) {
       addLog(`▸ ${list[i].name}`);
@@ -182,11 +184,11 @@ export default function Optimizaciones() {
       addLog(`  ${r.ok ? "✓" : "✗"} ${(r.output.split("\n")[0] || "OK").trim()}`);
       setProgress((i + 1) / list.length);
     }
-    addLog(`Completado: ${ok}/${list.length} optimizaciones aplicadas.`);
+    addLog(t("opt.completedLog").replace("{ok}", String(ok)).replace("{total}", String(list.length)));
     setRunning(false);
     setCanReboot(true);
-    notify("Optimización completada", `${ok}/${list.length} optimizaciones aplicadas.`);
-    setDone(`${ok}/${list.length} optimizaciones aplicadas.\nReiniciá el PC para aplicar todos los cambios.\n\nPara revertir: "Restaurar" deshace los cambios del registro. Los cambios de servicios/drivers/sistema se revierten con "Restaurar sistema de Windows" (punto de restauración). Las apps/bloatware eliminados se reinstalan a mano.${noSafetyNet ? "\n\n⚠ No se creó punto de restauración: los cambios de servicios/arranque/apps NO se revierten con Restaurar. Usá Reactivar o reinstalá para eso." : ""}`);
+    notify(t("opt.notifyTitle"), t("opt.appliedShort").replace("{ok}", String(ok)).replace("{total}", String(list.length)));
+    setDone(t("opt.doneMain").replace("{ok}", String(ok)).replace("{total}", String(list.length)) + (noSafetyNet ? t("opt.doneNoNet") : ""));
   };
 
   const reboot = () => runPowershell("shutdown /r /t 3");
@@ -221,9 +223,7 @@ export default function Optimizaciones() {
                   <span className="text-[12px] text-text-mute">{selCount}/{c.tweaks.length}</span>
                 </div>
                 {c.id === "winutil" && (
-                  <p className="text-[12px] text-text-mute -mt-1.5 mb-2">
-                    Adaptados de WinUtil · Chris Titus Tech (MIT)
-                  </p>
+                  <p className="text-[12px] text-text-mute -mt-1.5 mb-2">{t("opt.winutilNote")}</p>
                 )}
                 <div className="rounded-xl border border-line divide-y divide-line/60">
                   {c.tweaks.map((t, i) => (
@@ -246,7 +246,7 @@ export default function Optimizaciones() {
 
         {/* Log */}
         <div className="flex flex-col min-h-0">
-          <span className="section-label mb-2.5">Progreso</span>
+          <span className="section-label mb-2.5">{t("common.progress")}</span>
           <div
             ref={logRef}
             className="flex-1 overflow-y-auto rounded-xl bg-surface border border-line p-4 font-mono text-[13px] leading-relaxed text-text-dim whitespace-pre-wrap"
@@ -269,27 +269,27 @@ export default function Optimizaciones() {
         )}
         <div className="flex items-center justify-between">
           <div className="flex gap-2">
-            <button disabled={running} onClick={() => setAll(true)} className="btn btn-ghost">Seleccionar todo</button>
-            <button disabled={running} onClick={() => setAll(false)} className="btn btn-ghost">Deseleccionar</button>
-            <button disabled={running} onClick={modoGamer} className="btn btn-ghost">Modo Gamer</button>
+            <button disabled={running} onClick={() => setAll(true)} className="btn btn-ghost">{t("opt.selectAll")}</button>
+            <button disabled={running} onClick={() => setAll(false)} className="btn btn-ghost">{t("opt.deselect")}</button>
+            <button disabled={running} onClick={modoGamer} className="btn btn-ghost">{t("opt.gamerPreset")}</button>
           </div>
           <button
             disabled={running}
-            onClick={() => (count === 0 ? setDone("No hay optimizaciones seleccionadas.") : setConfirm(true))}
+            onClick={() => (count === 0 ? setDone(t("opt.noneSelected")) : setConfirm(true))}
             className="btn btn-primary px-6"
           >
-            {running ? "Optimizando…" : `Aplicar${count ? ` (${count})` : ""}`}
+            {running ? t("opt.optimizing") : `${t("opt.applyBtn")}${count ? ` (${count})` : ""}`}
           </button>
         </div>
       </div>
 
-      <Modal open={confirm} title="Confirmar optimización" onClose={() => setConfirm(false)}
-        onConfirm={run} confirmText="Aplicar" closeText="Cancelar">
-        {`Se aplicarán ${count} optimizaciones.\n\nAntes se crea un backup del registro (reversible con 1 clic desde "Restaurar") y un punto de restauración del sistema.\n\nOjo: el backup del registro no revierte servicios deshabilitados, apps/bloatware eliminados ni cambios de arranque (HPET/BCD). Para esos, usá "Restaurar sistema de Windows".`}
+      <Modal open={confirm} title={t("opt.confirmTitle")} onClose={() => setConfirm(false)}
+        onConfirm={run} confirmText={t("opt.applyBtn")} closeText={t("common.cancel")}>
+        {t("opt.confirmBody").replace("{n}", String(count))}
       </Modal>
-      <Modal open={!!done} title="Resultado" onClose={() => { setDone(null); setCanReboot(false); }}
+      <Modal open={!!done} title={t("opt.resultTitle")} onClose={() => { setDone(null); setCanReboot(false); }}
         onConfirm={canReboot ? () => { reboot(); setDone(null); setCanReboot(false); } : undefined}
-        confirmText="Reiniciar ahora" closeText="Después">
+        confirmText={t("opt.reboot")} closeText={t("opt.rebootLater")}>
         {done || ""}
       </Modal>
     </div>
