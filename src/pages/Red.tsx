@@ -23,15 +23,21 @@ const DNS_LIST: Dns[] = [
 ];
 
 const ipsArg = DNS_LIST.map((d) => `'${d.primary}'`).join(",");
+// Mide el tiempo REAL de resolución DNS (no ICMP ping): resuelve dominios contra
+// cada servidor y promedia. El ping no mide la resolución y castiga a los DNS que
+// simplemente bloquean ICMP.
 const TEST_SCRIPT = String.raw`$hosts=@(${ipsArg})
-$pings=@{}; $sums=@{}; $cnt=@{}
-foreach($h in $hosts){ $pings[$h]=New-Object System.Net.NetworkInformation.Ping; $sums[$h]=0.0; $cnt[$h]=0 }
-for($r=0;$r -lt 3;$r++){
-  $tasks=@{}
-  foreach($h in $hosts){ try{ $tasks[$h]=$pings[$h].SendPingAsync($h,1000) }catch{} }
-  foreach($h in $hosts){ try{ $rep=$tasks[$h].GetAwaiter().GetResult(); if($rep.Status -eq 'Success'){ $sums[$h]+=$rep.RoundtripTime; $cnt[$h]++ } }catch{} }
+$names=@('www.google.com','www.wikipedia.org')
+$out=foreach($h in $hosts){
+  $sum=0.0; $c=0
+  foreach($n in $names){
+    try{
+      $ms=(Measure-Command { Resolve-DnsName -Server $h -Name $n -Type A -DnsOnly -QuickTimeout -EA Stop }).TotalMilliseconds
+      $sum+=$ms; $c++
+    }catch{}
+  }
+  if($c -gt 0){ [pscustomobject]@{h=$h;ms=[int][math]::Round($sum/$c,0)} } else { [pscustomobject]@{h=$h;ms=-1} }
 }
-$out=foreach($h in $hosts){ if($cnt[$h] -gt 0){ [pscustomobject]@{h=$h;ms=[int][math]::Round($sums[$h]/$cnt[$h],0)} } else { [pscustomobject]@{h=$h;ms=-1} } }
 $j=@($out)|ConvertTo-Json -Compress; if($j[0] -ne '['){ $j="[$j]" }; Write-Output $j`;
 
 const dnsScript = (servers: string[] | null) => servers
