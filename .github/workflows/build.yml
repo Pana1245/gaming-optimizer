@@ -1,0 +1,50 @@
+name: build
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Setup Rust
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Cache Rust
+        uses: swatinem/rust-cache@v2
+        with:
+          workspaces: src-tauri
+
+      - name: Install deps
+        run: npm ci
+
+      # El instalador que produce este CI es el que SignPath firma. La firma del
+      # updater (.sig con minisign) se hace DESPUÉS, sobre el .exe ya firmado por
+      # SignPath (el .sig depende de los bytes finales). Por eso acá desactivamos
+      # los artefactos del updater: el build no necesita la clave privada y sale limpio.
+      - name: Disable updater artifacts for CI
+        shell: pwsh
+        run: (Get-Content src-tauri/tauri.conf.json) -replace '"createUpdaterArtifacts": true', '"createUpdaterArtifacts": false' | Set-Content src-tauri/tauri.conf.json
+
+      - name: Frontend build
+        run: npm run build
+
+      - name: Tauri build (installer)
+        run: npm run tauri build
+
+      - name: Upload installer
+        uses: actions/upload-artifact@v4
+        with:
+          name: GamingOptimizer-setup
+          path: src-tauri/target/release/bundle/nsis/*-setup.exe
+          if-no-files-found: error
