@@ -34,7 +34,8 @@ jobs:
       # los artefactos del updater: el build no necesita la clave privada y sale limpio.
       - name: Disable updater artifacts for CI
         shell: pwsh
-        run: (Get-Content src-tauri/tauri.conf.json) -replace '"createUpdaterArtifacts": true', '"createUpdaterArtifacts": false' | Set-Content src-tauri/tauri.conf.json
+        run: |
+          (Get-Content src-tauri/tauri.conf.json) -replace '"createUpdaterArtifacts": true', '"createUpdaterArtifacts": false' | Set-Content src-tauri/tauri.conf.json
 
       - name: Frontend build
         run: npm run build
