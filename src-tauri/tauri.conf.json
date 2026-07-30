@@ -1,7 +1,7 @@
 {
   "$schema": "../node_modules/@tauri-apps/cli/config.schema.json",
   "productName": "GamingOptimizer",
-  "version": "2.1.8",
+  "version": "2.1.9",
   "identifier": "com.danidev.gamingoptimizer",
   "build": {
     "frontendDist": "../dist",
@@ -32,6 +32,7 @@
     "active": true,
     "targets": ["nsis"],
     "createUpdaterArtifacts": true,
+    "resources": ["resources/LibreHardwareMonitorLib.dll"],
     "icon": [
       "icons/32x32.png",
       "icons/128x128.png",
