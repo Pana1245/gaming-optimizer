@@ -25,6 +25,13 @@ export const getSystemInfo = () => invoke<SysInfo>("system_info");
 export const ledgerRead = () => invoke<string>("ledger_read");
 export const ledgerWrite = (content: string) => invoke<boolean>("ledger_write", { content });
 
+// Motor: operaciones de registro nativas (Rust/winreg), sin PowerShell.
+export interface RegApplyResult { prior: string; now: string; ok: boolean; }
+export const regApply = (key: string, prop: string, kind: string, value: string) =>
+  invoke<RegApplyResult>("reg_apply", { key, prop, kind, value });
+export const regUndo = (key: string, prop: string, kind: string, prior: string) =>
+  invoke<boolean>("reg_undo", { key, prop, kind, prior });
+
 export const startGameWatch = (games: string[]) => invoke("start_game_watch", { games });
 export const stopGameWatch = () => invoke("stop_game_watch");
 
