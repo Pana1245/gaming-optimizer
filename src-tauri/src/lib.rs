@@ -530,6 +530,111 @@ fn clear_standby_ram(_lang: String) -> RunResult {
     RunResult { ok: false, output: "only Windows".into() }
 }
 
+// ---- Motor: operaciones de registro nativas (reemplazan el PowerShell) -------
+// Atómicas, sin spawn de powershell.exe ni problemas de escaping. La app corre
+// elevada, así que puede escribir HKLM/HKCU.
+#[derive(Serialize)]
+pub struct RegApplyResult {
+    pub prior: String,
+    pub now: String,
+    pub ok: bool,
+}
+
+#[cfg(windows)]
+fn reg_root(key: &str) -> Option<(winreg::RegKey, String)> {
+    use winreg::enums::{HKEY_CLASSES_ROOT, HKEY_CURRENT_USER, HKEY_LOCAL_MACHINE, HKEY_USERS};
+    use winreg::RegKey;
+    let (root_id, rest) = if let Some(r) = key.strip_prefix("HKCU:\\").or_else(|| key.strip_prefix("HKCU\\")) {
+        (HKEY_CURRENT_USER, r)
+    } else if let Some(r) = key.strip_prefix("HKLM:\\").or_else(|| key.strip_prefix("HKLM\\")) {
+        (HKEY_LOCAL_MACHINE, r)
+    } else if let Some(r) = key.strip_prefix("HKCR:\\").or_else(|| key.strip_prefix("HKCR\\")) {
+        (HKEY_CLASSES_ROOT, r)
+    } else if let Some(r) = key.strip_prefix("HKU:\\").or_else(|| key.strip_prefix("HKU\\")) {
+        (HKEY_USERS, r)
+    } else {
+        return None;
+    };
+    Some((RegKey::predef(root_id), rest.to_string()))
+}
+
+#[cfg(windows)]
+fn parse_dword(v: &str) -> Option<u32> {
+    let v = v.trim();
+    if let Some(hex) = v.strip_prefix("0x").or_else(|| v.strip_prefix("0X")) {
+        u32::from_str_radix(hex, 16).ok()
+    } else {
+        v.parse::<u32>().ok()
+    }
+}
+
+#[cfg(windows)]
+fn reg_read(subkey: &winreg::RegKey, prop: &str, kind: &str) -> String {
+    if kind == "DWord" {
+        subkey.get_value::<u32, _>(prop).map(|v| v.to_string()).unwrap_or_else(|_| "__ABSENT__".into())
+    } else {
+        subkey.get_value::<String, _>(prop).unwrap_or_else(|_| "__ABSENT__".into())
+    }
+}
+
+/// Lee el valor previo, escribe, y relee para verificar. `kind` = "DWord" | "String".
+#[cfg(windows)]
+#[tauri::command]
+fn reg_apply(key: String, prop: String, kind: String, value: String) -> RegApplyResult {
+    let empty = || RegApplyResult { prior: String::new(), now: String::new(), ok: false };
+    let Some((root, path)) = reg_root(&key) else { return empty(); };
+    // create_subkey crea la clave si no existe (como New-Item -Force).
+    let subkey = match root.create_subkey(&path) {
+        Ok((k, _)) => k,
+        Err(_) => return empty(),
+    };
+    let prior = reg_read(&subkey, &prop, &kind);
+    let ok = if kind == "DWord" {
+        match parse_dword(&value) {
+            Some(n) => subkey.set_value(&prop, &n).is_ok(),
+            None => false,
+        }
+    } else {
+        subkey.set_value(&prop, &value).is_ok()
+    };
+    let now = reg_read(&subkey, &prop, &kind);
+    RegApplyResult { prior, now, ok }
+}
+
+/// Deshace: si el valor no existía (`__ABSENT__`) lo borra; si existía, lo restaura.
+#[cfg(windows)]
+#[tauri::command]
+fn reg_undo(key: String, prop: String, kind: String, prior: String) -> bool {
+    let Some((root, path)) = reg_root(&key) else { return false; };
+    let subkey = match root.create_subkey(&path) {
+        Ok((k, _)) => k,
+        Err(_) => return false,
+    };
+    if prior == "__ABSENT__" {
+        // Éxito si se borró o si ya no estaba.
+        subkey.delete_value(&prop).is_ok()
+            || (subkey.get_value::<u32, _>(&prop).is_err() && subkey.get_value::<String, _>(&prop).is_err())
+    } else if kind == "DWord" {
+        match parse_dword(&prior) {
+            Some(n) => subkey.set_value(&prop, &n).is_ok(),
+            None => false,
+        }
+    } else {
+        subkey.set_value(&prop, &prior).is_ok()
+    }
+}
+
+#[cfg(not(windows))]
+#[tauri::command]
+fn reg_apply(_key: String, _prop: String, _kind: String, _value: String) -> RegApplyResult {
+    RegApplyResult { prior: String::new(), now: String::new(), ok: false }
+}
+#[cfg(not(windows))]
+#[tauri::command]
+fn reg_undo(_key: String, _prop: String, _kind: String, _prior: String) -> bool {
+    false
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     // En release, si no somos admin, relanzar con UAC y salir.
@@ -561,7 +666,7 @@ pub fn run() {
         .invoke_handler(tauri::generate_handler![
             run_powershell, run_powershell_stream, stats, system_info,
             ledger_read, ledger_write, start_game_watch, stop_game_watch,
-            clear_standby_ram
+            clear_standby_ram, reg_apply, reg_undo
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

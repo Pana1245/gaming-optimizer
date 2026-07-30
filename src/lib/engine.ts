@@ -1,4 +1,4 @@
-import { runPowershell, ledgerRead, ledgerWrite } from "./api";
+import { regApply, regUndo, ledgerRead, ledgerWrite } from "./api";
 import type { RegOp } from "../engineTweaks";
 
 export interface LedgerEntry {
@@ -15,60 +15,26 @@ export interface LedgerEntry {
   undone?: boolean;
 }
 
-const valExpr = (type: "DWord" | "String", v: string | number) =>
-  type === "DWord" ? String(Number(v)) : `'${String(v).replace(/'/g, "''")}'`;
-
-export function buildApply(op: RegOp): string {
-  const v = valExpr(op.type, op.value);
-  return `$key='${op.key}'; $name='${op.prop}'
-$prior = (Get-ItemProperty -Path $key -Name $name -EA SilentlyContinue).$name
-if($null -eq $prior){ Write-Output 'PRIOR=__ABSENT__' } else { Write-Output ('PRIOR=' + $prior) }
-if(!(Test-Path $key)){ New-Item $key -Force | Out-Null }
-Set-ItemProperty -Path $key -Name $name -Value ${v} -Type ${op.type} -Force
-$now = (Get-ItemProperty -Path $key -Name $name -EA SilentlyContinue).$name
-Write-Output ('NOW=' + $now)`;
-}
-
-export function buildUndo(e: LedgerEntry): string {
-  if (e.prior === "__ABSENT__")
-    return `Remove-ItemProperty -Path '${e.key}' -Name '${e.prop}' -Force -EA SilentlyContinue; Write-Output OK`;
-  const v = valExpr(e.type, e.prior);
-  return `$key='${e.key}'; $name='${e.prop}'
-if(!(Test-Path $key)){ New-Item $key -Force | Out-Null }
-Set-ItemProperty -Path $key -Name $name -Value ${v} -Type ${e.type} -Force
-Write-Output OK`;
-}
-
-function parse(output: string): { prior: string; now: string } {
-  let prior = "", now = "";
-  for (const line of output.split("\n")) {
-    const t = line.trim();
-    if (t.startsWith("PRIOR=")) prior = t.slice(6);
-    else if (t.startsWith("NOW=")) now = t.slice(4);
-  }
-  return { prior, now };
-}
-
-/** Lee el valor previo, aplica, y verifica. Devuelve el registro para el ledger. */
+/** Lee el valor previo, aplica y verifica — NATIVO (Rust/winreg), sin PowerShell.
+ *  Atómico y sin problemas de escaping/spawn. Devuelve la entrada para el ledger. */
 export async function applyOp(op: RegOp): Promise<LedgerEntry> {
-  const r = await runPowershell(buildApply(op));
-  if (!r.ok) throw new Error(r.output || "PowerShell no pudo aplicar el cambio");
-  const { prior, now } = parse(r.output);
+  const r = await regApply(op.key, op.prop, op.type, String(op.value));
+  if (!r.ok) throw new Error("No se pudo escribir el registro");
   // Si no se leyó el valor previo de un DWord, no persistimos una entrada
-  // "reversible" engañosa: deshacerla escribiría 0 (Number("")) en el registro.
-  if (prior === "" && op.type === "DWord")
+  // "reversible" engañosa: deshacerla podría escribir un valor equivocado.
+  if (r.prior === "" && op.type === "DWord")
     throw new Error("No se pudo leer el valor previo; se aborta para no dañar el registro al deshacer");
   return {
     id: `${Date.now()}_${op.id}`,
     tweakId: op.id, name: op.name, key: op.key, prop: op.prop, type: op.type,
-    prior, value: String(op.value), ts: Date.now(),
-    verified: now === String(op.value),
+    prior: r.prior, value: String(op.value), ts: Date.now(),
+    verified: r.now === String(op.value),
   };
 }
 
+/** Deshace una entrada del ledger — nativo. Si el valor no existía, lo borra. */
 export async function undoEntry(e: LedgerEntry): Promise<boolean> {
-  const r = await runPowershell(buildUndo(e));
-  return r.ok;
+  return await regUndo(e.key, e.prop, e.type, e.prior);
 }
 
 export async function loadLedger(): Promise<LedgerEntry[]> {
