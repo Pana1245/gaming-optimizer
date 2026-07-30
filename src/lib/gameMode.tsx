@@ -29,24 +29,19 @@ Write-Output OK`;
 // Apps de fondo a las que se les baja la prioridad mientras jugás (Discord queda
 // en Normal para no afectar la voz). Se restauran al cerrar el juego.
 const BG_APPS = "'spotify','chrome','msedge','firefox','opera','brave','slack','onedrive','dropbox','steamwebhelper','epicgameslauncher','googledrivefs'";
-// Antes de bajar a Idle, guardamos la prioridad original de cada app (por nombre)
-// en el registro, para restaurarla tal cual al cerrar el juego en vez de forzar
-// 'Normal' (que pisaba prioridades personalizadas del usuario).
+// Antes de bajar a Idle, guardamos la prioridad original de cada proceso POR PID
+// (no por nombre) en el registro, para restaurar exactamente lo que bajamos —
+// aunque haya dos procesos con el mismo .exe y prioridades distintas.
 const BG_LOWER = String.raw`$bg=@(${BG_APPS}); $p='HKCU:\Software\GamingOptimizer'; if(!(Test-Path $p)){ New-Item $p -Force | Out-Null }
-$saved=@{}; $n=0
+$saved=@(); $n=0
 foreach($x in $bg){ Get-Process -Name $x -EA SilentlyContinue | ForEach-Object {
-  try{ if(-not $saved.ContainsKey($x)){ $saved[$x]=$_.PriorityClass.ToString() }; $_.PriorityClass='Idle'; $n++ }catch{}
+  try{ $saved += ($_.Id.ToString() + '=' + $_.PriorityClass.ToString()); $_.PriorityClass='Idle'; $n++ }catch{}
 } }
-$pairs=@(); foreach($e in $saved.GetEnumerator()){ $pairs += ($e.Key + '=' + $e.Value) }
-Set-ItemProperty $p BgPrios ($pairs -join ';') -Force
+Set-ItemProperty $p BgPrios ($saved -join ';') -Force
 Write-Output ("BG=" + $n)`;
-const BG_RESTORE = String.raw`$bg=@(${BG_APPS}); $p='HKCU:\Software\GamingOptimizer'
+const BG_RESTORE = String.raw`$p='HKCU:\Software\GamingOptimizer'
 $raw=(Get-ItemProperty $p -Name BgPrios -EA SilentlyContinue).BgPrios
-$map=@{}; if($raw){ foreach($pair in ($raw -split ';')){ $kv=$pair -split '=',2; if($kv.Count -eq 2){ $map[$kv[0]]=$kv[1] } } }
-foreach($x in $bg){ Get-Process -Name $x -EA SilentlyContinue | ForEach-Object {
-  $target='Normal'; if($map.ContainsKey($x)){ $target=$map[$x] }
-  try{ $_.PriorityClass=$target }catch{}
-} }
+if($raw){ foreach($pair in ($raw -split ';')){ $kv=$pair -split '=',2; if($kv.Count -eq 2){ try{ (Get-Process -Id ([int]$kv[0]) -EA Stop).PriorityClass=$kv[1] }catch{} } } }
 Remove-ItemProperty $p -Name BgPrios -EA SilentlyContinue
 Write-Output OK`;
 const prioScript = (exe: string) => {
