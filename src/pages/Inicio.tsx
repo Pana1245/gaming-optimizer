@@ -72,6 +72,10 @@ export default function Inicio() {
     <div className="h-full flex flex-col px-8 py-7">
       <HudTitle tkey="page.startup" />
 
+      <p className="text-[12px] text-text-mute mb-3 -mt-1">
+        Apps de inicio del <b className="text-text-dim">Registro</b> (claves Run). No incluye la carpeta de Inicio, tareas programadas ni servicios.
+      </p>
+
       <div className="flex items-center justify-between mb-3">
         <span className="text-[13px] text-text-mute">{enabledCount} activos · {items.length} en total</span>
         <button onClick={load} className="btn btn-ghost">Actualizar</button>
