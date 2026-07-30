@@ -51,6 +51,27 @@ Write-Output 'DNS automatico restaurado'`;
 const CURRENT_DNS = String.raw`$d=Get-DnsClientServerAddress -AddressFamily IPv4 | Where-Object { $_.ServerAddresses } | Select-Object -First 1
 if($d){ Write-Output ($d.ServerAddresses -join ', ') } else { Write-Output 'Automatico' }`;
 
+// Guarda el DNS MANUAL previo del usuario (por interfaz), una sola vez, para
+// poder devolvérselo. Lee NameServer del registro (vacío = DHCP → nada que guardar).
+const SAVE_DNS_PREV = String.raw`$store='HKCU:\Software\GamingOptimizer'; if(!(Test-Path $store)){ New-Item $store -Force | Out-Null }
+if((Get-ItemProperty $store -Name DnsPrev -EA SilentlyContinue).DnsPrev){ Write-Output 'HASSAVED'; return }
+$saved=@()
+Get-NetAdapter -Physical -EA SilentlyContinue | Where-Object Status -eq 'Up' | ForEach-Object {
+  $ns=(Get-ItemProperty "HKLM:\SYSTEM\CurrentControlSet\Services\Tcpip\Parameters\Interfaces\$($_.InterfaceGuid)" -Name NameServer -EA SilentlyContinue).NameServer
+  if($ns){ $addrs=(($ns -split '[,\s]+') | Where-Object { $_ }) -join ','; if($addrs){ $saved += ($_.ifIndex.ToString()+'='+$addrs) } }
+}
+if($saved.Count -gt 0){ Set-ItemProperty $store -Name DnsPrev -Value ($saved -join ';') -Force; Write-Output 'SAVED' } else { Write-Output 'NONE' }`;
+
+const RESTORE_DNS_PREV = String.raw`$store='HKCU:\Software\GamingOptimizer'
+$raw=(Get-ItemProperty $store -Name DnsPrev -EA SilentlyContinue).DnsPrev
+if(-not $raw){ Write-Output 'NONE'; return }
+foreach($pair in ($raw -split ';')){ $kv=$pair -split '=',2; if($kv.Count -eq 2){ try{ Set-DnsClientServerAddress -InterfaceIndex ([int]$kv[0]) -ServerAddresses ($kv[1] -split ',') -EA Stop }catch{} } }
+Clear-DnsClientCache
+Remove-ItemProperty $store -Name DnsPrev -Force -EA SilentlyContinue
+Write-Output 'DNS anterior restaurado'`;
+
+const CHECK_DNS_SAVED = String.raw`if((Get-ItemProperty 'HKCU:\Software\GamingOptimizer' -Name DnsPrev -EA SilentlyContinue).DnsPrev){ Write-Output 'YES' } else { Write-Output 'NO' }`;
+
 const color = (ms: number) => (ms < 30 ? "#00e676" : ms < 70 ? "#ffd24a" : "#ff8a65");
 
 export default function Red() {
@@ -60,6 +81,7 @@ export default function Red() {
   const [current, setCurrent] = useState("…");
   const [applying, setApplying] = useState<string | null>(null);
   const [msg, setMsg] = useState<string | null>(null);
+  const [hasSaved, setHasSaved] = useState(false);
   const mounted = useRef(true);
 
   const refreshCurrent = () =>
@@ -89,6 +111,7 @@ export default function Red() {
     mounted.current = true;
     refreshCurrent();
     runTest();
+    runPowershell(CHECK_DNS_SAVED).then((r) => mounted.current && setHasSaved(r.output.trim() === "YES")).catch(() => {});
     return () => { mounted.current = false; };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -97,10 +120,31 @@ export default function Red() {
     setApplying(d ? d.id : "auto");
     setMsg(null);
     try {
+      // Al aplicar un preset, guardar (una vez) el DNS manual que el usuario tenía,
+      // para poder devolvérselo con "Restaurar los míos".
+      if (d) { const s = await runPowershell(SAVE_DNS_PREV); if (s.output.includes("SAVED")) setHasSaved(true); }
       const r = await runPowershell(dnsScript(d ? [d.primary, d.secondary] : null));
       if (!mounted.current) return;
       const label = d ? (lang === "en" ? (d.nameEn ?? d.name) : d.name) : t("net.autoDns");
       setMsg(r.ok ? `✓ ${label} ${t("net.applied")}` : `✗ ${r.output}`);
+      await refreshCurrent();
+    } catch (err) {
+      if (mounted.current) setMsg(`✗ ${err instanceof Error ? err.message : String(err)}`);
+    } finally {
+      if (mounted.current) setApplying(null);
+    }
+  };
+
+  const restorePrev = async () => {
+    setApplying("prev");
+    setMsg(null);
+    try {
+      const r = await runPowershell(RESTORE_DNS_PREV);
+      if (!mounted.current) return;
+      setMsg(/restaurado/i.test(r.output)
+        ? `✓ ${lang === "en" ? "Your previous DNS restored" : "Tus DNS anteriores restaurados"}`
+        : `✗ ${r.output}`);
+      setHasSaved(false);
       await refreshCurrent();
     } catch (err) {
       if (mounted.current) setMsg(`✗ ${err instanceof Error ? err.message : String(err)}`);
@@ -171,12 +215,19 @@ export default function Red() {
             );
           })}
 
-          {/* Volver al DNS del router */}
+          {/* Volver al DNS del router / restaurar los del usuario */}
           <div className="flex items-center justify-between pt-1 pl-1">
             <span className="text-[13px] text-text-mute">{t("net.backQuestion")}</span>
-            <button onClick={() => apply(null)} disabled={applying !== null} className="btn btn-ghost w-[84px]">
-              {applying === "auto" ? "…" : t("net.auto")}
-            </button>
+            <div className="flex gap-2">
+              {hasSaved && (
+                <button onClick={restorePrev} disabled={applying !== null} className="btn btn-ghost">
+                  {applying === "prev" ? "…" : (lang === "en" ? "Restore mine" : "Restaurar los míos")}
+                </button>
+              )}
+              <button onClick={() => apply(null)} disabled={applying !== null} className="btn btn-ghost w-[84px]">
+                {applying === "auto" ? "…" : t("net.auto")}
+              </button>
+            </div>
           </div>
         </div>
       </div>
