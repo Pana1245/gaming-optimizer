@@ -8,6 +8,10 @@
 ![Stack](https://img.shields.io/badge/Tauri%20%2B%20React%20%2B%20Rust-24C8DB)
 ![Idioma](https://img.shields.io/badge/ES%20%7C%20EN-bilingüe-9C27B0)
 ![Licencia](https://img.shields.io/badge/Licencia-MIT-00e676)
+<br>
+![Descargas totales](https://img.shields.io/github/downloads/Pana1245/gaming-optimizer/total?label=descargas&logo=github&color=00e676)
+![Última versión](https://img.shields.io/github/v/release/Pana1245/gaming-optimizer?label=versión&color=0078D6)
+![Descargas último release](https://img.shields.io/github/downloads/Pana1245/gaming-optimizer/latest/total?label=último%20release&color=24C8DB)
 
 </div>
 
