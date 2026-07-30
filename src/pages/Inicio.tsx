@@ -4,6 +4,7 @@ import { runPowershell } from "../lib/api";
 import { useScrollMemory } from "../lib/useScrollMemory";
 import { HudTitle } from "../components/NeonCard";
 import { StatusLine } from "../components/Feedback";
+import { useI18n } from "../lib/i18n";
 
 interface Entry { name: string; cmd: string; scope: "HKCU" | "HKLM"; enabled: boolean; }
 
@@ -34,6 +35,7 @@ const toggleScript = (e: Entry, enable: boolean) => {
 };
 
 export default function Inicio() {
+  const { t } = useI18n();
   const [items, setItems] = useState<Entry[]>([]);
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState<string | null>(null);
@@ -53,16 +55,16 @@ export default function Inicio() {
 
   const toggle = async (e: Entry) => {
     setBusy(e.name);
-    setStatus(`${e.enabled ? "Desactivando" : "Activando"} ${e.name}…`);
+    setStatus(`${e.enabled ? t("startup.disabling") : t("startup.enabling")} ${e.name}…`);
     const r = await runPowershell(toggleScript(e, !e.enabled));
     if (!r.ok) {
       // No invertir el switch ni cantar éxito si StartupApproved no cambió.
-      setStatus(`✗ No se pudo ${e.enabled ? "desactivar" : "activar"} ${e.name}`);
+      setStatus(`✗ ${e.enabled ? t("startup.failDisable") : t("startup.failEnable")} ${e.name}`);
       setBusy(null);
       return;
     }
     setItems((list) => list.map((x) => (x.name === e.name && x.scope === e.scope ? { ...x, enabled: !x.enabled } : x)));
-    setStatus(`✓ ${e.name} ${e.enabled ? "desactivado" : "activado"}`);
+    setStatus(`✓ ${e.name} ${e.enabled ? t("startup.disabled") : t("startup.enabled")}`);
     setBusy(null);
   };
 
@@ -72,20 +74,18 @@ export default function Inicio() {
     <div className="h-full flex flex-col px-8 py-7">
       <HudTitle tkey="page.startup" />
 
-      <p className="text-[12px] text-text-mute mb-3 -mt-1">
-        Apps de inicio del <b className="text-text-dim">Registro</b> (claves Run). No incluye la carpeta de Inicio, tareas programadas ni servicios.
-      </p>
+      <p className="text-[12px] text-text-mute mb-3 -mt-1">{t("startup.scope")}</p>
 
       <div className="flex items-center justify-between mb-3">
-        <span className="text-[13px] text-text-mute">{enabledCount} activos · {items.length} en total</span>
-        <button onClick={load} className="btn btn-ghost">Actualizar</button>
+        <span className="text-[13px] text-text-mute">{enabledCount} {t("startup.active")} · {items.length} {t("startup.total")}</span>
+        <button onClick={load} className="btn btn-ghost">{t("common.refresh")}</button>
       </div>
 
       <div ref={scrollRef} className="flex-1 overflow-y-auto pr-2 -mr-2">
         {loading ? (
-          <div className="text-text-mute text-sm">Cargando…</div>
+          <div className="text-text-mute text-sm">{t("startup.loading")}</div>
         ) : items.length === 0 ? (
-          <div className="text-text-mute text-sm">No se encontraron programas de inicio.</div>
+          <div className="text-text-mute text-sm">{t("startup.none")}</div>
         ) : (
           <div className="rounded-xl border border-line divide-y divide-line/60">
             {items.map((e) => (

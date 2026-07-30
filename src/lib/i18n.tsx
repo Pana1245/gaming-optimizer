@@ -121,6 +121,25 @@ const STR: Record<string, { es: string; en: string }> = {
   "common.apply": { es: "Aplicar", en: "Apply" },
   "common.restore": { es: "Restaurar", en: "Restore" },
   "common.log": { es: "Registro", en: "Log" },
+  "common.refresh": { es: "Actualizar", en: "Refresh" },
+  "common.selectAll": { es: "Seleccionar todo", en: "Select all" },
+  "common.deselect": { es: "Deseleccionar", en: "Deselect" },
+  "common.cancel": { es: "Cancelar", en: "Cancel" },
+  "common.progress": { es: "Progreso", en: "Progress" },
+  "common.ready": { es: "Listo.", en: "Ready." },
+
+  // ── Inicio ──
+  "startup.scope": { es: "Apps de inicio del Registro (claves Run). No incluye la carpeta de Inicio, tareas programadas ni servicios.", en: "Registry startup apps (Run keys). It doesn't include the Startup folder, scheduled tasks or services." },
+  "startup.active": { es: "activos", en: "enabled" },
+  "startup.total": { es: "en total", en: "total" },
+  "startup.loading": { es: "Cargando…", en: "Loading…" },
+  "startup.none": { es: "No se encontraron programas de inicio.", en: "No startup programs found." },
+  "startup.disabling": { es: "Desactivando", en: "Disabling" },
+  "startup.enabling": { es: "Activando", en: "Enabling" },
+  "startup.disabled": { es: "desactivado", en: "disabled" },
+  "startup.enabled": { es: "activado", en: "enabled" },
+  "startup.failDisable": { es: "No se pudo desactivar", en: "Couldn't disable" },
+  "startup.failEnable": { es: "No se pudo activar", en: "Couldn't enable" },
 
   // ── Gráficos ──
   "gpu.detected": { es: "GPU detectada", en: "Detected GPU" },
