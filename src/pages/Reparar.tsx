@@ -3,6 +3,7 @@ import { motion } from "framer-motion";
 import { runStream } from "../lib/api";
 import NeonCard, { HudTitle } from "../components/NeonCard";
 import { Spinner, IndeterminateBar } from "../components/Feedback";
+import { useI18n } from "../lib/i18n";
 
 const ACTIONS = [
   { id: "sfc", title: "Reparar archivos del sistema (SFC)", desc: "Escanea y repara archivos de Windows dañados. Puede tardar varios minutos.",
@@ -18,8 +19,9 @@ const ACTIONS = [
 ];
 
 export default function Reparar() {
+  const { t } = useI18n();
   const [busy, setBusy] = useState<string | null>(null);
-  const [log, setLog] = useState<string[]>(["Listo."]);
+  const [log, setLog] = useState<string[]>(() => [t("common.ready")]);
   const logRef = useRef<HTMLDivElement>(null);
 
   const addLog = (s: string) => setLog((l) => {
@@ -31,25 +33,26 @@ export default function Reparar() {
   const run = async (a: typeof ACTIONS[number]) => {
     if (busy) return;
     setBusy(a.id);
-    addLog(`▸ ${a.title}…`);
-    if (a.id === "sfc" || a.id === "dism") addLog("  (puede tardar varios minutos — verás el avance acá)");
+    const title = t(`repair.${a.id}.title`);
+    addLog(`▸ ${title}…`);
+    if (a.id === "sfc" || a.id === "dism") addLog("  " + t("repair.mayTake"));
     const lines: string[] = [];
     const res = await runStream(a.script, (line) => { lines.push(line); addLog("  " + line); });
-    const t = lines.join("\n").toLowerCase();
+    const out = lines.join("\n").toLowerCase();
     // No damos "completado" por defecto: si el código de salida no fue 0, lo decimos.
-    let summary = res.ok ? `✓ ${a.title} — completado` : `⚠ ${a.title} — terminó con errores (código ${res.code})`;
+    let summary = res.ok ? `✓ ${title} — ${t("repair.completed")}` : `⚠ ${title} — ${t("repair.errCode")} ${res.code})`;
     if (a.id === "sfc") {
-      if (t.includes("did not find any integrity") || t.includes("no encontró ninguna infracción"))
-        summary = "✓ SFC: no se encontraron archivos dañados";
-      else if (t.includes("successfully repaired") || t.includes("reparó correctamente") || t.includes("reparados correctamente"))
-        summary = "✓ SFC: archivos dañados reparados";
-      else if (t.includes("unable to fix") || t.includes("no pudo reparar"))
-        summary = "⚠ SFC: encontró errores que no pudo reparar (ejecutá DISM y reintentá)";
+      if (out.includes("did not find any integrity") || out.includes("no encontró ninguna infracción"))
+        summary = `✓ ${t("repair.sfc.clean")}`;
+      else if (out.includes("successfully repaired") || out.includes("reparó correctamente") || out.includes("reparados correctamente"))
+        summary = `✓ ${t("repair.sfc.fixed")}`;
+      else if (out.includes("unable to fix") || out.includes("no pudo reparar"))
+        summary = `⚠ ${t("repair.sfc.unfixable")}`;
     } else if (a.id === "dism") {
-      if (t.includes("no component store corruption") || t.includes("no se detectó daño") || t.includes("completed successfully") || t.includes("se completó correctamente"))
-        summary = "✓ DISM: imagen restaurada / sin corrupción";
-      else if (t.includes("error"))
-        summary = "⚠ DISM: terminó con errores";
+      if (out.includes("no component store corruption") || out.includes("no se detectó daño") || out.includes("completed successfully") || out.includes("se completó correctamente"))
+        summary = `✓ ${t("repair.dism.ok")}`;
+      else if (out.includes("error"))
+        summary = `⚠ ${t("repair.dism.err")}`;
     }
     addLog(`  ${summary}`);
     setBusy(null);
@@ -67,12 +70,12 @@ export default function Reparar() {
               <NeonCard>
                 <div className="flex items-center justify-between gap-4">
                   <div className="min-w-0">
-                    <div className="text-[14px] font-medium text-text">{a.title}</div>
-                    <div className="text-[13px] text-text-dim mt-0.5">{a.desc}</div>
+                    <div className="text-[14px] font-medium text-text">{t(`repair.${a.id}.title`)}</div>
+                    <div className="text-[13px] text-text-dim mt-0.5">{t(`repair.${a.id}.desc`)}</div>
                   </div>
                   <motion.button whileTap={{ scale: 0.96 }} onClick={() => run(a)} disabled={!!busy}
                     className="shrink-0 px-4 h-9 rounded-lg text-[13px] font-medium text-text-dim hover:text-text border border-line hover:border-line-2 transition disabled:opacity-40">
-                    {busy === a.id ? "Ejecutando…" : a.btn}
+                    {busy === a.id ? t("repair.running") : t(`repair.${a.id}.btn`)}
                   </motion.button>
                 </div>
               </NeonCard>
@@ -82,7 +85,7 @@ export default function Reparar() {
 
         <div className="flex flex-col min-h-0">
           <div className="flex items-center gap-2 mb-2.5 h-4">
-            <span className="section-label">Salida</span>
+            <span className="section-label">{t("repair.output")}</span>
             {busy && <Spinner size={12} />}
           </div>
           {busy && <IndeterminateBar className="mb-2" />}
