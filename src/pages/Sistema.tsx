@@ -5,6 +5,7 @@ import {
 } from "recharts";
 import { getStats, getSystemInfo, type SysInfo } from "../lib/api";
 import NeonCard, { HudTitle } from "../components/NeonCard";
+import { useI18n } from "../lib/i18n";
 
 interface Pt { t: number; v: number; }
 const MAX = 40;
@@ -58,6 +59,7 @@ function Graph({ data, color, label, value }: { data: Pt[]; color: string; label
 }
 
 export default function Sistema() {
+  const { t } = useI18n();
   const [cpu, setCpu] = useState<Pt[]>([]);
   const [ram, setRam] = useState<Pt[]>([]);
   const [cpuV, setCpuV] = useState(0);
@@ -94,17 +96,17 @@ export default function Sistema() {
 
         <motion.div variants={itemV}>
           <NeonCard>
-            <span className="section-label">Información del equipo</span>
+            <span className="section-label">{t("sys.info")}</span>
             {info ? (
               <div className="mt-4 grid grid-cols-[120px_1fr] gap-y-2.5 text-[13px]">
                 <Row k="Windows" v={`${info.windows} (W${info.win_ver})`} />
                 <Row k="CPU" v={info.cpu} />
-                <Row k="Núcleos" v={`${info.cores} físicos · ${info.threads} lógicos`} />
+                <Row k={t("sys.cores")} v={t("sys.coresVal").replace("{p}", String(info.cores)).replace("{l}", String(info.threads))} />
                 <Row k="GPU" v={info.gpu || "—"} />
                 <Row k="RAM" v={`${info.ram_gb} GB`} />
               </div>
             ) : (
-              <div className="text-text-mute text-sm mt-3">Cargando…</div>
+              <div className="text-text-mute text-sm mt-3">{t("sys.loading")}</div>
             )}
           </NeonCard>
         </motion.div>

@@ -5,6 +5,7 @@ import { useScrollMemory } from "../lib/useScrollMemory";
 import { HudTitle } from "../components/NeonCard";
 import Modal from "../components/Modal";
 import { Spinner, IndeterminateBar } from "../components/Feedback";
+import { useI18n } from "../lib/i18n";
 
 interface App {
   name: string; pub: string; type: "win32" | "uwp";
@@ -196,6 +197,7 @@ const fmtSize = (mb: number) =>
   !mb ? "" : mb >= 1024 ? `${(mb / 1024).toFixed(1)} GB` : `${mb.toFixed(0)} MB`;
 
 export default function Desinstalar() {
+  const { t } = useI18n();
   const [apps, setApps] = useState<App[]>([]);
   const [loading, setLoading] = useState(true);
   const [query, setQuery] = useState("");
@@ -227,9 +229,9 @@ export default function Desinstalar() {
 
   const uninstall = async (a: App) => {
     setWorking(true); setBusy(a.name);
-    setStatus(`Desinstalando ${a.name}…${a.type === "win32" ? " (puede abrir su propio desinstalador)" : ""}`);
+    setStatus(t("unins.uninstalling").replace("{name}", a.name) + (a.type === "win32" ? t("unins.ownUninstaller") : ""));
     const r = await runPowershell(uninstallScript(a));
-    setStatus(`✓ ${a.name}: ${(r.output.split("\n").pop() || "hecho").trim()}`);
+    setStatus(`✓ ${a.name}: ${(r.output.split("\n").pop() || t("unins.done")).trim()}`);
     if (a.type === "uwp") removeRow(a);
     setBusy(null); setWorking(false);
   };
@@ -238,14 +240,14 @@ export default function Desinstalar() {
     // UWP: no hay restos de registro clásico; se quita el paquete directo.
     if (a.type === "uwp") {
       setConfirm({
-        title: "Forzar borrado",
-        msg: `Se quitará el paquete "${a.name}" de todos los usuarios.\nNo se puede deshacer.`,
+        title: t("unins.forceTitle"),
+        msg: t("unins.forceUwpMsg").replace("{name}", a.name),
         run: async () => {
           setConfirm(null);
           setWorking(true); setBusy(a.name);
-          setStatus(`Forzando borrado de ${a.name}…`);
+          setStatus(t("unins.forcing").replace("{name}", a.name));
           const r = await runPowershell(forceUwp(a));
-          setStatus(`✓ ${a.name}: ${(r.output.split("\n").pop() || "hecho").trim()}`);
+          setStatus(`✓ ${a.name}: ${(r.output.split("\n").pop() || t("unins.done")).trim()}`);
           removeRow(a);
           setBusy(null); setWorking(false);
         },
@@ -256,21 +258,21 @@ export default function Desinstalar() {
     // Corre primero el desinstalador (cierra la app y borra sus archivos) y recién
     // después escanea los restos, así no chocan con archivos en uso.
     setConfirm({
-      title: "Forzar borrado",
-      msg: `Se va a DESINSTALAR "${a.name}" y después borrar los restos que queden (archivos + registro).\n\nPrimero corre su desinstalador y luego te muestro qué sobró para eliminar. No se puede deshacer.`,
+      title: t("unins.forceTitle"),
+      msg: t("unins.forceWin32Msg").replace("{name}", a.name),
       run: async () => {
         setConfirm(null);
         setWorking(true); setBusy(a.name);
-        setStatus(`Desinstalando ${a.name}…`);
+        setStatus(t("unins.uninstalling").replace("{name}", a.name));
         await runPowershell(uninstallScript(a));
-        setStatus(`Esperando a que termine el desinstalador…`);
+        setStatus(t("unins.waitUninstaller"));
         await runPowershell(waitSettle(a));
-        setStatus(`Buscando restos de ${a.name}…`);
+        setStatus(t("unins.searchingLeft").replace("{name}", a.name));
         const r = await runPowershell(scanLeftovers(a));
         let items: Leftover[] = [];
         try { const d = JSON.parse(r.output.trim() || "[]"); items = (Array.isArray(d) ? d : [d]) as Leftover[]; } catch {}
         setBusy(null); setWorking(false); setStatus("");
-        if (items.length === 0) { setStatus(`✓ ${a.name}: desinstalado, sin restos.`); removeRow(a); return; }
+        if (items.length === 0) { setStatus(`✓ ${t("unins.noLeftovers").replace("{name}", a.name)}`); removeRow(a); return; }
         setScan({ app: a, items: items.map((it) => ({ ...it, checked: true })) });
       },
     });
@@ -286,9 +288,9 @@ export default function Desinstalar() {
     setScan(null);
     if (chosen.length === 0) { removeRow(app); return; }
     setWorking(true); setBusy(app.name);
-    setStatus(`Borrando restos de ${app.name}…`);
+    setStatus(t("unins.deletingLeft").replace("{name}", app.name));
     const r = await runPowershell(deleteLeftovers(chosen));
-    const last = r.output.split("\n").map((l) => l.trim()).filter(Boolean).pop() || "hecho";
+    const last = r.output.split("\n").map((l) => l.trim()).filter(Boolean).pop() || t("unins.done");
     setStatus(`✓ ${app.name}: ${last}`);
     removeRow(app);
     setBusy(null); setWorking(false);
@@ -299,21 +301,21 @@ export default function Desinstalar() {
       <HudTitle tkey="page.uninstall" />
 
       <div className="flex items-center gap-2 mb-3">
-        <input value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Buscar programa…"
+        <input value={query} onChange={(e) => setQuery(e.target.value)} placeholder={t("unins.search")}
           className="flex-1 h-9 px-3 rounded-lg bg-surface border border-line focus:border-accent outline-none text-[13px] text-text placeholder:text-text-mute transition" />
-        <button disabled={working} onClick={() => setConfirm({ title: "Quitar bloatware de Microsoft", msg: "Se quitarán apps no esenciales de Microsoft (Noticias, Clima, Solitaire, Skype, etc.).", run: async () => { setConfirm(null); setWorking(true); setStatus("Quitando bloatware de Microsoft…"); const r = await runPowershell(MS_BLOAT); setStatus("✓ " + (r.output.split("\n").pop() || "Hecho").trim()); await load(); setWorking(false); } })}
+        <button disabled={working} onClick={() => setConfirm({ title: t("unins.bloatMsTitle"), msg: t("unins.bloatMsMsg"), run: async () => { setConfirm(null); setWorking(true); setStatus(t("unins.bloatMsRun")); const r = await runPowershell(MS_BLOAT); setStatus("✓ " + (r.output.split("\n").pop() || t("unins.doneCap")).trim()); await load(); setWorking(false); } })}
           className="btn btn-ghost">Bloatware MS</button>
-        <button disabled={working} onClick={() => setConfirm({ title: "Quitar bloatware de terceros", msg: "Se quitarán apps preinstaladas de terceros (CandyCrush, Disney, McAfee, etc.).", run: async () => { setConfirm(null); setWorking(true); setStatus("Quitando bloatware de terceros…"); const r = await runPowershell(OEM_BLOAT); setStatus("✓ " + (r.output.split("\n").pop() || "Hecho").trim()); await load(); setWorking(false); } })}
+        <button disabled={working} onClick={() => setConfirm({ title: t("unins.bloatOemTitle"), msg: t("unins.bloatOemMsg"), run: async () => { setConfirm(null); setWorking(true); setStatus(t("unins.bloatOemRun")); const r = await runPowershell(OEM_BLOAT); setStatus("✓ " + (r.output.split("\n").pop() || t("unins.doneCap")).trim()); await load(); setWorking(false); } })}
           className="btn btn-ghost">Bloatware OEM</button>
         <button disabled={working || loading} onClick={load}
-          className="btn btn-ghost">Actualizar</button>
+          className="btn btn-ghost">{t("common.refresh")}</button>
       </div>
 
       {working && <IndeterminateBar className="mb-3" />}
 
       <div ref={scrollRef} className="flex-1 overflow-y-auto pr-2 -mr-2">
         {loading ? (
-          <div className="text-text-mute text-sm">Cargando programas…</div>
+          <div className="text-text-mute text-sm">{t("unins.loading")}</div>
         ) : (
           <div className="rounded-xl border border-line divide-y divide-line/60">
             {filtered.map((a) => (
@@ -331,16 +333,16 @@ export default function Desinstalar() {
                   {busy === a.name && <Spinner />}
                   <motion.button whileTap={{ scale: 0.95 }} onClick={() => uninstall(a)} disabled={working}
                     className="px-3 h-8 rounded-lg text-[13px] text-text-dim hover:text-text border border-line hover:border-line-2 transition disabled:opacity-30">
-                    Quitar
+                    {t("unins.remove")}
                   </motion.button>
                   <motion.button whileTap={{ scale: 0.95 }} onClick={() => force(a)} disabled={working}
                     className="px-3 h-8 rounded-lg text-[13px] text-[#ff7a90] hover:text-[#ff5470] border border-[#ff547033] hover:border-[#ff547066] transition disabled:opacity-30">
-                    Forzar
+                    {t("unins.force")}
                   </motion.button>
                 </div>
               </div>
             ))}
-            {filtered.length === 0 && <div className="px-4 py-3 text-text-mute text-sm">Sin resultados.</div>}
+            {filtered.length === 0 && <div className="px-4 py-3 text-text-mute text-sm">{t("unins.noResults")}</div>}
           </div>
         )}
       </div>
@@ -353,15 +355,15 @@ export default function Desinstalar() {
       )}
 
       <Modal open={!!confirm} title={confirm?.title || ""} onClose={() => setConfirm(null)}
-        onConfirm={confirm?.run} confirmText="Confirmar" closeText="Cancelar">
+        onConfirm={confirm?.run} confirmText={t("unins.confirm")} closeText={t("common.cancel")}>
         {confirm?.msg || ""}
       </Modal>
 
-      <Modal open={!!scan} title={`Forzar borrado — ${scan?.app.name ?? ""}`}
+      <Modal open={!!scan} title={`${t("unins.forceTitle")} — ${scan?.app.name ?? ""}`}
         onClose={() => setScan(null)} onConfirm={runDelete}
-        confirmText={`Borrar (${scan?.items.filter((i) => i.checked).length ?? 0})`} closeText="Cancelar">
+        confirmText={`${t("unins.deleteBtn")} (${scan?.items.filter((i) => i.checked).length ?? 0})`} closeText={t("common.cancel")}>
         <div>
-          <p className="mb-3">Restos encontrados de esta app. Destildá lo que quieras conservar. <b className="text-text">No se puede deshacer.</b></p>
+          <p className="mb-3">{t("unins.previewIntro")} <b className="text-text">{t("unins.cantUndo")}</b></p>
           <div className="max-h-56 overflow-y-auto rounded-lg border border-line divide-y divide-line/60">
             {scan?.items.map((it, i) => (
               <label key={i} className="flex items-start gap-2.5 px-3 py-2 cursor-pointer hover:bg-white/[0.025]">

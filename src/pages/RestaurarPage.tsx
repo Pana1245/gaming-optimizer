@@ -3,6 +3,7 @@ import { motion } from "framer-motion";
 import { runPowershell } from "../lib/api";
 import NeonCard, { HudTitle } from "../components/NeonCard";
 import { Spinner, IndeterminateBar } from "../components/Feedback";
+import { useI18n } from "../lib/i18n";
 
 const SCRIPTS = {
   list: `$root="$env:SystemDrive\\OptimizacionBackup"; if(Test-Path $root){ Get-ChildItem $root -Directory | Sort-Object Name -Descending | Select-Object -ExpandProperty Name }`,
@@ -39,7 +40,8 @@ else { Write-Output "Registro restaurado. Reinicia el PC para aplicar." }`,
 };
 
 export default function RestaurarPage() {
-  const [log, setLog] = useState<string[]>(["Listo."]);
+  const { t } = useI18n();
+  const [log, setLog] = useState<string[]>(() => [t("common.ready")]);
   const [busy, setBusy] = useState(false);
   const [backups, setBackups] = useState<string[]>([]);
   const logRef = useRef<HTMLDivElement>(null);
@@ -95,19 +97,19 @@ export default function RestaurarPage() {
       <div className="flex-1 grid grid-cols-[1fr_340px] gap-6 min-h-0">
         <motion.div className="space-y-3 overflow-y-auto pr-3 -mr-3"
           initial="hidden" animate="show" variants={{ show: { transition: { staggerChildren: 0.06 } } }}>
-          <Card title="Restaurar último backup" primary
-            desc="Reimporta el registro guardado antes de la última optimización."
-            btn="Restaurar" onClick={() => action("restore", "Restaurar último backup")} />
-          <Card title="Crear punto de restauración"
-            desc="Genera un punto de restauración del sistema ahora mismo."
-            btn="Crear" onClick={() => action("checkpoint", "Crear punto de restauración")} />
-          <Card title="Restaurar sistema de Windows"
-            desc="Abre la herramienta nativa de Windows (rstrui)."
-            btn="Abrir" onClick={openRstrui} />
+          <Card title={t("restore.restoreLast")} primary
+            desc={t("restore.restoreLastDesc")}
+            btn={t("common.restore")} onClick={() => action("restore", t("restore.restoreLast"))} />
+          <Card title={t("restore.createPoint")}
+            desc={t("restore.createPointDesc")}
+            btn={t("restore.createBtn")} onClick={() => action("checkpoint", t("restore.createPoint"))} />
+          <Card title={t("restore.winRestore")}
+            desc={t("restore.winRestoreDesc")}
+            btn={t("restore.openBtn")} onClick={openRstrui} />
 
           <motion.div variants={{ hidden: { opacity: 0, y: 12 }, show: { opacity: 1, y: 0, transition: { duration: 0.3, ease: "easeOut" } } }}>
             <NeonCard>
-              <span className="section-label">Backups disponibles</span>
+              <span className="section-label">{t("restore.available")}</span>
               {backups.length ? (
                 <div className="mt-3 space-y-1.5 font-mono text-[13px] text-text-dim">
                   {backups.map((b) => (
@@ -116,14 +118,14 @@ export default function RestaurarPage() {
                     </div>
                   ))}
                 </div>
-              ) : <div className="text-text-mute text-[13px] mt-2">Todavía no hay backups. Se crean al optimizar.</div>}
+              ) : <div className="text-text-mute text-[13px] mt-2">{t("restore.noBackups")}</div>}
             </NeonCard>
           </motion.div>
         </motion.div>
 
         <div className="flex flex-col min-h-0">
           <div className="flex items-center gap-2 mb-2.5 h-4">
-            <span className="section-label">Salida</span>
+            <span className="section-label">{t("repair.output")}</span>
             {busy && <Spinner size={12} />}
           </div>
           {busy && <IndeterminateBar className="mb-2" />}
