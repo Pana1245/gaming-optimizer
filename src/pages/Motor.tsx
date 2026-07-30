@@ -6,15 +6,17 @@ import { useScrollMemory } from "../lib/useScrollMemory";
 import EnergyCheckbox from "../components/EnergyCheckbox";
 import { HudTitle } from "../components/NeonCard";
 import { IndeterminateBar } from "../components/Feedback";
+import { useI18n } from "../lib/i18n";
 
 const fmtTime = (ts: number) => new Date(ts).toLocaleString();
-const showVal = (v: string) => (v === "__ABSENT__" ? "(no existía)" : v);
 
 export default function Motor() {
+  const { t } = useI18n();
+  const showVal = (v: string) => (v === "__ABSENT__" ? t("motor.notExisted") : v);
   const [winVer, setWinVer] = useState(11);
   const [tab, setTab] = useState<"apply" | "history">("apply");
   const [sel, setSel] = useState<Record<string, boolean>>({});
-  const [log, setLog] = useState<string[]>(["Listo. Cada cambio se lee, aplica, verifica y queda en el historial."]);
+  const [log, setLog] = useState<string[]>(() => [t("motor.logIntro")]);
   const [busy, setBusy] = useState(false);
   const [ledger, setLedger] = useState<LedgerEntry[]>([]);
   const logRef = useRef<HTMLDivElement>(null);
@@ -42,7 +44,7 @@ export default function Motor() {
 
   const apply = async () => {
     setBusy(true);
-    setLog(["Aplicando con verificación…"]);
+    setLog([t("motor.applying")]);
     const newEntries: LedgerEntry[] = [];
     let ok = 0;
     for (const op of selected) {
@@ -52,10 +54,10 @@ export default function Motor() {
         newEntries.push(e);
         if (e.verified) ok++;
         if (mounted.current)
-          addLog(e.verified ? `  ✓ verificado  (${showVal(e.prior)} → ${e.value})` : `  ✗ no se pudo verificar (quedó distinto al valor esperado)`);
+          addLog(e.verified ? `  ✓ ${t("motor.verified")}  (${showVal(e.prior)} → ${e.value})` : `  ✗ ${t("motor.notVerified")}`);
       } catch (err) {
         // No persistimos la entrada: si falló el apply, no debe quedar como reversible.
-        if (mounted.current) addLog(`  ✗ error: ${err instanceof Error ? err.message : String(err)}`);
+        if (mounted.current) addLog(`  ✗ ${t("motor.errorPre")} ${err instanceof Error ? err.message : String(err)}`);
       }
     }
     // Persistir SIEMPRE, aunque el usuario haya navegado durante el apply: los cambios
@@ -65,7 +67,7 @@ export default function Motor() {
     await saveLedger(updated);
     if (mounted.current) {
       setLedger(updated);
-      addLog(`\n${ok}/${selected.length} aplicados y verificados. Quedaron en el Historial (reversibles).`);
+      addLog(`\n${t("motor.appliedSummary").replace("{ok}", String(ok)).replace("{total}", String(selected.length))}`);
       setBusy(false);
     }
   };
@@ -74,7 +76,7 @@ export default function Motor() {
     setBusy(true);
     const ok = await undoEntry(e);
     if (!ok) {
-      addLog(`✗ No se pudo deshacer ${e.name} — sigue activo.`);
+      addLog(`✗ ${t("motor.undoFail").replace("{name}", e.name)}`);
       if (mounted.current) setBusy(false);
       return;
     }
@@ -93,7 +95,7 @@ export default function Motor() {
     await saveLedger(updated);
     if (mounted.current) {
       setLedger(updated);
-      if (failed.size) addLog(`✗ ${failed.size} cambio(s) no se pudieron deshacer y siguen activos.`);
+      if (failed.size) addLog(`✗ ${t("motor.undoAllFail").replace("{n}", String(failed.size))}`);
       setBusy(false);
     }
   };
@@ -107,10 +109,10 @@ export default function Motor() {
 
       {/* Tabs */}
       <div className="flex gap-1 mb-4 p-1 rounded-lg bg-surface border border-line w-max">
-        {(["apply", "history"] as const).map((t) => (
-          <button key={t} onClick={() => setTab(t)}
-            className={`px-3 h-7 rounded-md text-[13.5px] transition ${tab === t ? "bg-white/[0.06] text-text" : "text-text-dim hover:text-text"}`}>
-            {t === "apply" ? "Aplicar" : `Historial${activeCount ? ` (${activeCount})` : ""}`}
+        {(["apply", "history"] as const).map((tb) => (
+          <button key={tb} onClick={() => setTab(tb)}
+            className={`px-3 h-7 rounded-md text-[13.5px] transition ${tab === tb ? "bg-white/[0.06] text-text" : "text-text-dim hover:text-text"}`}>
+            {tb === "apply" ? t("motor.tabApply") : `${t("motor.tabHistory")}${activeCount ? ` (${activeCount})` : ""}`}
           </button>
         ))}
       </div>
@@ -137,7 +139,7 @@ export default function Motor() {
             </div>
 
             <div className="flex flex-col min-h-0">
-              <span className="section-label mb-2.5">Verificación</span>
+              <span className="section-label mb-2.5">{t("motor.verification")}</span>
               <div ref={logRef} className="flex-1 overflow-y-auto rounded-xl bg-surface border border-line p-4 font-mono text-[13px] leading-relaxed text-text-dim whitespace-pre-wrap">
                 {log.join("\n")}
               </div>
@@ -148,11 +150,11 @@ export default function Motor() {
             {busy && <IndeterminateBar className="mb-4" />}
             <div className="flex items-center justify-between">
               <div className="flex gap-2">
-                <button disabled={busy} onClick={() => setSel(Object.fromEntries(tweaks.map((t) => [t.id, true])))} className="btn btn-ghost">Seleccionar todo</button>
-                <button disabled={busy} onClick={() => setSel({})} className="btn btn-ghost">Deseleccionar</button>
+                <button disabled={busy} onClick={() => setSel(Object.fromEntries(tweaks.map((tw) => [tw.id, true])))} className="btn btn-ghost">{t("common.selectAll")}</button>
+                <button disabled={busy} onClick={() => setSel({})} className="btn btn-ghost">{t("common.deselect")}</button>
               </div>
               <button disabled={busy || selected.length === 0} onClick={apply} className="btn btn-primary px-6">
-                {busy ? "Aplicando…" : `Aplicar verificado (${selected.length})`}
+                {busy ? t("gpu.applying") : `${t("motor.applyVerified")} (${selected.length})`}
               </button>
             </div>
           </div>
@@ -160,17 +162,17 @@ export default function Motor() {
       ) : (
         <>
           <div className="flex items-center justify-between mb-3">
-            <span className="text-[13px] text-text-mute">{activeCount} cambios activos · {ledger.length} en total</span>
-            <button disabled={busy || activeCount === 0} onClick={undoAll} className="btn btn-ghost">Deshacer todo</button>
+            <span className="text-[13px] text-text-mute">{t("motor.activeCount").replace("{active}", String(activeCount)).replace("{total}", String(ledger.length))}</span>
+            <button disabled={busy || activeCount === 0} onClick={undoAll} className="btn btn-ghost">{t("motor.undoAll")}</button>
           </div>
           <div ref={listRef} className="flex-1 overflow-y-auto pr-2 -mr-2">
             {history.length === 0 ? (
-              <div className="text-text-mute text-sm">Todavía no aplicaste ningún cambio con el motor.</div>
+              <div className="text-text-mute text-sm">{t("motor.noHistory")}</div>
             ) : (
               <div className="rounded-xl border border-line divide-y divide-line/60">
                 {history.map((e) => (
                   <div key={e.id} className={`flex items-center gap-3 px-4 py-3 ${e.undone ? "opacity-45" : ""}`}>
-                    <span title={e.verified ? "Verificado" : "No verificado"}
+                    <span title={e.verified ? t("motor.tipVerified") : t("motor.tipNotVerified")}
                       className="w-2 h-2 rounded-full shrink-0"
                       style={{ background: e.verified ? "#00e676" : "#ff5470" }} />
                     <div className="flex-1 min-w-0">
@@ -180,9 +182,9 @@ export default function Motor() {
                       </div>
                     </div>
                     {e.undone ? (
-                      <span className="text-[12px] text-text-mute shrink-0">deshecho</span>
+                      <span className="text-[12px] text-text-mute shrink-0">{t("motor.undone")}</span>
                     ) : (
-                      <button disabled={busy} onClick={() => undo(e)} className="btn btn-ghost shrink-0">Deshacer</button>
+                      <button disabled={busy} onClick={() => undo(e)} className="btn btn-ghost shrink-0">{t("motor.undoBtn")}</button>
                     )}
                   </div>
                 ))}

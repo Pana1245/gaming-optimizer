@@ -253,6 +253,28 @@ const STR: Record<string, { es: string; en: string }> = {
   "apps.installBtn": { es: "Instalar", en: "Install" },
   "apps.doneTitle": { es: "Instalación completada", en: "Installation complete" },
 
+  // ── Motor de Cambios ──
+  "motor.logIntro": { es: "Listo. Cada cambio se lee, aplica, verifica y queda en el historial.", en: "Ready. Each change is read, applied, verified and kept in the history." },
+  "motor.tabApply": { es: "Aplicar", en: "Apply" },
+  "motor.tabHistory": { es: "Historial", en: "History" },
+  "motor.applying": { es: "Aplicando con verificación…", en: "Applying with verification…" },
+  "motor.verified": { es: "verificado", en: "verified" },
+  "motor.notVerified": { es: "no se pudo verificar (quedó distinto al valor esperado)", en: "couldn't verify (ended up different from the expected value)" },
+  "motor.errorPre": { es: "error:", en: "error:" },
+  "motor.appliedSummary": { es: "{ok}/{total} aplicados y verificados. Quedaron en el Historial (reversibles).", en: "{ok}/{total} applied and verified. Saved in History (reversible)." },
+  "motor.undoFail": { es: "No se pudo deshacer {name} — sigue activo.", en: "Couldn't undo {name} — still active." },
+  "motor.undoAllFail": { es: "{n} cambio(s) no se pudieron deshacer y siguen activos.", en: "{n} change(s) couldn't be undone and are still active." },
+  "motor.verification": { es: "Verificación", en: "Verification" },
+  "motor.applyVerified": { es: "Aplicar verificado", en: "Apply verified" },
+  "motor.activeCount": { es: "{active} cambios activos · {total} en total", en: "{active} active changes · {total} total" },
+  "motor.undoAll": { es: "Deshacer todo", en: "Undo all" },
+  "motor.noHistory": { es: "Todavía no aplicaste ningún cambio con el motor.", en: "You haven't applied any change with the engine yet." },
+  "motor.notExisted": { es: "(no existía)", en: "(didn't exist)" },
+  "motor.undone": { es: "deshecho", en: "undone" },
+  "motor.undoBtn": { es: "Deshacer", en: "Undo" },
+  "motor.tipVerified": { es: "Verificado", en: "Verified" },
+  "motor.tipNotVerified": { es: "No verificado", en: "Not verified" },
+
   // ── Gráficos ──
   "gpu.detected": { es: "GPU detectada", en: "Detected GPU" },
   "gpu.detecting": { es: "Detectando…", en: "Detecting…" },
