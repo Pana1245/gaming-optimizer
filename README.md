@@ -89,6 +89,18 @@ La app consulta las **Releases** de este repo y se actualiza sola (o con el bot�
 
 ---
 
+## 🔏 Firma de código · Code Signing
+
+Windows code signing for **Gaming Optimizer** is provided free of charge by
+[**SignPath.io**](https://about.signpath.io/), with a free code signing certificate
+from the [**SignPath Foundation**](https://signpath.org/).
+
+> Gaming Optimizer usa el programa de firma gratuita de la **SignPath Foundation** para
+> firmar sus instaladores. Hasta que la firma esté activa en cada release, SmartScreen puede
+> seguir avisando (ver arriba).
+
+---
+
 ## 🙏 Créditos
 
 Algunos tweaks de la categoría **"Más Tweaks · WinUtil"** fueron adaptados de
@@ -100,6 +112,11 @@ Ver [`CREDITS.md`](CREDITS.md).
 Esta herramienta modifica ajustes del sistema (registro, servicios, etc.) y requiere permisos de
 administrador. Aunque crea backups automáticos y casi todo es reversible (Motor + sección Reactivar),
 algunos tweaks marcados como avanzados 🟡 son agresivos — **usala bajo tu responsabilidad**.
+
+## 🔒 Privacidad
+
+Gaming Optimizer **no recolecta ni transmite ningún dato personal** — todo corre localmente en tu
+PC. Ver [`PRIVACY.md`](PRIVACY.md).
 
 ## 📄 Licencia
 
