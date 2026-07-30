@@ -25,12 +25,27 @@ export async function readScore(): Promise<ScoreResult> {
 // ---- Temperaturas CPU/GPU (mejor esfuerzo: depende del hardware/driver) ------
 export interface Temps { cpu: number | null; gpu: number | null; }
 
+// La temp REAL del CPU en Windows sólo se obtiene con un driver de kernel (MSR).
+// Sin bundlear uno, la leemos de LibreHardwareMonitor / OpenHardwareMonitor si el
+// usuario los tiene corriendo (exponen un namespace WMI con sensores precisos).
+// Si no hay ninguno, devolvemos N (la UI muestra N/D) — NUNCA el valor ACPI, que
+// suele estar clavado y engaña.
 const TEMP_SCRIPT = String.raw`$cpu=$null; $gpu=$null
-try{ $t=Get-CimInstance -Namespace root/wmi -ClassName MSAcpi_ThermalZoneTemperature -EA SilentlyContinue | Select-Object -First 1
-  if($t){ $cpu=[math]::Round(($t.CurrentTemperature/10)-273.15,0) } }catch{}
-try{ $smi=Get-Command nvidia-smi -EA SilentlyContinue
+try{
+  $s=Get-CimInstance -Namespace root/LibreHardwareMonitor -ClassName Sensor -EA SilentlyContinue
+  if(-not $s){ $s=Get-CimInstance -Namespace root/OpenHardwareMonitor -ClassName Sensor -EA SilentlyContinue }
+  if($s){
+    $cs=$s | Where-Object { $_.SensorType -eq 'Temperature' -and $_.Identifier -match '/(intelcpu|amdcpu|cpu)/' }
+    $pkg=$cs | Where-Object { $_.Name -match 'Package|Tdie|Tctl' } | Select-Object -First 1
+    if(-not $pkg){ $pkg=$cs | Sort-Object Value -Descending | Select-Object -First 1 }
+    if($pkg){ $cpu=[int][math]::Round($pkg.Value,0) }
+    $gs=$s | Where-Object { $_.SensorType -eq 'Temperature' -and $_.Identifier -match '/(gpu|nvidiagpu|atigpu|amdgpu)/' } | Sort-Object Value -Descending | Select-Object -First 1
+    if($gs){ $gpu=[int][math]::Round($gs.Value,0) }
+  }
+}catch{}
+if($null -eq $gpu){ try{ $smi=Get-Command nvidia-smi -EA SilentlyContinue
   if($smi){ $g=& nvidia-smi --query-gpu=temperature.gpu --format=csv,noheader 2>$null | Select-Object -First 1
-    if($g -match '^\d+$'){ $gpu=[int]$g } } }catch{}
+    if($g -match '^\d+$'){ $gpu=[int]$g } } }catch{} }
 if($null -eq $cpu){ $cpu='N' }; if($null -eq $gpu){ $gpu='N' }
 Write-Output "CPU=$cpu"; Write-Output "GPU=$gpu"`;
 
