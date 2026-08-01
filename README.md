@@ -17,10 +17,14 @@
 
 ---
 
+## 🌐 Sitio web
+
+**[pana1245.github.io/gaming-optimizer](https://pana1245.github.io/gaming-optimizer/)** — página oficial con capturas y descarga.
+
 ## ⬇️ Descargar
 
-Bajá el instalador desde la sección [**Releases**](https://github.com/Pana1245/gaming-optimizer/releases/latest) →
-`GamingOptimizer_x64-setup.exe`.
+Bajá el instalador desde la sección [**Releases**](https://github.com/Pana1245/gaming-optimizer/releases/latest):
+el **instalador moderno** `GamingOptimizer-Installer.exe` (recomendado) o el clásico `GamingOptimizer_x64-setup.exe`.
 
 > **SmartScreen** puede avisar *"Windows protegió tu PC"* porque el instalador está auto-firmado.
 > Elegí **"Más información" → "Ejecutar de todas formas"**. Una vez instalado, se **auto-actualiza** solo.
