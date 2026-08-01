@@ -36,12 +36,18 @@ fn install() -> Result<i32, String> {
 /// Abre la app recién instalada, buscando su ruta en el registro de desinstalación.
 #[tauri::command]
 fn launch() -> Result<(), String> {
+    // El exe instalado se llama app.exe (binario Tauri), y DisplayIcon/InstallLocation
+    // vienen del registro CON comillas → hay que sacarlas. Preferimos DisplayIcon (ruta
+    // directa al exe); si no, InstallLocation + app.exe (o GamingOptimizer.exe de respaldo).
     let ps = "$ErrorActionPreference='SilentlyContinue'; \
         $roots=@('HKCU:\\Software\\Microsoft\\Windows\\CurrentVersion\\Uninstall\\*',\
         'HKLM:\\Software\\Microsoft\\Windows\\CurrentVersion\\Uninstall\\*',\
         'HKLM:\\Software\\WOW6432Node\\Microsoft\\Windows\\CurrentVersion\\Uninstall\\*'); \
         $k = Get-ItemProperty $roots | Where-Object { $_.DisplayName -like 'GamingOptimizer*' } | Select-Object -First 1; \
-        if ($k -and $k.InstallLocation) { $exe = Join-Path $k.InstallLocation 'GamingOptimizer.exe'; if (Test-Path $exe) { Start-Process $exe } }";
+        $exe=$null; \
+        if ($k.DisplayIcon) { $di=([string]$k.DisplayIcon).Trim([char]34); $ci=$di.LastIndexOf(','); if($ci -gt 2){ $di=$di.Substring(0,$ci) }; if (Test-Path -LiteralPath $di) { $exe=$di } } \
+        if (-not $exe -and $k.InstallLocation) { $loc=([string]$k.InstallLocation).Trim([char]34); $c1=Join-Path $loc 'app.exe'; $c2=Join-Path $loc 'GamingOptimizer.exe'; if (Test-Path -LiteralPath $c1) { $exe=$c1 } elseif (Test-Path -LiteralPath $c2) { $exe=$c2 } } \
+        if ($exe) { Start-Process -FilePath $exe }";
     Command::new("powershell")
         .args(["-NoProfile", "-WindowStyle", "Hidden", "-Command", ps])
         .spawn()
