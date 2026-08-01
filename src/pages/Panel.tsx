@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { motion, animate } from "framer-motion";
 import NeonCard, { HudTitle } from "../components/NeonCard";
+import Sparkline from "../components/Sparkline";
 import { getStats, clearStandbyRam, type Stats } from "../lib/api";
 import { readScore, readTemps, type ScoreResult, type Temps } from "../lib/metrics";
 import { useGameMode } from "../lib/gameMode";
@@ -62,6 +63,18 @@ function TempCard({ label, value, color }: { label: string; value: number | null
       </div>
       <div className="text-[11.5px] text-text-mute mt-1.5">{status}</div>
     </NeonCard>
+  );
+}
+
+function LiveStat({ label, value, color }: { label: string; value: number; color: string }) {
+  return (
+    <div>
+      <div className="flex items-baseline justify-between mb-1">
+        <span className="text-[11px] font-medium text-text-mute">{label}</span>
+        <span className="text-[15px] font-semibold tabular-nums" style={{ color }}>{value.toFixed(0)}%</span>
+      </div>
+      <Sparkline value={value} color={color} width={150} height={38} />
+    </div>
   );
 }
 
@@ -137,11 +150,13 @@ export default function Panel() {
             <TempCard label="GPU temp" value={temps.gpu} color="#3b9eff" />
           </div>
           <NeonCard>
-            <div className="flex items-center justify-between text-[13px]">
-              <span className="text-text-mute">{t("panel.liveUsage")}</span>
-              <span className="font-mono text-text-dim">
-                CPU <span style={{ color: "#ff8a65" }}>{stats.cpu.toFixed(0)}%</span> · RAM <span style={{ color: "#00e676" }}>{stats.ram.toFixed(0)}%</span> · SSD <span style={{ color: "#3b9eff" }}>{stats.disk.toFixed(0)}%</span>
-              </span>
+            <div className="flex items-center justify-between mb-3">
+              <span className="text-[12px] uppercase tracking-wider text-text-mute">{t("panel.liveUsage")}</span>
+              <span className="text-[12px] font-mono text-text-mute">SSD <span style={{ color: "#3b9eff" }}>{stats.disk.toFixed(0)}%</span></span>
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <LiveStat label="CPU" value={stats.cpu} color="#ff8a65" />
+              <LiveStat label="RAM" value={stats.ram} color="#00e676" />
             </div>
           </NeonCard>
         </div>

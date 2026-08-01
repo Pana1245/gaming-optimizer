@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import { motion } from "framer-motion";
 import { runPowershell } from "../lib/api";
 import { useScrollMemory } from "../lib/useScrollMemory";
@@ -6,35 +6,11 @@ import { HudTitle } from "../components/NeonCard";
 import Modal from "../components/Modal";
 import { Spinner, IndeterminateBar } from "../components/Feedback";
 import { useI18n } from "../lib/i18n";
+import { useUninstall, type UApp } from "../lib/uninstall";
 
-interface App {
-  name: string; pub: string; type: "win32" | "uwp";
-  size: number; date: string; location: string; key: string; uninstall: string;
-  scope: "machine" | "user";  // HKLM (confiable) vs HKCU (escribible por el usuario)
-}
-
-const LIST = String.raw`$apps=@()
-$roots=@(
- @{p='HKLM:\Software\Microsoft\Windows\CurrentVersion\Uninstall'; s='machine'},
- @{p='HKLM:\Software\Wow6432Node\Microsoft\Windows\CurrentVersion\Uninstall'; s='machine'},
- @{p='HKCU:\Software\Microsoft\Windows\CurrentVersion\Uninstall'; s='user'}
-)
-foreach($root in $roots){
- if(Test-Path $root.p){
-  Get-ChildItem $root.p -EA SilentlyContinue | ForEach-Object {
-   $p=Get-ItemProperty $_.PSPath -EA SilentlyContinue
-   if($p.DisplayName -and -not $p.SystemComponent){
-    $size=if($p.EstimatedSize){[math]::Round($p.EstimatedSize/1024,1)}else{0}
-    $apps+=[pscustomobject]@{name="$($p.DisplayName)";pub="$($p.Publisher)";type='win32';size=$size;date="$($p.InstallDate)";location="$($p.InstallLocation)";key="$($_.Name)";uninstall="$($p.UninstallString)";scope=$root.s}
-   }
-  }
- }
-}
-Get-AppxPackage -EA SilentlyContinue | Where-Object { -not $_.IsFramework } | ForEach-Object {
- $apps+=[pscustomobject]@{name="$($_.Name)";pub="$($_.Publisher)";type='uwp';size=0;date='';location="$($_.InstallLocation)";key="$($_.PackageFullName)";uninstall="$($_.PackageFullName)";scope='machine'}
-}
-$apps=$apps | Sort-Object name -Unique
-if($apps.Count -eq 0){'[]'}else{$apps|ConvertTo-Json -Compress -Depth 3}`;
+// La lista y los iconos se precargan al arrancar la app (ver UninstallProvider),
+// así esta sección los muestra ya listos. Acá sólo vive la lógica de acciones.
+type App = UApp;
 
 const esc = (s: string) => (s || "").replace(/'/g, "''");
 
@@ -198,8 +174,7 @@ const fmtSize = (mb: number) =>
 
 export default function Desinstalar() {
   const { t } = useI18n();
-  const [apps, setApps] = useState<App[]>([]);
-  const [loading, setLoading] = useState(true);
+  const { apps, icons, loading, reload, removeApp } = useUninstall();
   const [query, setQuery] = useState("");
   const [busy, setBusy] = useState<string | null>(null);
   const [working, setWorking] = useState(false);
@@ -208,24 +183,12 @@ export default function Desinstalar() {
   const [scan, setScan] = useState<null | { app: App; items: (Leftover & { checked: boolean })[] }>(null);
   const scrollRef = useScrollMemory<HTMLDivElement>("uninstall");
 
-  const load = async () => {
-    setLoading(true);
-    const r = await runPowershell(LIST);
-    try {
-      const data = JSON.parse(r.output.trim() || "[]");
-      setApps(Array.isArray(data) ? data : [data]);
-    } catch { setApps([]); }
-    setLoading(false);
-  };
-  useEffect(() => { load(); }, []);
-
   const filtered = useMemo(() => {
     const q = query.toLowerCase().trim();
     return q ? apps.filter((a) => a.name.toLowerCase().includes(q)) : apps;
   }, [apps, query]);
 
-  const removeRow = (a: App) =>
-    setApps((l) => l.filter((x) => !(x.name === a.name && x.type === a.type)));
+  const removeRow = (a: App) => removeApp(a);
 
   const uninstall = async (a: App) => {
     setWorking(true); setBusy(a.name);
@@ -303,11 +266,11 @@ export default function Desinstalar() {
       <div className="flex items-center gap-2 mb-3">
         <input value={query} onChange={(e) => setQuery(e.target.value)} placeholder={t("unins.search")}
           className="flex-1 h-9 px-3 rounded-lg bg-surface border border-line focus:border-accent outline-none text-[13px] text-text placeholder:text-text-mute transition" />
-        <button disabled={working} onClick={() => setConfirm({ title: t("unins.bloatMsTitle"), msg: t("unins.bloatMsMsg"), run: async () => { setConfirm(null); setWorking(true); setStatus(t("unins.bloatMsRun")); const r = await runPowershell(MS_BLOAT); setStatus("✓ " + (r.output.split("\n").pop() || t("unins.doneCap")).trim()); await load(); setWorking(false); } })}
+        <button disabled={working} onClick={() => setConfirm({ title: t("unins.bloatMsTitle"), msg: t("unins.bloatMsMsg"), run: async () => { setConfirm(null); setWorking(true); setStatus(t("unins.bloatMsRun")); const r = await runPowershell(MS_BLOAT); setStatus("✓ " + (r.output.split("\n").pop() || t("unins.doneCap")).trim()); await reload(); setWorking(false); } })}
           className="btn btn-ghost">Bloatware MS</button>
-        <button disabled={working} onClick={() => setConfirm({ title: t("unins.bloatOemTitle"), msg: t("unins.bloatOemMsg"), run: async () => { setConfirm(null); setWorking(true); setStatus(t("unins.bloatOemRun")); const r = await runPowershell(OEM_BLOAT); setStatus("✓ " + (r.output.split("\n").pop() || t("unins.doneCap")).trim()); await load(); setWorking(false); } })}
+        <button disabled={working} onClick={() => setConfirm({ title: t("unins.bloatOemTitle"), msg: t("unins.bloatOemMsg"), run: async () => { setConfirm(null); setWorking(true); setStatus(t("unins.bloatOemRun")); const r = await runPowershell(OEM_BLOAT); setStatus("✓ " + (r.output.split("\n").pop() || t("unins.doneCap")).trim()); await reload(); setWorking(false); } })}
           className="btn btn-ghost">Bloatware OEM</button>
-        <button disabled={working || loading} onClick={load}
+        <button disabled={working || loading} onClick={reload}
           className="btn btn-ghost">{t("common.refresh")}</button>
       </div>
 
@@ -320,9 +283,13 @@ export default function Desinstalar() {
           <div className="rounded-xl border border-line divide-y divide-line/60">
             {filtered.map((a) => (
               <div key={a.type + a.name} className="flex items-center gap-3 px-4 py-2.5 group">
-                <span className={`text-[11px] px-1.5 py-0.5 rounded shrink-0 ${a.type === "uwp" ? "text-[#7eb6ff] border border-[#7eb6ff44]" : "text-text-mute border border-line"}`}>
-                  {a.type}
-                </span>
+                {icons[a.key] ? (
+                  <img src={icons[a.key]} alt="" className="w-6 h-6 rounded-md shrink-0 object-contain" />
+                ) : (
+                  <span className={`w-6 h-6 shrink-0 flex items-center justify-center text-[9px] rounded-md ${a.type === "uwp" ? "text-[#7eb6ff] border border-[#7eb6ff44]" : "text-text-mute border border-line"}`}>
+                    {a.type}
+                  </span>
+                )}
                 <div className="flex-1 min-w-0">
                   <div className="text-[13px] text-text truncate">{a.name}</div>
                   <div className="text-[12px] text-text-mute truncate">

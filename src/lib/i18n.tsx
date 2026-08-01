@@ -106,6 +106,12 @@ const STR: Record<string, { es: string; en: string }> = {
   "gm.noGames": { es: "Sin juegos. Agregá alguno arriba.", en: "No games. Add one above." },
   "gm.activity": { es: "Actividad", en: "Activity" },
 
+  // ── Tema ──
+  "theme.accent": { es: "Color de acento", en: "Accent color" },
+  "cmd.placeholder": { es: "Buscar sección…", en: "Search section…" },
+  "cmd.empty": { es: "Sin resultados", en: "No results" },
+  "cmd.hint": { es: "↑↓ navegar · ↵ ir · Esc cerrar", en: "↑↓ navigate · ↵ go · Esc close" },
+
   // ── Actualizaciones ──
   "update.check": { es: "Buscar actualizaciones", en: "Check for updates" },
   "update.checking": { es: "Buscando…", en: "Checking…" },

@@ -3,6 +3,7 @@ import { getVersion } from "@tauri-apps/api/app";
 import { getSystemInfo } from "../lib/api";
 import { useI18n } from "../lib/i18n";
 import { useUpdater, type UpdStatus } from "../lib/updater";
+import { useAccent, ACCENTS, type AccentName } from "../lib/theme";
 
 export default function StatusBar() {
   const [info, setInfo] = useState<{ win: string; cpu: string; gpu: string } | null>(null);
@@ -10,6 +11,7 @@ export default function StatusBar() {
   const [checkMsg, setCheckMsg] = useState<UpdStatus | null>(null);
   const { lang, setLang, t } = useI18n();
   const { status, checkNow } = useUpdater();
+  const { name: accent, set: setAccent } = useAccent();
 
   useEffect(() => {
     getSystemInfo()
@@ -36,6 +38,18 @@ export default function StatusBar() {
         </span>
       </div>
       <div className="flex items-center gap-3 shrink-0">
+        <div className="flex items-center gap-1.5" title={t("theme.accent")}>
+          {(Object.keys(ACCENTS) as AccentName[]).map((n) => (
+            <button
+              key={n}
+              onClick={() => setAccent(n)}
+              title={ACCENTS[n].label}
+              className={`w-3 h-3 rounded-full transition-transform ${accent === n ? "ring-2 ring-offset-1 ring-offset-[#050505] scale-110" : "opacity-60 hover:opacity-100 hover:scale-110"}`}
+              style={{ background: ACCENTS[n].accent, boxShadow: accent === n ? `0 0 6px ${ACCENTS[n].accent}` : "none", ...(accent === n ? { ["--tw-ring-color" as string]: ACCENTS[n].accent } : {}) }}
+            />
+          ))}
+        </div>
+        <span className="text-text-mute/50">·</span>
         <div className="flex items-center gap-1">
           {(["es", "en"] as const).map((l, i) => (
             <span key={l} className="flex items-center gap-1">

@@ -2,6 +2,8 @@ import { useEffect, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import Sidebar, { type NavItem } from "./components/Sidebar";
 import Splash from "./components/Splash";
+import CommandPalette from "./components/CommandPalette";
+import { useI18n } from "./lib/i18n";
 import UpdateBanner from "./components/UpdateBanner";
 import TitleBar from "./components/TitleBar";
 import { ensureNotify } from "./lib/notify";
@@ -75,13 +77,17 @@ function renderPage(page: string) {
 export default function App() {
   const [page, setPage] = useState("panel");
   const [loading, setLoading] = useState(true);
+  const { t } = useI18n();
   useEffect(() => { ensureNotify(); }, []);
+
+  const cmdItems = [...MAIN, ...FOOTER].map((n) => ({ id: n.id, label: t(n.label), icon: n.icon }));
 
   return (
     <div className="flex flex-col h-full bg-black">
       <AnimatePresence>
         {loading && <Splash key="splash" onDone={() => setLoading(false)} />}
       </AnimatePresence>
+      <CommandPalette items={cmdItems} onSelect={setPage} />
       <TitleBar />
       <UpdateBanner />
       <div className="flex flex-1 min-h-0">

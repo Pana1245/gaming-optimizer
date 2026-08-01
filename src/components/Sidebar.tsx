@@ -40,11 +40,11 @@ export default function Sidebar({ items, footer, active, onSelect }: Props) {
           <motion.span
             layoutId="nav-active-bar"
             className="absolute left-0 top-1/2 -translate-y-1/2 h-5 w-[2.5px] rounded-full bg-accent"
-            style={{ boxShadow: "0 0 8px rgba(0,230,118,0.75), 0 0 2px rgba(0,230,118,0.9)" }}
+            style={{ boxShadow: "0 0 8px color-mix(in srgb, var(--color-accent) 75%, transparent), 0 0 2px var(--color-accent)" }}
             transition={{ type: "spring", stiffness: 500, damping: 38 }}
           />
         )}
-        <span className={`relative z-10 transition-transform ${isActive ? "text-accent scale-110" : "text-text-mute group-hover:text-text-dim group-hover:scale-105"}`}>
+        <span className={`nav-ico relative z-10 transition-transform ${isActive ? "text-accent scale-110" : "text-text-mute group-hover:text-text-dim"}`}>
           {item.icon}
         </span>
         <span className="relative z-10 font-medium">{t(item.label)}</span>

@@ -6,15 +6,21 @@ import { I18nProvider } from './lib/i18n'
 import { GameModeProvider } from './lib/gameMode'
 import { UpdaterProvider } from './lib/updater'
 import { InstallerProvider } from './lib/installer'
+import { UninstallProvider } from './lib/uninstall'
+import { initAccent } from './lib/theme'
+
+initAccent()
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
     <I18nProvider>
       <UpdaterProvider>
         <InstallerProvider>
-          <GameModeProvider>
-            <App />
-          </GameModeProvider>
+          <UninstallProvider>
+            <GameModeProvider>
+              <App />
+            </GameModeProvider>
+          </UninstallProvider>
         </InstallerProvider>
       </UpdaterProvider>
     </I18nProvider>
