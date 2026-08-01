@@ -1,0 +1,6 @@
+# Artefactos de build del bootstrapper
+src-tauri/target/
+src-tauri/gen/
+
+# El NSIS embebido se genera con build-installer.sh (no versionar el binario)
+src-tauri/embedded/*.exe

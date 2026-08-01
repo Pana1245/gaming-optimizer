@@ -1,25 +1,49 @@
 import { useEffect, useRef, useState } from "react";
-import { motion } from "framer-motion";
+import { motion, animate } from "framer-motion";
 import NeonCard, { HudTitle } from "../components/NeonCard";
 import { getStats, clearStandbyRam, type Stats } from "../lib/api";
 import { readScore, readTemps, type ScoreResult, type Temps } from "../lib/metrics";
 import { useGameMode } from "../lib/gameMode";
 import { useI18n } from "../lib/i18n";
 
+/** Número que anima desde 0 (o desde su valor previo) hasta el objetivo. */
+function AnimatedNumber({ value, decimals = 0 }: { value: number; decimals?: number }) {
+  const [d, setD] = useState(0);
+  const prev = useRef(0);
+  useEffect(() => {
+    const controls = animate(prev.current, value, {
+      duration: 0.9, ease: "easeOut", onUpdate: (v) => setD(v),
+    });
+    prev.current = value;
+    return () => controls.stop();
+  }, [value]);
+  return <>{d.toFixed(decimals)}</>;
+}
+
 function Ring({ pct, color }: { pct: number; color: string }) {
   const { t } = useI18n();
   const R = 52, C = 2 * Math.PI * R;
+  const gid = `ring-grad-${color.replace("#", "")}`;
   return (
     <svg width="128" height="128" viewBox="0 0 128 128">
+      <defs>
+        <linearGradient id={gid} x1="0" y1="0" x2="1" y2="1">
+          <stop offset="0%" stopColor={color} stopOpacity="0.65" />
+          <stop offset="100%" stopColor={color} />
+        </linearGradient>
+      </defs>
       <circle cx="64" cy="64" r={R} fill="none" stroke="#1c1c1f" strokeWidth="10" />
       <motion.circle
-        cx="64" cy="64" r={R} fill="none" stroke={color} strokeWidth="10" strokeLinecap="round"
+        cx="64" cy="64" r={R} fill="none" stroke={`url(#${gid})`} strokeWidth="10" strokeLinecap="round"
         strokeDasharray={C} transform="rotate(-90 64 64)"
+        style={{ filter: `drop-shadow(0 0 6px ${color}66)` }}
         initial={{ strokeDashoffset: C }}
         animate={{ strokeDashoffset: C - (C * pct) / 100 }}
-        transition={{ duration: 0.9, ease: "easeOut" }}
+        transition={{ duration: 1, ease: "easeOut" }}
       />
-      <text x="64" y="60" textAnchor="middle" fill="#fff" fontSize="26" fontWeight="700">{pct}%</text>
+      <text x="64" y="60" textAnchor="middle" fill="#fff" fontSize="26" fontWeight="700">
+        <AnimatedNumber value={pct} />%
+      </text>
       <text x="64" y="78" textAnchor="middle" fill="#8a8a8f" fontSize="10">{t("panel.optimized")}</text>
     </svg>
   );
@@ -34,7 +58,7 @@ function TempCard({ label, value, color }: { label: string; value: number | null
     <NeonCard className="flex-1">
       <div className="text-[12px] uppercase tracking-wider text-text-mute mb-1">{label}</div>
       <div className="text-[28px] font-bold leading-none" style={{ color: value !== null ? color : "#55555a" }}>
-        {value !== null ? `${value}°C` : "N/D"}
+        {value !== null ? <><AnimatedNumber value={value} />°C</> : "N/D"}
       </div>
       <div className="text-[11.5px] text-text-mute mt-1.5">{status}</div>
     </NeonCard>

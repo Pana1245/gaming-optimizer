@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import Sidebar, { type NavItem } from "./components/Sidebar";
+import Splash from "./components/Splash";
 import UpdateBanner from "./components/UpdateBanner";
 import TitleBar from "./components/TitleBar";
 import { ensureNotify } from "./lib/notify";
@@ -73,10 +74,14 @@ function renderPage(page: string) {
 
 export default function App() {
   const [page, setPage] = useState("panel");
+  const [loading, setLoading] = useState(true);
   useEffect(() => { ensureNotify(); }, []);
 
   return (
     <div className="flex flex-col h-full bg-black">
+      <AnimatePresence>
+        {loading && <Splash key="splash" onDone={() => setLoading(false)} />}
+      </AnimatePresence>
       <TitleBar />
       <UpdateBanner />
       <div className="flex flex-1 min-h-0">
@@ -85,11 +90,11 @@ export default function App() {
           <AnimatePresence mode="wait">
             <motion.div
               key={page}
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -8 }}
-              transition={{ duration: 0.22, ease: "easeOut" }}
-              className="h-full"
+              initial={{ opacity: 0, y: 14, scale: 0.985, filter: "blur(4px)" }}
+              animate={{ opacity: 1, y: 0, scale: 1, filter: "blur(0px)" }}
+              exit={{ opacity: 0, y: -10, scale: 0.99, filter: "blur(2px)" }}
+              transition={{ duration: 0.28, ease: [0.22, 0.7, 0.2, 1] }}
+              className="h-full relative z-10"
             >
               {renderPage(page)}
             </motion.div>

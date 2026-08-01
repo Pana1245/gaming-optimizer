@@ -1,5 +1,6 @@
-import { type ReactNode } from "react";
+import { type ReactNode, useEffect, useState } from "react";
 import { motion } from "framer-motion";
+import { getVersion } from "@tauri-apps/api/app";
 import SidebarMonitor from "./SidebarMonitor";
 import { useI18n } from "../lib/i18n";
 
@@ -14,6 +15,8 @@ interface Props {
 
 export default function Sidebar({ items, footer, active, onSelect }: Props) {
   const { t } = useI18n();
+  const [ver, setVer] = useState("");
+  useEffect(() => { getVersion().then((v) => setVer(`v${v}`)).catch(() => {}); }, []);
   const Row = (item: NavItem) => {
     const isActive = item.id === active;
     return (
@@ -29,18 +32,19 @@ export default function Sidebar({ items, footer, active, onSelect }: Props) {
         {isActive && (
           <motion.span
             layoutId="nav-active-bg"
-            className="absolute inset-0 rounded-md bg-white/[0.05]"
+            className="absolute inset-0 rounded-md bg-gradient-to-r from-accent/[0.13] via-white/[0.03] to-transparent ring-1 ring-inset ring-accent/15"
             transition={{ type: "spring", stiffness: 500, damping: 38 }}
           />
         )}
         {isActive && (
           <motion.span
             layoutId="nav-active-bar"
-            className="absolute left-0 top-1/2 -translate-y-1/2 h-4 w-[2px] rounded-full bg-accent"
+            className="absolute left-0 top-1/2 -translate-y-1/2 h-5 w-[2.5px] rounded-full bg-accent"
+            style={{ boxShadow: "0 0 8px rgba(0,230,118,0.75), 0 0 2px rgba(0,230,118,0.9)" }}
             transition={{ type: "spring", stiffness: 500, damping: 38 }}
           />
         )}
-        <span className={`relative z-10 ${isActive ? "text-accent" : "text-text-mute group-hover:text-text-dim"}`}>
+        <span className={`relative z-10 transition-transform ${isActive ? "text-accent scale-110" : "text-text-mute group-hover:text-text-dim group-hover:scale-105"}`}>
           {item.icon}
         </span>
         <span className="relative z-10 font-medium">{t(item.label)}</span>
@@ -59,7 +63,7 @@ export default function Sidebar({ items, footer, active, onSelect }: Props) {
         />
         <div className="leading-tight">
           <div className="text-[13px] font-semibold text-text">Gaming Optimizer</div>
-          <div className="text-[11px] text-text-mute">v2.0</div>
+          <div className="text-[11px] text-text-mute tabular-nums">{ver}</div>
         </div>
       </div>
       <nav className="flex-1 flex flex-col gap-0.5 overflow-y-auto min-h-0 pr-0.5">{items.map(Row)}</nav>

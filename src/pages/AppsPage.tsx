@@ -90,23 +90,35 @@ export default function AppsPage() {
                     {allOn ? t("apps.catRemove") : t("apps.catAll")}
                   </button>
                 </div>
-                <div className="grid grid-cols-2 gap-x-4 rounded-xl border border-line p-1">
+                <div className="grid grid-cols-2 gap-2">
                   {c.apps.map((a) => {
                     const on = !!sel[a.id];
                     const inst = installed.has(a.id);
                     return (
-                      <div key={a.id}
+                      <motion.div key={a.id}
                         onClick={() => setSel((s) => ({ ...s, [a.id]: !on }))}
-                        className="flex items-center gap-2.5 px-2.5 py-2 rounded-md cursor-pointer hover:bg-white/[0.025] transition-colors">
-                        <div className={`w-[16px] h-[16px] rounded border shrink-0 flex items-center justify-center transition-all ${on ? "bg-accent border-accent" : "border-line-2"}`}>
-                          {on && <svg viewBox="0 0 16 16" className="w-2.5 h-2.5"><path d="M3.5 8.5 L6.5 11.5 L12.5 4.5" fill="none" stroke="#000" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" /></svg>}
+                        whileTap={{ scale: 0.975 }}
+                        className={`group relative flex items-center gap-3 px-3 py-2.5 rounded-lg border cursor-pointer transition-all duration-150
+                          ${on
+                            ? "border-accent/55 bg-accent/[0.06] shadow-[0_0_0_1px_rgba(0,230,118,0.15),0_6px_16px_-10px_rgba(0,230,118,0.5)]"
+                            : "border-line hover:border-line-2 hover:bg-white/[0.02] hover:-translate-y-px"}`}>
+                        <div className={`w-8 h-8 rounded-md flex items-center justify-center shrink-0 transition-colors ${on ? "bg-accent/10" : "bg-white/[0.035]"}`}>
+                          <img src={`https://www.google.com/s2/favicons?domain=${a.domain}&sz=64`}
+                            alt="" className="w-[18px] h-[18px] rounded-sm"
+                            onError={(e) => ((e.target as HTMLImageElement).style.visibility = "hidden")} />
                         </div>
-                        <img src={`https://www.google.com/s2/favicons?domain=${a.domain}&sz=32`}
-                          alt="" className="w-4 h-4 rounded-sm opacity-90"
-                          onError={(e) => ((e.target as HTMLImageElement).style.visibility = "hidden")} />
-                        <span className={`text-[13px] truncate ${on ? "text-text" : "text-text-dim"}`}>{a.name}</span>
-                        {inst && <span title={t("apps.installedTitle")} className="ml-auto text-[11px] text-accent shrink-0">{t("apps.installed")}</span>}
-                      </div>
+                        <div className="min-w-0 flex-1">
+                          <div className={`text-[13px] truncate transition-colors ${on ? "text-text" : "text-text-dim group-hover:text-text"}`}>{a.name}</div>
+                          {inst && (
+                            <div title={t("apps.installedTitle")} className="flex items-center gap-1 text-[10.5px] text-accent/85 mt-0.5">
+                              <span className="w-1 h-1 rounded-full bg-accent" />{t("apps.installed")}
+                            </div>
+                          )}
+                        </div>
+                        <div className={`w-[18px] h-[18px] rounded-full border shrink-0 flex items-center justify-center transition-all duration-200 ${on ? "bg-accent border-accent scale-100" : "border-line-2 scale-90 group-hover:border-text-mute"}`}>
+                          {on && <svg viewBox="0 0 16 16" className="w-2.5 h-2.5"><path d="M3.5 8.5 L6.5 11.5 L12.5 4.5" fill="none" stroke="#000" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round" /></svg>}
+                        </div>
+                      </motion.div>
                     );
                   })}
                 </div>

@@ -1,0 +1,541 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Gaming Optimizer — Optimizador de Windows para gaming</title>
+<meta name="description" content="Optimizador de Windows para gaming: rápido, reversible y con diseño minimalista. Gratis y open-source." />
+<link rel="icon" href="img/favicon.ico" />
+
+<!-- Open Graph -->
+<meta property="og:type" content="website" />
+<meta property="og:title" content="Gaming Optimizer" />
+<meta property="og:description" content="Optimizador de Windows para gaming — rápido, reversible y open-source." />
+<meta property="og:image" content="img/panel.png" />
+
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Space+Grotesk:wght@500;600;700&family=JetBrains+Mono:wght@500&display=swap" rel="stylesheet" />
+
+<style>
+:root{
+  --bg:#08080a; --bg2:#0e0e11; --card:#141418; --card2:#191920;
+  --border:#26262d; --text:#ededed; --muted:#8a8a94; --muted2:#5a5a63;
+  --green:#00e676; --green2:#19ff8c; --cyan:#24c8db; --violet:#9c27b0;
+  --radius:16px; --maxw:1120px;
+  --font:'Inter',system-ui,-apple-system,Segoe UI,Roboto,sans-serif;
+  --display:'Space Grotesk',var(--font);
+  --mono:'JetBrains Mono',ui-monospace,monospace;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html{scroll-behavior:smooth}
+body{
+  background:var(--bg); color:var(--text); font-family:var(--font);
+  line-height:1.6; -webkit-font-smoothing:antialiased; overflow-x:hidden;
+}
+/* animated backdrop */
+body::before{
+  content:""; position:fixed; inset:-20%; z-index:-2;
+  background:
+    radial-gradient(30% 30% at 50% 8%, rgba(0,230,118,.14), transparent 70%),
+    radial-gradient(28% 28% at 82% 22%, rgba(36,200,219,.11), transparent 70%),
+    radial-gradient(26% 30% at 14% 42%, rgba(156,39,176,.11), transparent 70%),
+    radial-gradient(24% 24% at 70% 75%, rgba(0,230,118,.07), transparent 70%);
+  animation:aurora 20s ease-in-out infinite alternate;
+}
+@keyframes aurora{
+  0%{transform:translate3d(0,0,0) scale(1)}
+  50%{transform:translate3d(3%,2%,0) scale(1.08)}
+  100%{transform:translate3d(-3%,-2%,0) scale(1.04)}
+}
+@media(prefers-reduced-motion:reduce){body::before{animation:none}.grad{animation:none!important}}
+body::after{
+  content:""; position:fixed; inset:0; z-index:-1; opacity:.4;
+  background-image:linear-gradient(rgba(255,255,255,.025) 1px,transparent 1px),
+    linear-gradient(90deg,rgba(255,255,255,.025) 1px,transparent 1px);
+  background-size:44px 44px;
+  mask-image:radial-gradient(circle at 50% 0%,#000,transparent 75%);
+}
+a{color:inherit;text-decoration:none}
+.wrap{max-width:var(--maxw);margin:0 auto;padding:0 22px}
+.mono{font-family:var(--mono)}
+
+/* ---------- NAV ---------- */
+nav{
+  position:sticky;top:0;z-index:50;
+  backdrop-filter:blur(14px);background:rgba(8,8,10,.72);
+  border-bottom:1px solid var(--border);
+}
+nav .wrap{display:flex;align-items:center;gap:20px;height:64px}
+.brand{display:flex;align-items:center;gap:11px;font-family:var(--display);font-weight:700;font-size:1.18rem}
+.brand img{width:34px;height:34px;filter:drop-shadow(0 0 8px rgba(0,230,118,.5))}
+.brand b{color:var(--green2)}
+.nav-links{display:flex;gap:26px;margin-left:auto;align-items:center}
+.nav-links a{color:var(--muted);font-size:.94rem;font-weight:500;transition:color .2s}
+.nav-links a:hover{color:var(--text)}
+.lang-btn{
+  font-family:var(--mono);font-size:.8rem;font-weight:500;cursor:pointer;
+  background:var(--card);border:1px solid var(--border);color:var(--muted);
+  padding:6px 11px;border-radius:9px;transition:.2s;letter-spacing:.5px;
+}
+.lang-btn:hover{border-color:var(--green);color:var(--green2)}
+.lang-btn .on{color:var(--green2)}
+@media(max-width:760px){.nav-links a:not(.gh){display:none}}
+
+/* ---------- BUTTONS ---------- */
+.btn{
+  display:inline-flex;align-items:center;gap:9px;font-weight:600;font-size:1rem;
+  padding:14px 26px;border-radius:12px;cursor:pointer;border:1px solid transparent;
+  transition:transform .15s, box-shadow .25s, background .2s;
+}
+.btn:active{transform:translateY(1px)}
+.btn-primary{
+  background:linear-gradient(135deg,var(--green),var(--green2));color:#00140a;
+  box-shadow:0 8px 30px -8px rgba(0,230,118,.55);
+  position:relative;overflow:hidden;
+  animation:ctaGlow 2.6s ease-in-out infinite;
+}
+.btn-primary::after{
+  content:"";position:absolute;top:0;left:-120%;width:60%;height:100%;
+  background:linear-gradient(100deg,transparent,rgba(255,255,255,.55),transparent);
+  transform:skewX(-20deg);animation:shine 3.4s ease-in-out infinite;
+}
+@keyframes shine{0%,55%{left:-120%}80%,100%{left:150%}}
+@keyframes ctaGlow{0%,100%{box-shadow:0 8px 30px -8px rgba(0,230,118,.5)}50%{box-shadow:0 10px 42px -6px rgba(0,230,118,.85)}}
+.btn-primary:hover{box-shadow:0 14px 46px -6px rgba(0,230,118,.85);transform:translateY(-3px) scale(1.02)}
+@media(prefers-reduced-motion:reduce){.btn-primary,.btn-primary::after{animation:none}}
+.btn-ghost{background:var(--card);border-color:var(--border);color:var(--text)}
+.btn-ghost:hover{border-color:var(--muted);background:var(--card2)}
+
+/* ---------- HERO ---------- */
+.hero{padding:92px 0 70px;text-align:center;position:relative}
+.tag-pill{
+  display:inline-flex;align-items:center;gap:8px;font-size:.82rem;font-weight:500;
+  color:var(--green2);background:rgba(0,230,118,.08);border:1px solid rgba(0,230,118,.25);
+  padding:6px 14px;border-radius:100px;margin-bottom:26px;
+}
+.tag-pill .dot{width:7px;height:7px;border-radius:50%;background:var(--green2);box-shadow:0 0 8px var(--green2);animation:pulse 2s infinite}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.35}}
+.hero h1{
+  font-family:var(--display);font-weight:700;font-size:clamp(2.5rem,6vw,4.2rem);
+  line-height:1.05;letter-spacing:-1.5px;margin-bottom:22px;
+}
+.hero h1 .grad{
+  background:linear-gradient(120deg,var(--green2),var(--cyan) 40%,var(--violet) 70%,var(--green2));
+  background-size:220% auto;
+  -webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;
+  animation:gradShift 6s linear infinite;
+}
+@keyframes gradShift{to{background-position:220% center}}
+.hero p.sub{font-size:clamp(1.05rem,2.2vw,1.3rem);color:var(--muted);max-width:620px;margin:0 auto 38px}
+.hero-actions{display:flex;gap:14px;justify-content:center;flex-wrap:wrap;margin-bottom:20px}
+.hero-note{font-size:.85rem;color:var(--muted2)}
+.hero-note b{color:var(--muted)}
+
+/* trust bar */
+.trust{display:flex;gap:10px;justify-content:center;flex-wrap:wrap;margin-top:44px}
+.trust span{
+  font-size:.82rem;color:var(--muted);background:var(--card);border:1px solid var(--border);
+  padding:8px 15px;border-radius:100px;font-weight:500;
+}
+.trust span b{color:var(--green2);font-weight:600}
+
+/* ---------- HERO SHOT ---------- */
+.hero-shot{max-width:960px;margin:64px auto 0;position:relative}
+.hero-shot::before{
+  content:"";position:absolute;inset:-40px -20px 0;z-index:-1;
+  background:radial-gradient(60% 60% at 50% 0%,rgba(0,230,118,.18),transparent 70%);
+  filter:blur(20px);
+}
+.hero-shot img{
+  width:100%;border-radius:var(--radius);border:1px solid var(--border);
+  box-shadow:0 40px 90px -30px rgba(0,0,0,.9);display:block;
+  animation:float 7s ease-in-out infinite;transition:transform .3s ease-out;
+}
+@keyframes float{0%,100%{transform:translateY(0)}50%{transform:translateY(-12px)}}
+@media(prefers-reduced-motion:reduce){.hero-shot img{animation:none}}
+
+/* ---------- SECTIONS ---------- */
+section{padding:80px 0;position:relative}
+.sec-head{text-align:center;max-width:640px;margin:0 auto 54px}
+.sec-head .eyebrow{font-family:var(--mono);font-size:.8rem;color:var(--green2);letter-spacing:2px;text-transform:uppercase}
+.sec-head h2{font-family:var(--display);font-weight:700;font-size:clamp(1.9rem,4vw,2.7rem);letter-spacing:-1px;margin:12px 0 14px}
+.sec-head p{color:var(--muted);font-size:1.05rem}
+
+/* features grid */
+.grid{display:grid;grid-template-columns:repeat(3,1fr);gap:18px}
+@media(max-width:900px){.grid{grid-template-columns:repeat(2,1fr)}}
+@media(max-width:600px){.grid{grid-template-columns:1fr}}
+.feature{
+  background:var(--card);border:1px solid var(--border);border-radius:var(--radius);
+  padding:26px 24px;transition:transform .25s,border-color .25s,background .25s;
+}
+.feature{position:relative;overflow:hidden}
+.feature::before{
+  content:"";position:absolute;inset:0;border-radius:var(--radius);padding:1px;
+  background:linear-gradient(135deg,var(--green2),var(--cyan),var(--violet));
+  -webkit-mask:linear-gradient(#000 0 0) content-box,linear-gradient(#000 0 0);
+  -webkit-mask-composite:xor;mask-composite:exclude;
+  opacity:0;transition:opacity .3s;pointer-events:none;
+}
+.feature:hover::before{opacity:.7}
+.feature:hover{transform:translateY(-6px);border-color:transparent;background:var(--card2)}
+.feature .ic{font-size:1.7rem;margin-bottom:14px;display:inline-block;transform-origin:left center;will-change:transform;transition:transform .3s cubic-bezier(.34,1.56,.64,1)}
+.feature:hover .ic{transform:scale(1.18) rotate(-5deg)}
+.feature h3{font-family:var(--display);font-size:1.15rem;font-weight:600;margin-bottom:8px}
+.feature p{color:var(--muted);font-size:.94rem}
+
+/* screenshots */
+.shots{display:grid;grid-template-columns:repeat(2,1fr);gap:20px}
+@media(max-width:760px){.shots{grid-template-columns:1fr}}
+.shot{border-radius:var(--radius);overflow:hidden;border:1px solid var(--border);background:var(--card);cursor:zoom-in;transition:transform .25s,border-color .25s}
+.shot:hover{transform:translateY(-4px);border-color:rgba(36,200,219,.45)}
+.shot img{width:100%;display:block}
+.shot .cap{padding:13px 18px;font-size:.9rem;color:var(--muted);font-weight:500;border-top:1px solid var(--border)}
+.shot .cap b{color:var(--text)}
+
+/* download */
+.dl-box{
+  background:linear-gradient(160deg,var(--card2),var(--card));
+  border:1px solid var(--border);border-radius:24px;padding:52px 40px;text-align:center;
+  position:relative;overflow:hidden;
+}
+.dl-box::before{content:"";position:absolute;inset:0;z-index:0;background:radial-gradient(50% 80% at 50% 0%,rgba(0,230,118,.12),transparent 70%)}
+.dl-box>*{position:relative;z-index:1}
+.dl-box h2{font-family:var(--display);font-size:clamp(1.8rem,4vw,2.5rem);font-weight:700;letter-spacing:-1px;margin-bottom:14px}
+.dl-box p{color:var(--muted);margin-bottom:30px;max-width:520px;margin-left:auto;margin-right:auto}
+.steps{display:flex;gap:16px;justify-content:center;flex-wrap:wrap;margin-top:38px;text-align:left}
+.step{display:flex;gap:12px;align-items:flex-start;max-width:250px}
+.step .n{flex:none;width:28px;height:28px;border-radius:8px;background:rgba(0,230,118,.12);border:1px solid rgba(0,230,118,.3);color:var(--green2);font-family:var(--mono);font-size:.85rem;display:flex;align-items:center;justify-content:center;font-weight:600}
+.step .t{font-size:.9rem;color:var(--muted)}
+.step .t b{color:var(--text)}
+
+/* footer */
+footer{border-top:1px solid var(--border);padding:50px 0 40px;margin-top:40px}
+.foot{display:flex;justify-content:space-between;gap:30px;flex-wrap:wrap;align-items:flex-start}
+.foot .brand{margin-bottom:12px}
+.foot-col h4{font-size:.8rem;text-transform:uppercase;letter-spacing:1px;color:var(--muted2);margin-bottom:12px;font-weight:600}
+.foot-col a{display:block;color:var(--muted);font-size:.92rem;margin-bottom:8px;transition:color .2s}
+.foot-col a:hover{color:var(--green2)}
+.foot-note{color:var(--muted2);font-size:.85rem;max-width:340px;margin-top:14px}
+.foot-bottom{text-align:center;color:var(--muted2);font-size:.85rem;margin-top:44px;padding-top:26px;border-top:1px solid var(--border)}
+.foot-bottom a{color:var(--muted);text-decoration:underline;text-underline-offset:2px}
+
+/* scroll progress bar */
+#progress{position:fixed;top:0;left:0;height:3px;width:0;z-index:60;
+  background:linear-gradient(90deg,var(--green2),var(--cyan),var(--violet));
+  box-shadow:0 0 12px rgba(0,230,118,.6);transition:width .1s linear}
+
+/* animated gradient border on download box */
+.dl-box{background:
+  linear-gradient(160deg,var(--card2),var(--card)) padding-box,
+  linear-gradient(120deg,var(--green2),var(--cyan),var(--violet),var(--green2)) border-box;
+  border:1px solid transparent;background-size:100% 100%,300% 300%;
+  animation:dlBorder 8s linear infinite}
+@keyframes dlBorder{to{background-position:0 0,300% 0}}
+
+/* reveal on scroll */
+.reveal{opacity:0;transform:translateY(28px);transition:opacity .7s cubic-bezier(.2,.7,.2,1),transform .7s cubic-bezier(.2,.7,.2,1)}
+.reveal.in{opacity:1;transform:none}
+.trust span{transition:transform .2s,border-color .2s}
+.trust span:hover{transform:translateY(-3px) scale(1.05);border-color:var(--green)}
+@media(prefers-reduced-motion:reduce){.dl-box{animation:none}}
+
+/* lightbox */
+.lb{position:fixed;inset:0;z-index:100;background:rgba(4,4,6,.92);backdrop-filter:blur(6px);display:none;align-items:center;justify-content:center;padding:30px;cursor:zoom-out}
+.lb.open{display:flex}
+.lb img{max-width:100%;max-height:100%;border-radius:12px;border:1px solid var(--border);box-shadow:0 30px 80px rgba(0,0,0,.7)}
+</style>
+</head>
+<body>
+<div id="progress"></div>
+
+<!-- ================= NAV ================= -->
+<nav>
+  <div class="wrap">
+    <a href="#top" class="brand"><img src="img/logo.png" alt="Gaming Optimizer" />Gaming <b>Optimizer</b></a>
+    <div class="nav-links">
+      <a href="#features" data-i18n="nav.features">Características</a>
+      <a href="#shots" data-i18n="nav.shots">Capturas</a>
+      <a href="#download" data-i18n="nav.download">Descargar</a>
+      <a class="gh" href="https://github.com/Pana1245/gaming-optimizer" target="_blank" rel="noopener">GitHub ↗</a>
+      <button class="lang-btn" id="langBtn" title="Cambiar idioma / Switch language">
+        <span id="lang-es" class="on">ES</span> · <span id="lang-en">EN</span>
+      </button>
+    </div>
+  </div>
+</nav>
+
+<!-- ================= HERO ================= -->
+<header class="hero" id="top">
+  <div class="wrap">
+    <span class="tag-pill reveal"><span class="dot"></span><span data-i18n="hero.pill">Gratis · Open-source · 100% reversible</span></span>
+    <h1 class="reveal"><span data-i18n="hero.title1">Tu Windows,</span> <span class="grad" data-i18n="hero.title2">a máxima velocidad</span></h1>
+    <p class="sub reveal" data-i18n="hero.sub">Optimizador de Windows para gaming: rápido, reversible y con un diseño minimalista. Aplica mejoras de rendimiento con un clic — y deshacé cualquier cambio cuando quieras.</p>
+    <div class="hero-actions reveal">
+      <a class="btn btn-primary" href="https://github.com/Pana1245/gaming-optimizer/releases/latest" target="_blank" rel="noopener">
+        ⬇ <span data-i18n="hero.cta">Descargar para Windows</span>
+      </a>
+      <a class="btn btn-ghost" href="https://github.com/Pana1245/gaming-optimizer" target="_blank" rel="noopener">
+        ★ <span data-i18n="hero.cta2">Ver en GitHub</span>
+      </a>
+    </div>
+    <p class="hero-note reveal" data-i18n="hero.note">Windows 10 · 11 (x64) — ~5 MB — <b>se auto-actualiza solo</b></p>
+
+    <div class="trust reveal">
+      <span data-i18n="trust.reversible">🛡️ <b>100%</b> reversible</span>
+      <span data-i18n="trust.tweaks">🎯 <b>60+</b> tweaks</span>
+      <span data-i18n="trust.size">📦 <b>~5 MB</b> · sin bloat</span>
+      <span data-i18n="trust.lang">🌐 <b>ES / EN</b></span>
+      <span data-i18n="trust.oss">🔓 <b>MIT</b> open-source</span>
+    </div>
+
+    <div class="hero-shot reveal">
+      <img src="img/panel.png" alt="Panel de Gaming Optimizer" />
+    </div>
+  </div>
+</header>
+
+<!-- ================= FEATURES ================= -->
+<section id="features">
+  <div class="wrap">
+    <div class="sec-head reveal">
+      <span class="eyebrow" data-i18n="feat.eyebrow">Todo en uno</span>
+      <h2 data-i18n="feat.title">Potente por dentro, simple por fuera</h2>
+      <p data-i18n="feat.sub">Cada herramienta que necesitás para exprimir tu PC — con backups automáticos y un motor que deshace cambios uno por uno.</p>
+    </div>
+    <div class="grid" id="featGrid"></div>
+  </div>
+</section>
+
+<!-- ================= SCREENSHOTS ================= -->
+<section id="shots" style="background:var(--bg2);border-top:1px solid var(--border);border-bottom:1px solid var(--border)">
+  <div class="wrap">
+    <div class="sec-head reveal">
+      <span class="eyebrow" data-i18n="shots.eyebrow">Miralo en acción</span>
+      <h2 data-i18n="shots.title">Diseño limpio, oscuro y directo</h2>
+      <p data-i18n="shots.sub">Sin menús confusos ni publicidad. Hacé clic en cualquier captura para ampliarla.</p>
+    </div>
+    <div class="shots">
+      <div class="shot reveal"><img src="img/optimizaciones.png" alt="Optimizaciones" /><div class="cap"><b>Optimizaciones</b> — <span data-i18n="shots.opt">+60 tweaks con etiquetas de riesgo</span></div></div>
+      <div class="shot reveal"><img src="img/graficos.png" alt="Gráficos GPU" /><div class="cap"><b>Gráficos · GPU</b> — <span data-i18n="shots.gpu">NVIDIA/AMD + monitor en vivo</span></div></div>
+      <div class="shot reveal"><img src="img/red.png" alt="Red y DNS" /><div class="cap"><b>Red · DNS</b> — <span data-i18n="shots.net">test de latencia + DNS</span></div></div>
+      <div class="shot reveal"><img src="img/reactivar.png" alt="Reactivar" /><div class="cap"><b>Reactivar 🛟</b> — <span data-i18n="shots.react">restaurá con un clic</span></div></div>
+    </div>
+  </div>
+</section>
+
+<!-- ================= DOWNLOAD ================= -->
+<section id="download">
+  <div class="wrap">
+    <div class="dl-box reveal">
+      <h2 data-i18n="dl.title">Descargalo gratis</h2>
+      <p data-i18n="dl.sub">Bajá el instalador desde GitHub Releases. Sin registro, sin pagos, sin trucos.</p>
+      <a class="btn btn-primary" href="https://github.com/Pana1245/gaming-optimizer/releases/latest" target="_blank" rel="noopener" style="font-size:1.1rem;padding:16px 32px">
+        ⬇ <span data-i18n="dl.cta">Descargar para Windows</span>
+      </a>
+      <div class="steps">
+        <div class="step"><span class="n">1</span><span class="t" data-i18n="dl.s1"><b>Descargá</b> el <span class="mono">setup.exe</span> desde Releases.</span></div>
+        <div class="step"><span class="n">2</span><span class="t" data-i18n="dl.s2">Si aparece SmartScreen: <b>Más información → Ejecutar de todas formas</b>.</span></div>
+        <div class="step"><span class="n">3</span><span class="t" data-i18n="dl.s3"><b>Listo.</b> Se instala y se actualiza solo.</span></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ================= FOOTER ================= -->
+<footer>
+  <div class="wrap">
+    <div class="foot">
+      <div style="max-width:340px">
+        <a href="#top" class="brand"><img src="img/logo.png" alt="" />Gaming <b>Optimizer</b></a>
+        <p class="foot-note" data-i18n="foot.about">Optimizador de Windows para gaming. Hecho con Tauri, React y Rust. Gratis y open-source.</p>
+        <p class="foot-note" data-i18n="foot.signpath">🔏 Firma de código provista gratuitamente por <a href="https://about.signpath.io/" target="_blank" rel="noopener" style="color:var(--muted);text-decoration:underline">SignPath.io</a>, con certificado de la <a href="https://signpath.org/" target="_blank" rel="noopener" style="color:var(--muted);text-decoration:underline">SignPath Foundation</a>.</p>
+      </div>
+      <div class="foot-col">
+        <h4 data-i18n="foot.project">Proyecto</h4>
+        <a href="https://github.com/Pana1245/gaming-optimizer" target="_blank" rel="noopener">GitHub</a>
+        <a href="https://github.com/Pana1245/gaming-optimizer/releases" target="_blank" rel="noopener" data-i18n="foot.releases">Descargas / Releases</a>
+        <a href="https://github.com/Pana1245/gaming-optimizer/issues" target="_blank" rel="noopener" data-i18n="foot.issues">Reportar un problema</a>
+      </div>
+      <div class="foot-col">
+        <h4 data-i18n="foot.legal">Legal</h4>
+        <a href="https://github.com/Pana1245/gaming-optimizer/blob/main/PRIVACY.md" target="_blank" rel="noopener" data-i18n="foot.privacy">Privacidad</a>
+        <a href="https://github.com/Pana1245/gaming-optimizer/blob/main/LICENSE" target="_blank" rel="noopener" data-i18n="foot.license">Licencia MIT</a>
+        <a href="https://github.com/Pana1245/gaming-optimizer/blob/main/CREDITS.md" target="_blank" rel="noopener" data-i18n="foot.credits">Créditos</a>
+      </div>
+    </div>
+    <div class="foot-bottom">
+      <span data-i18n="foot.made">Hecho con 🐺 por Dani Dev</span> · MIT © 2026 ·
+      <span data-i18n="foot.disclaimer">Usala bajo tu responsabilidad</span>
+    </div>
+  </div>
+</footer>
+
+<div class="lb" id="lb"><img src="" alt="" /></div>
+
+<script>
+/* ---------- i18n ---------- */
+const I18N = {
+  es:{
+    "nav.features":"Características","nav.shots":"Capturas","nav.download":"Descargar",
+    "hero.pill":"Gratis · Open-source · 100% reversible",
+    "hero.title1":"Tu Windows,","hero.title2":"a máxima velocidad",
+    "hero.sub":"Optimizador de Windows para gaming: rápido, reversible y con un diseño minimalista. Aplica mejoras de rendimiento con un clic — y deshacé cualquier cambio cuando quieras.",
+    "hero.cta":"Descargar para Windows","hero.cta2":"Ver en GitHub",
+    "hero.note":"Windows 10 · 11 (x64) — ~5 MB — <b>se auto-actualiza solo</b>",
+    "trust.reversible":"🛡️ <b>100%</b> reversible","trust.tweaks":"🎯 <b>60+</b> tweaks",
+    "trust.size":"📦 <b>~5 MB</b> · sin bloat","trust.lang":"🌐 <b>ES / EN</b>","trust.oss":"🔓 <b>MIT</b> open-source",
+    "feat.eyebrow":"Todo en uno","feat.title":"Potente por dentro, simple por fuera",
+    "feat.sub":"Cada herramienta que necesitás para exprimir tu PC — con backups automáticos y un motor que deshace cambios uno por uno.",
+    "shots.eyebrow":"Miralo en acción","shots.title":"Diseño limpio, oscuro y directo",
+    "shots.sub":"Sin menús confusos ni publicidad. Hacé clic en cualquier captura para ampliarla.",
+    "shots.opt":"+60 tweaks con etiquetas de riesgo","shots.gpu":"NVIDIA/AMD + monitor en vivo",
+    "shots.net":"test de latencia + DNS","shots.react":"restaurá con un clic",
+    "dl.title":"Descargalo gratis","dl.sub":"Bajá el instalador desde GitHub Releases. Sin registro, sin pagos, sin trucos.",
+    "dl.cta":"Descargar para Windows",
+    "dl.s1":"<b>Descargá</b> el <span class='mono'>setup.exe</span> desde Releases.",
+    "dl.s2":"Si aparece SmartScreen: <b>Más información → Ejecutar de todas formas</b>.",
+    "dl.s3":"<b>Listo.</b> Se instala y se actualiza solo.",
+    "foot.about":"Optimizador de Windows para gaming. Hecho con Tauri, React y Rust. Gratis y open-source.",
+    "foot.signpath":"🔏 Firma de código provista gratuitamente por <a href='https://about.signpath.io/' target='_blank' rel='noopener' style='color:var(--muted);text-decoration:underline'>SignPath.io</a>, con certificado de la <a href='https://signpath.org/' target='_blank' rel='noopener' style='color:var(--muted);text-decoration:underline'>SignPath Foundation</a>.",
+    "foot.project":"Proyecto","foot.releases":"Descargas / Releases","foot.issues":"Reportar un problema",
+    "foot.legal":"Legal","foot.privacy":"Privacidad","foot.license":"Licencia MIT","foot.credits":"Créditos",
+    "foot.made":"Hecho con 🐺 por Dani Dev","foot.disclaimer":"Usala bajo tu responsabilidad"
+  },
+  en:{
+    "nav.features":"Features","nav.shots":"Screenshots","nav.download":"Download",
+    "hero.pill":"Free · Open-source · 100% reversible",
+    "hero.title1":"Your Windows,","hero.title2":"at full speed",
+    "hero.sub":"A Windows optimizer for gamers: fast, reversible and minimalist. Apply performance tweaks with one click — and undo any change whenever you want.",
+    "hero.cta":"Download for Windows","hero.cta2":"View on GitHub",
+    "hero.note":"Windows 10 · 11 (x64) — ~5 MB — <b>auto-updates itself</b>",
+    "trust.reversible":"🛡️ <b>100%</b> reversible","trust.tweaks":"🎯 <b>60+</b> tweaks",
+    "trust.size":"📦 <b>~5 MB</b> · no bloat","trust.lang":"🌐 <b>ES / EN</b>","trust.oss":"🔓 <b>MIT</b> open-source",
+    "feat.eyebrow":"All in one","feat.title":"Powerful inside, simple outside",
+    "feat.sub":"Every tool you need to squeeze your PC — with automatic backups and an engine that undoes changes one by one.",
+    "shots.eyebrow":"See it in action","shots.title":"Clean, dark and to the point",
+    "shots.sub":"No confusing menus, no ads. Click any screenshot to enlarge it.",
+    "shots.opt":"60+ tweaks with risk labels","shots.gpu":"NVIDIA/AMD + live monitor",
+    "shots.net":"latency test + DNS","shots.react":"restore with one click",
+    "dl.title":"Download it free","dl.sub":"Get the installer from GitHub Releases. No sign-up, no payments, no tricks.",
+    "dl.cta":"Download for Windows",
+    "dl.s1":"<b>Download</b> the <span class='mono'>setup.exe</span> from Releases.",
+    "dl.s2":"If SmartScreen appears: <b>More info → Run anyway</b>.",
+    "dl.s3":"<b>Done.</b> It installs and updates itself.",
+    "foot.about":"A Windows optimizer for gamers. Built with Tauri, React and Rust. Free and open-source.",
+    "foot.signpath":"🔏 Code signing provided free of charge by <a href='https://about.signpath.io/' target='_blank' rel='noopener' style='color:var(--muted);text-decoration:underline'>SignPath.io</a>, with a certificate from the <a href='https://signpath.org/' target='_blank' rel='noopener' style='color:var(--muted);text-decoration:underline'>SignPath Foundation</a>.",
+    "foot.project":"Project","foot.releases":"Downloads / Releases","foot.issues":"Report an issue",
+    "foot.legal":"Legal","foot.privacy":"Privacy","foot.license":"MIT License","foot.credits":"Credits",
+    "foot.made":"Made with 🐺 by Dani Dev","foot.disclaimer":"Use at your own risk"
+  }
+};
+
+/* ---------- features data (bilingual) ---------- */
+const FEATURES = [
+  {ic:"📊", es:["Panel","Anillos de CPU/RAM, puntaje de optimización, temperaturas reales y RAM Booster que baja el uso de memoria de verdad."],
+          en:["Dashboard","CPU/RAM rings, optimization score, real temperatures and a RAM Booster that actually lowers memory usage."]},
+  {ic:"🛡️", es:["Motor de Cambios","Aplica tweaks leyendo el valor previo, verificando el resultado y con historial para deshacer uno por uno."],
+          en:["Change Engine","Applies tweaks by reading the previous value, verifying the result, with history to undo one by one."]},
+  {ic:"🎯", es:["Perfiles","Configuraciones completas con un clic — Competitivo, Streaming, Equilibrado, Ahorro. Todo reversible."],
+          en:["Profiles","Full one-click configs — Competitive, Streaming, Balanced, Power-saving. All reversible."]},
+  {ic:"🚀", es:["Optimizaciones","+60 tweaks de rendimiento, red y privacidad. Backup y punto de restauración automático, con etiquetas de riesgo 🟢🟡."],
+          en:["Optimizations","60+ performance, network and privacy tweaks. Automatic backup and restore point, with risk labels 🟢🟡."]},
+  {ic:"🖥️", es:["Gráficos","Tweaks universales de GPU + máximo rendimiento NVIDIA/AMD y monitor en vivo por nvidia-smi."],
+          en:["Graphics","Universal GPU tweaks + max performance for NVIDIA/AMD and a live monitor via nvidia-smi."]},
+  {ic:"🎮", es:["Auto Game-Mode","Un daemon detecta cuándo abrís un juego, activa el modo gamer y revierte solo al cerrarlo."],
+          en:["Auto Game-Mode","A daemon detects when you launch a game, enables gamer mode and reverts on its own when you close it."]},
+  {ic:"🧹", es:["Limpieza","Analiza y libera espacio (temporales, cachés, papelera) y te muestra los MB liberados de verdad."],
+          en:["Cleanup","Scans and frees space (temp files, caches, recycle bin) and shows you the MB actually freed."]},
+  {ic:"🔧", es:["Reparar","SFC y DISM con salida en vivo, reset de red y reinicio de Explorer — para arreglar Windows sin la consola."],
+          en:["Repair","SFC and DISM with live output, network reset and Explorer restart — fix Windows without the console."]},
+  {ic:"🛟", es:["Reactivar","Para el usuario no técnico: volvé a activar con un clic Bluetooth, permisos, antivirus, búsqueda y más."],
+          en:["Re-enable","For non-technical users: re-enable Bluetooth, permissions, antivirus, search and more with one click."]}
+];
+
+let lang = localStorage.getItem("go_lang") || "es";
+
+function renderFeatures(){
+  document.getElementById("featGrid").innerHTML = FEATURES.map((f,i)=>{
+    const [h,p] = f[lang];
+    return `<div class="feature reveal" style="transition-delay:${(i%3)*90}ms"><span class="ic">${f.ic}</span><h3>${h}</h3><p>${p}</p></div>`;
+  }).join("");
+  observeReveals();
+}
+function applyLang(){
+  document.documentElement.lang = lang;
+  document.querySelectorAll("[data-i18n]").forEach(el=>{
+    const k = el.getAttribute("data-i18n");
+    if(I18N[lang][k]!==undefined) el.innerHTML = I18N[lang][k];
+  });
+  document.getElementById("lang-es").classList.toggle("on", lang==="es");
+  document.getElementById("lang-en").classList.toggle("on", lang==="en");
+  renderFeatures();
+}
+document.getElementById("langBtn").addEventListener("click",()=>{
+  lang = lang==="es" ? "en" : "es";
+  localStorage.setItem("go_lang", lang);
+  applyLang();
+});
+
+/* ---------- reveal on scroll ---------- */
+let io;
+function observeReveals(){
+  if(!io){
+    io = new IntersectionObserver((ents)=>{
+      ents.forEach(e=>{ if(e.isIntersecting){ e.target.classList.add("in"); io.unobserve(e.target);} });
+    },{threshold:.12});
+  }
+  document.querySelectorAll(".reveal:not(.in)").forEach(el=>io.observe(el));
+}
+
+/* ---------- lightbox ---------- */
+const lb = document.getElementById("lb"), lbImg = lb.querySelector("img");
+document.addEventListener("click",e=>{
+  const shot = e.target.closest(".shot");
+  if(shot){ lbImg.src = shot.querySelector("img").src; lb.classList.add("open"); }
+  else if(e.target===lb || e.target===lbImg){ lb.classList.remove("open"); }
+});
+document.addEventListener("keydown",e=>{ if(e.key==="Escape") lb.classList.remove("open"); });
+
+/* ---------- scroll progress bar ---------- */
+const prog = document.getElementById("progress");
+addEventListener("scroll",()=>{
+  const h = document.documentElement;
+  const pct = (h.scrollTop)/(h.scrollHeight - h.clientHeight)*100;
+  prog.style.width = pct + "%";
+},{passive:true});
+
+/* ---------- hero shot mouse parallax ---------- */
+const shotImg = document.querySelector(".hero-shot img");
+if(shotImg && !matchMedia("(prefers-reduced-motion:reduce)").matches){
+  addEventListener("mousemove",e=>{
+    const x=(e.clientX/innerWidth-.5), y=(e.clientY/innerHeight-.5);
+    shotImg.style.transform=`perspective(1200px) rotateY(${x*5}deg) rotateX(${-y*5}deg)`;
+  });
+}
+
+/* ---------- count-up numbers in trust bar ---------- */
+function countUp(el){
+  const raw = el.textContent.trim();
+  const m = raw.match(/^(\D*)(\d+)(.*)$/);
+  if(!m) return;
+  const [,pre,num,post]=m, target=+num, dur=1100, t0=performance.now();
+  function tick(now){
+    const p=Math.min((now-t0)/dur,1), val=Math.floor((1-Math.pow(1-p,3))*target);
+    el.textContent=pre+val+post;
+    if(p<1) requestAnimationFrame(tick);
+  }
+  requestAnimationFrame(tick);
+}
+const trustIO=new IntersectionObserver((ents)=>{
+  ents.forEach(e=>{ if(e.isIntersecting){ e.target.querySelectorAll("b").forEach(countUp); trustIO.unobserve(e.target);} });
+},{threshold:.5});
+document.querySelectorAll(".trust span").forEach(s=>trustIO.observe(s));
+
+/* init */
+applyLang();
+observeReveals();
+</script>
+</body>
+</html>

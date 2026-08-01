@@ -6,11 +6,8 @@ export default function NeonCard({
 }: { children: ReactNode; className?: string; glow?: string }) {
   return (
     <div
-      className={`rounded-xl border border-line p-5 ${className}`}
-      style={{
-        background: "linear-gradient(180deg, #131316 0%, #0d0d10 100%)",
-        boxShadow: "inset 0 1px 0 rgba(255,255,255,0.045), 0 1px 2px rgba(0,0,0,0.4)",
-      }}
+      className={`neon-card rounded-xl border border-line p-5 ${className}`}
+      style={{ background: "linear-gradient(180deg, #131316 0%, #0d0d10 100%)" }}
     >
       {children}
     </div>

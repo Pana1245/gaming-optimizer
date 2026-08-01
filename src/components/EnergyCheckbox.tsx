@@ -21,6 +21,7 @@ export default function EnergyCheckbox({ checked, onChange, label, badge, risk, 
           backgroundColor: checked ? "#00e676" : "rgba(0,0,0,0)",
           borderColor: checked ? "#00e676" : "#262629",
           scale: checked ? [1, 1.18, 1] : 1,
+          boxShadow: checked ? "0 0 8px rgba(0,230,118,0.6)" : "0 0 0 rgba(0,0,0,0)",
         }}
         transition={{ duration: 0.25, ease: "easeOut" }}
         className="relative w-[18px] h-[18px] rounded-[5px] border shrink-0 flex items-center justify-center"

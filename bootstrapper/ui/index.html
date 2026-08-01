@@ -1,0 +1,276 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Instalar Gaming Optimizer</title>
+<style>
+@font-face{font-family:"Inter";src:url("Inter.ttf") format("truetype");font-weight:100 900;font-display:swap}
+:root{
+  --bg:#08080a; --card:#141418; --line:#26262d; --text:#ededed; --dim:#8a8a94; --mute:#5a5a63;
+  --green:#00e676; --green2:#19ff8c; --cyan:#24c8db; --violet:#9c27b0;
+  --font:"Inter",system-ui,sans-serif; --mono:ui-monospace,monospace;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%;overflow:hidden}
+body{
+  background:var(--bg); color:var(--text); font-family:var(--font);
+  letter-spacing:-.01em; user-select:none; -webkit-font-smoothing:antialiased;
+}
+/* aurora de fondo */
+body::before{
+  content:"";position:fixed;inset:-20%;z-index:-2;
+  background:
+    radial-gradient(30% 30% at 50% 10%,rgba(0,230,118,.16),transparent 70%),
+    radial-gradient(28% 28% at 85% 30%,rgba(36,200,219,.10),transparent 70%),
+    radial-gradient(26% 30% at 12% 60%,rgba(156,39,176,.10),transparent 70%);
+  animation:aurora 18s ease-in-out infinite alternate;
+}
+@keyframes aurora{0%{transform:translate3d(0,0,0) scale(1)}100%{transform:translate3d(2%,2%,0) scale(1.1)}}
+body::after{
+  content:"";position:fixed;inset:0;z-index:-1;opacity:.4;
+  background-image:linear-gradient(rgba(255,255,255,.022) 1px,transparent 1px),linear-gradient(90deg,rgba(255,255,255,.022) 1px,transparent 1px);
+  background-size:40px 40px;mask-image:radial-gradient(circle at 50% 0%,#000,transparent 78%);
+}
+
+/* titlebar */
+.titlebar{height:38px;display:flex;align-items:center;padding:0 8px 0 16px;-webkit-app-region:drag}
+.tb-title{font-size:12px;color:var(--mute);font-weight:500;display:flex;align-items:center;gap:8px}
+.tb-title img{width:16px;height:16px;opacity:.8}
+.tb-actions{margin-left:auto;display:flex;gap:2px;-webkit-app-region:no-drag}
+.tb-btn{width:34px;height:26px;border:none;background:transparent;color:var(--mute);border-radius:7px;cursor:pointer;font-size:14px;display:flex;align-items:center;justify-content:center;transition:.15s}
+.tb-btn:hover{background:rgba(255,255,255,.06);color:var(--text)}
+.tb-btn.close:hover{background:#e5484d;color:#fff}
+.lang{font-family:var(--mono);font-size:11px;color:var(--mute);cursor:pointer;background:transparent;border:1px solid var(--line);border-radius:7px;padding:4px 9px;transition:.15s;-webkit-app-region:no-drag;margin-right:4px}
+.lang:hover{border-color:var(--green);color:var(--green2)}
+.lang .on{color:var(--green2)}
+
+/* stage */
+.stage{height:calc(100vh - 38px);display:flex;align-items:center;justify-content:center;padding:0 44px 30px;position:relative}
+.screen{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:0 44px 20px;text-align:center;
+  opacity:0;transform:translateY(14px);pointer-events:none;transition:opacity .4s ease,transform .4s ease}
+.screen.active{opacity:1;transform:none;pointer-events:auto}
+
+/* logo */
+.logo-wrap{position:relative;width:118px;height:118px;display:flex;align-items:center;justify-content:center;margin-bottom:22px}
+.logo-halo{position:absolute;width:118px;height:118px;border-radius:50%;background:radial-gradient(circle,rgba(0,230,118,.3),transparent 68%);animation:pulse 2.4s ease-in-out infinite}
+@keyframes pulse{0%,100%{transform:scale(1);opacity:.7}50%{transform:scale(1.16);opacity:1}}
+.logo-ring{position:absolute;width:100px;height:100px;border-radius:50%;
+  background:conic-gradient(from 0deg,transparent 0deg,var(--green) 90deg,var(--green2) 190deg,transparent 300deg);
+  -webkit-mask:radial-gradient(farthest-side,transparent calc(100% - 3px),#000 calc(100% - 3px));
+  mask:radial-gradient(farthest-side,transparent calc(100% - 3px),#000 calc(100% - 3px));animation:spin 1.5s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+.logo-wrap img{position:relative;width:74px;height:74px;filter:drop-shadow(0 0 12px rgba(0,230,118,.5))}
+
+h1{font-size:27px;font-weight:700;letter-spacing:-.5px;margin-bottom:8px}
+h1 .g{background:linear-gradient(120deg,var(--green2),var(--cyan));-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent}
+.sub{font-size:13.5px;color:var(--dim);max-width:420px;line-height:1.55;margin-bottom:6px}
+.ver{font-family:var(--mono);font-size:11.5px;color:var(--mute);margin-bottom:26px}
+
+/* trust chips */
+.chips{display:flex;gap:8px;flex-wrap:wrap;justify-content:center;margin-bottom:30px}
+.chip{font-size:11.5px;color:var(--dim);background:var(--card);border:1px solid var(--line);border-radius:100px;padding:6px 13px}
+.chip b{color:var(--green2)}
+
+/* button */
+.btn{display:inline-flex;align-items:center;gap:9px;font-family:var(--font);font-size:15px;font-weight:600;
+  padding:14px 40px;border-radius:12px;cursor:pointer;border:1px solid transparent;transition:transform .15s,box-shadow .25s,background .2s}
+.btn:active{transform:translateY(1px)}
+.btn-primary{background:linear-gradient(135deg,var(--green),var(--green2));color:#00140a;position:relative;overflow:hidden;box-shadow:0 8px 30px -8px rgba(0,230,118,.55)}
+.btn-primary:hover{transform:translateY(-2px);box-shadow:0 12px 40px -6px rgba(0,230,118,.75)}
+.btn-primary::after{content:"";position:absolute;top:0;left:-130%;width:55%;height:100%;background:linear-gradient(100deg,transparent,rgba(255,255,255,.5),transparent);transform:skewX(-20deg);animation:shine 3s ease-in-out infinite}
+@keyframes shine{0%,60%{left:-130%}85%,100%{left:170%}}
+.btn-ghost{background:var(--card);border-color:var(--line);color:var(--text);font-size:14px;padding:12px 26px}
+.btn-ghost:hover{border-color:var(--mute);background:#1a1a20}
+.row{display:flex;gap:12px;align-items:center;justify-content:center}
+.fine{font-size:11px;color:var(--mute);margin-top:22px;max-width:400px;line-height:1.5}
+.fine a{color:var(--dim);text-decoration:underline;text-underline-offset:2px}
+
+/* progress */
+.pbar{width:340px;height:5px;border-radius:100px;background:#17171c;overflow:hidden;position:relative;margin:8px 0 14px}
+.pfill{position:absolute;top:0;left:0;height:100%;width:40%;border-radius:100px;background:linear-gradient(90deg,transparent,var(--green),var(--green2),transparent);box-shadow:0 0 12px rgba(0,230,118,.6);animation:indet 1.3s ease-in-out infinite}
+@keyframes indet{0%{left:-40%}100%{left:100%}}
+.status{font-size:13px;color:var(--dim);height:20px;transition:opacity .3s}
+.hint{font-size:11.5px;color:var(--mute);margin-top:16px}
+
+/* done check */
+.check{width:88px;height:88px;border-radius:50%;background:rgba(0,230,118,.12);border:2px solid var(--green);display:flex;align-items:center;justify-content:center;margin-bottom:22px;box-shadow:0 0 30px -6px rgba(0,230,118,.6)}
+.check svg{width:44px;height:44px}
+.check path{stroke-dasharray:40;stroke-dashoffset:40;animation:draw .5s .2s ease forwards}
+@keyframes draw{to{stroke-dashoffset:0}}
+.err-ic{width:88px;height:88px;border-radius:50%;background:rgba(229,72,77,.12);border:2px solid #e5484d;display:flex;align-items:center;justify-content:center;margin-bottom:22px;font-size:40px}
+
+/* handoff hacia la app: overlay a pantalla completa, igual al splash de la app */
+.launching{position:fixed;inset:0;z-index:60;background:#050506;display:flex;flex-direction:column;align-items:center;justify-content:center;
+  opacity:0;pointer-events:none;transition:opacity .7s ease}
+.launching.on{opacity:1;pointer-events:auto}
+.launching .opening{margin-top:26px;font-size:14px;color:var(--dim);letter-spacing:.2px}
+/* al cerrar, desvanecemos toda la ventana a negro */
+body.leaving{transition:opacity .7s ease;opacity:0}
+</style>
+</head>
+<body>
+
+<div class="titlebar" data-tauri-drag-region>
+  <span class="tb-title"><img src="wolf.png" alt="" /><span data-i18n="tb">Instalador · Gaming Optimizer</span></span>
+  <div class="tb-actions">
+    <button class="lang" id="lang"><span id="l-es" class="on">ES</span>·<span id="l-en">EN</span></button>
+    <button class="tb-btn" id="min" title="Minimizar">—</button>
+    <button class="tb-btn close" id="close" title="Cerrar">✕</button>
+  </div>
+</div>
+
+<div class="stage">
+  <!-- WELCOME -->
+  <section class="screen active" id="s-welcome">
+    <div class="logo-wrap"><div class="logo-halo"></div><img src="wolf.png" alt="" /></div>
+    <h1><span data-i18n="w.t1">Instalar </span><span class="g">Gaming Optimizer</span></h1>
+    <p class="sub" data-i18n="w.sub">Optimizador de Windows para gaming — rápido, reversible y con un diseño minimalista.</p>
+    <div class="ver">v2.2.0 · Windows 10 · 11 (x64)</div>
+    <div class="chips">
+      <span class="chip" data-i18n="w.c1">🛡️ <b>100%</b> reversible</span>
+      <span class="chip" data-i18n="w.c2">📦 <b>~5 MB</b></span>
+      <span class="chip" data-i18n="w.c3">🔓 <b>MIT</b> open-source</span>
+    </div>
+    <button class="btn btn-primary" id="install"><span data-i18n="w.cta">Instalar ahora</span></button>
+    <p class="fine" data-i18n="w.fine">Al instalar aceptás la <a href="#" id="lic">licencia MIT</a>. Puede aparecer un aviso de Windows (UAC) para autorizar la instalación.</p>
+  </section>
+
+  <!-- INSTALLING -->
+  <section class="screen" id="s-install">
+    <div class="logo-wrap"><div class="logo-ring"></div><img src="wolf.png" alt="" /></div>
+    <h1 data-i18n="i.t">Instalando…</h1>
+    <div class="pbar"><div class="pfill"></div></div>
+    <div class="status" id="status">…</div>
+    <p class="hint" data-i18n="i.hint">No cierres esta ventana.</p>
+  </section>
+
+  <!-- DONE -->
+  <section class="screen" id="s-done">
+    <div class="check"><svg viewBox="0 0 52 52"><path fill="none" stroke="#19ff8c" stroke-width="5" stroke-linecap="round" stroke-linejoin="round" d="M14 27 l8 8 l16 -18"/></svg></div>
+    <h1 data-i18n="d.t">¡Listo!</h1>
+    <p class="sub" data-i18n="d.sub">Gaming Optimizer se instaló correctamente. Se actualizará solo de ahora en más.</p>
+    <div class="row" style="margin-top:26px">
+      <button class="btn btn-primary" id="launch" style="padding:14px 32px"><span data-i18n="d.open">Abrir Gaming Optimizer</span></button>
+      <button class="btn btn-ghost" id="finish" data-i18n="d.close">Cerrar</button>
+    </div>
+  </section>
+
+  <!-- LAUNCHING (handoff hacia la app) -->
+  <div class="launching" id="launching">
+    <div class="logo-wrap"><div class="logo-halo"></div><div class="logo-ring"></div><img src="wolf.png" alt="" /></div>
+    <div class="opening" data-i18n="launch.opening">Abriendo Gaming Optimizer…</div>
+  </div>
+
+  <!-- ERROR -->
+  <section class="screen" id="s-error">
+    <div class="err-ic">⚠</div>
+    <h1 data-i18n="e.t">No se pudo instalar</h1>
+    <p class="sub" id="err-msg"></p>
+    <div class="row" style="margin-top:26px">
+      <button class="btn btn-primary" id="retry" style="padding:14px 32px"><span data-i18n="e.retry">Reintentar</span></button>
+      <button class="btn btn-ghost" id="err-close" data-i18n="e.close">Cerrar</button>
+    </div>
+  </section>
+</div>
+
+<script>
+const invoke = window.__TAURI__.core.invoke;
+const appWin = window.__TAURI__.window.getCurrentWindow();
+
+/* ---------- i18n ---------- */
+const T = {
+  es:{
+    tb:"Instalador · Gaming Optimizer",
+    "w.t1":"Instalar ","w.sub":"Optimizador de Windows para gaming — rápido, reversible y con un diseño minimalista.",
+    "w.c1":"🛡️ <b>100%</b> reversible","w.c2":"📦 <b>~5 MB</b>","w.c3":"🔓 <b>MIT</b> open-source",
+    "w.cta":"Instalar ahora","w.fine":"Al instalar aceptás la <a href='#' id='lic'>licencia MIT</a>. Puede aparecer un aviso de Windows (UAC) para autorizar la instalación.",
+    "i.t":"Instalando…","i.hint":"No cierres esta ventana.",
+    "d.t":"¡Listo!","d.sub":"Gaming Optimizer se instaló correctamente. Se actualizará solo de ahora en más.","d.open":"Abrir Gaming Optimizer","d.close":"Cerrar",
+    "e.t":"No se pudo instalar","e.retry":"Reintentar","e.close":"Cerrar",
+    "launch.opening":"Abriendo Gaming Optimizer…",
+    steps:["Preparando el instalador…","Copiando archivos…","Registrando la aplicación…","Creando accesos directos…","Casi listo…"],
+    cancelled:"Instalación cancelada. Podés reintentar cuando quieras."
+  },
+  en:{
+    tb:"Installer · Gaming Optimizer",
+    "w.t1":"Install ","w.sub":"A Windows optimizer for gamers — fast, reversible and minimalist.",
+    "w.c1":"🛡️ <b>100%</b> reversible","w.c2":"📦 <b>~5 MB</b>","w.c3":"🔓 <b>MIT</b> open-source",
+    "w.cta":"Install now","w.fine":"By installing you accept the <a href='#' id='lic'>MIT license</a>. Windows may show a prompt (UAC) to authorize the installation.",
+    "i.t":"Installing…","i.hint":"Don't close this window.",
+    "d.t":"Done!","d.sub":"Gaming Optimizer was installed successfully. It will update itself from now on.","d.open":"Open Gaming Optimizer","d.close":"Close",
+    "e.t":"Installation failed","e.retry":"Retry","e.close":"Close",
+    "launch.opening":"Opening Gaming Optimizer…",
+    steps:["Preparing the installer…","Copying files…","Registering the app…","Creating shortcuts…","Almost done…"],
+    cancelled:"Installation cancelled. You can retry whenever you want."
+  }
+};
+let lang = "es";
+function applyLang(){
+  document.documentElement.lang = lang;
+  document.querySelectorAll("[data-i18n]").forEach(el=>{
+    const k = el.getAttribute("data-i18n");
+    if(T[lang][k]!==undefined) el.innerHTML = T[lang][k];
+  });
+  document.getElementById("l-es").classList.toggle("on", lang==="es");
+  document.getElementById("l-en").classList.toggle("on", lang==="en");
+}
+document.getElementById("lang").onclick = ()=>{ lang = lang==="es"?"en":"es"; applyLang(); };
+
+/* ---------- screens ---------- */
+function show(id){
+  document.querySelectorAll(".screen").forEach(s=>s.classList.remove("active"));
+  document.getElementById(id).classList.add("active");
+}
+
+/* ---------- status cycling during install ---------- */
+let stepTimer = null;
+function cycleStatus(){
+  const el = document.getElementById("status");
+  let i = 0;
+  const tick = ()=>{
+    el.style.opacity = 0;
+    setTimeout(()=>{ el.textContent = T[lang].steps[Math.min(i, T[lang].steps.length-1)]; el.style.opacity = 1; i++; }, 250);
+  };
+  tick();
+  stepTimer = setInterval(tick, 1600);
+}
+function stopStatus(){ if(stepTimer){ clearInterval(stepTimer); stepTimer=null; } }
+
+/* ---------- actions ---------- */
+async function doInstall(){
+  show("s-install");
+  cycleStatus();
+  try{
+    await invoke("install");
+    stopStatus();
+    show("s-done");
+  }catch(err){
+    stopStatus();
+    const msg = String(err);
+    if(msg.includes("cancelado")){
+      document.getElementById("err-msg").textContent = T[lang].cancelled;
+    }else{
+      document.getElementById("err-msg").textContent = msg;
+    }
+    show("s-error");
+  }
+}
+document.getElementById("install").onclick = doInstall;
+document.getElementById("retry").onclick = doInstall;
+document.getElementById("launch").onclick = async ()=>{
+  document.getElementById("launching").classList.add("on");   // "Abriendo…" con el lobo
+  try{ await invoke("launch"); }catch(e){}
+  // dar tiempo a que la app arranque y muestre SU splash; luego fundir la ventana y cerrar
+  setTimeout(()=> document.body.classList.add("leaving"), 1700);
+  setTimeout(()=> appWin.close(), 2500);
+};
+document.getElementById("finish").onclick = ()=> appWin.close();
+document.getElementById("err-close").onclick = ()=> appWin.close();
+document.getElementById("close").onclick = ()=> appWin.close();
+document.getElementById("min").onclick = ()=> appWin.minimize();
+
+applyLang();
+</script>
+</body>
+</html>
