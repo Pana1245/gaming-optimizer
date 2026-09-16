@@ -24,8 +24,14 @@ npm run tauri build
 SETUP="src-tauri/target/release/bundle/nsis/GamingOptimizer_${VER}_x64-setup.exe"
 [ -f "$SETUP" ] || { echo "ERROR: no se encontró $SETUP"; exit 1; }
 
-echo "[2/3] Embebiendo setup.exe en el bootstrapper..."
+echo "[2/3] Embebiendo setup.exe + WebView2 en el bootstrapper..."
 cp "$SETUP" "$HERE/src-tauri/embedded/setup.exe"
+# Bootstrapper oficial de WebView2 (gitignoreado): bajarlo si falta.
+WV="$HERE/src-tauri/embedded/webview2setup.exe"
+if [ ! -f "$WV" ]; then
+  echo "  bajando WebView2 bootstrapper..."
+  curl -sL -o "$WV" "https://go.microsoft.com/fwlink/p/?LinkId=2124703"
+fi
 
 echo "[3/3] Buildeando el bootstrapper (release)..."
 # Mantener la versión del bootstrapper en sync con la app.

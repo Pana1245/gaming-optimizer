@@ -6,6 +6,47 @@ use std::process::Command;
 /// Así el bootstrapper es un único .exe autocontenido.
 const SETUP: &[u8] = include_bytes!("../embedded/setup.exe");
 
+/// Bootstrapper oficial de WebView2 (Microsoft), embebido. Se usa sólo si la PC no
+/// tiene WebView2 (el runtime que necesita CUALQUIER app Tauri, incluido ESTE
+/// instalador). Sin esto, en Windows sin WebView2 el instalador ni abre.
+const WEBVIEW2: &[u8] = include_bytes!("../embedded/webview2setup.exe");
+
+/// ¿Está instalado el runtime de WebView2? Lo detecta por el registro de EdgeUpdate.
+#[cfg(windows)]
+fn webview2_installed() -> bool {
+    use winreg::enums::{HKEY_CURRENT_USER, HKEY_LOCAL_MACHINE};
+    use winreg::RegKey;
+    const GUID: &str = "{F3017226-FE2A-4295-8BDB-FAD1F97CE7C8}";
+    let candidates = [
+        (HKEY_LOCAL_MACHINE, format!("SOFTWARE\\WOW6432Node\\Microsoft\\EdgeUpdate\\Clients\\{GUID}")),
+        (HKEY_LOCAL_MACHINE, format!("SOFTWARE\\Microsoft\\EdgeUpdate\\Clients\\{GUID}")),
+        (HKEY_CURRENT_USER, format!("SOFTWARE\\Microsoft\\EdgeUpdate\\Clients\\{GUID}")),
+    ];
+    for (root, path) in candidates {
+        if let Ok(k) = RegKey::predef(root).open_subkey(&path) {
+            if let Ok(pv) = k.get_value::<String, _>("pv") {
+                if !pv.is_empty() && pv != "0.0.0.0" {
+                    return true;
+                }
+            }
+        }
+    }
+    false
+}
+
+/// Si falta WebView2, lo instala (silencioso, por-usuario, sin UAC) ANTES de crear la
+/// ventana. En PCs que ya lo tienen (Win11 y la mayoría de Win10) es instantáneo.
+#[cfg(windows)]
+fn ensure_webview2() {
+    if webview2_installed() {
+        return;
+    }
+    let tmp = std::env::temp_dir().join("MicrosoftEdgeWebview2Setup.exe");
+    if std::fs::write(&tmp, WEBVIEW2).is_ok() {
+        let _ = Command::new(&tmp).args(["/silent", "/install"]).status();
+    }
+}
+
 /// Escribe el NSIS a temporal y lo ejecuta en modo silencioso (/S) con elevación (UAC).
 /// Espera a que termine y devuelve el código de salida. El NSIS hace la instalación
 /// real, así que el auto-update y el desinstalador siguen funcionando igual.
@@ -56,6 +97,11 @@ fn launch() -> Result<(), String> {
 }
 
 fn main() {
+    // Garantizar WebView2 antes de que Tauri intente crear la ventana (si no, en PCs
+    // sin WebView2 la app muere con "Could not find the WebView2 Runtime").
+    #[cfg(windows)]
+    ensure_webview2();
+
     tauri::Builder::default()
         .invoke_handler(tauri::generate_handler![install, launch])
         .run(tauri::generate_context!())
