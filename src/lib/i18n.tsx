@@ -317,6 +317,7 @@ const STR: Record<string, { es: string; en: string }> = {
   "gpu.integrated": { es: "Integrada", en: "Integrated" },
   "gpu.dedicated": { es: "Dedicada", en: "Dedicated" },
   "gpu.none": { es: "No se detectó ninguna placa de video", en: "No graphics card detected" },
+  "gpu.movedHint": { es: "HAGS y Game DVR están en Optimizaciones → Gaming Performance.", en: "HAGS and Game DVR are in Optimizations → Gaming Performance." },
   "gpu.m.temp": { es: "Temp", en: "Temp" },
   "gpu.m.usage": { es: "Uso", en: "Usage" },
   "gpu.m.clock": { es: "Reloj", en: "Clock" },

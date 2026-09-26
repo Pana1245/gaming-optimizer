@@ -142,6 +142,7 @@ export default function Graficos() {
             {busy ? t("gpu.applying") : t("gpu.applySelected")}
           </button>
         </div>
+        <p className="text-[12px] text-text-mute mb-2">{t("gpu.movedHint")}</p>
         <div className="space-y-0.5">
           {GPU_OPS.map((o) => (
             <EnergyCheckbox key={o.id} checked={!!sel[o.id]} onChange={(v) => setSel((s) => ({ ...s, [o.id]: v }))}

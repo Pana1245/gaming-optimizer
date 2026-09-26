@@ -32,7 +32,7 @@ export default function Motor() {
     loadLedger().then(setLedger).catch(() => {});
   }, []);
 
-  const tweaks = useMemo(() => ENGINE_TWEAKS.filter((t) => !t.os || t.os === winVer), [winVer]);
+  const tweaks = useMemo(() => ENGINE_TWEAKS.filter((t) => !t.motorHidden && (!t.os || t.os === winVer)), [winVer]);
   const groups = useMemo(() => [...new Set(tweaks.map((t) => t.group))], [tweaks]);
   const selected = tweaks.filter((t) => sel[t.id]);
 

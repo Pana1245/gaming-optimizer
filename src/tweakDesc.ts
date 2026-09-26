@@ -1,6 +1,6 @@
 // Descripciones cortas de qué hace cada tweak (para los tooltips)
 export const TWEAK_DESC: Record<string, string> = {
-  "Plan de energía: Máximo rendimiento": "Activa el plan de energía de alto rendimiento: la CPU no baja su frecuencia para ahorrar, ideal para juegos.",
+  "Plan de energía: Máximo rendimiento": "Activa el plan Ultimate Performance (o Alto rendimiento si tu Windows no lo tiene): la CPU no baja su frecuencia para ahorrar, ideal para juegos. Reutiliza el plan si ya existe, no crea copias.",
   "Habilitar Game Mode de Windows": "Prioriza recursos para el juego en primer plano y reduce tareas de fondo mientras jugás.",
   "Deshabilitar Xbox Game Bar y DVR": "Apaga la grabación en segundo plano del Game Bar, que consume CPU/GPU y puede causar tirones.",
   "Hardware Accelerated GPU Scheduling (HAGS)": "Deja que la GPU gestione su propia memoria/planificación, bajando la latencia en tarjetas modernas.",

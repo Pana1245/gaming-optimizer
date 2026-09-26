@@ -141,14 +141,6 @@ foreach($it in $items){
 $total=$items.Count
 if($stuck -gt 0){ Write-Output ('Restos eliminados: '+$done+'/'+$total+' — '+$stuck+' en uso (cerrá la app o reiniciá y reintentá)') } else { Write-Output ('Restos eliminados: '+$done+'/'+$total) }`;
 
-const MS_BLOAT = String.raw`$list='Microsoft.BingNews','Microsoft.BingWeather','Microsoft.GetHelp','Microsoft.Getstarted','Microsoft.Messaging','Microsoft.MicrosoftSolitaireCollection','Microsoft.MicrosoftOfficeHub','Microsoft.People','Microsoft.SkypeApp','Microsoft.ZuneMusic','Microsoft.ZuneVideo','Microsoft.WindowsFeedbackHub','Microsoft.YourPhone','Microsoft.Todos','Clipchamp.Clipchamp','Microsoft.GamingApp','Microsoft.549981C3F5F10','Microsoft.MixedReality.Portal','Microsoft.WindowsMaps'
-$n=0; foreach($a in $list){ if(Get-AppxPackage -Name $a -AllUsers -EA SilentlyContinue){ Get-AppxPackage -Name $a -AllUsers | Remove-AppxPackage -AllUsers -EA SilentlyContinue; $n++ } }
-Write-Output "Apps de Microsoft removidas: $n"`;
-
-const OEM_BLOAT = String.raw`$list='king.com.CandyCrush*','*.Disney*','*.Facebook*','*.Netflix*','*.TikTok*','*.Spotify*','*.Twitter*','*.Booking*','*WildTangent*','*McAfee*','*.LinkedInforWindows*','*.Dropbox*','*.Roblox*'
-$n=0; foreach($a in $list){ Get-AppxPackage -Name $a -AllUsers -EA SilentlyContinue | ForEach-Object { Remove-AppxPackage -Package $_.PackageFullName -AllUsers -EA SilentlyContinue; $n++ } }
-Write-Output "Bloatware de terceros removido: $n"`;
-
 // Espera a que el desinstalador termine DE VERDAD antes de escanear restos: los
 // uninstallers NSIS se copian a %TEMP% (Au_.exe) y siguen en segundo plano aunque
 // el .exe original ya devolvió control. Espera hasta ~30s (proceso Au_ o procesos
@@ -266,10 +258,6 @@ export default function Desinstalar() {
       <div className="flex items-center gap-2 mb-3">
         <input value={query} onChange={(e) => setQuery(e.target.value)} placeholder={t("unins.search")}
           className="flex-1 h-9 px-3 rounded-lg bg-surface border border-line focus:border-accent outline-none text-[13px] text-text placeholder:text-text-mute transition" />
-        <button disabled={working} onClick={() => setConfirm({ title: t("unins.bloatMsTitle"), msg: t("unins.bloatMsMsg"), run: async () => { setConfirm(null); setWorking(true); setStatus(t("unins.bloatMsRun")); const r = await runPowershell(MS_BLOAT); setStatus("✓ " + (r.output.split("\n").pop() || t("unins.doneCap")).trim()); await reload(); setWorking(false); } })}
-          className="btn btn-ghost">Bloatware MS</button>
-        <button disabled={working} onClick={() => setConfirm({ title: t("unins.bloatOemTitle"), msg: t("unins.bloatOemMsg"), run: async () => { setConfirm(null); setWorking(true); setStatus(t("unins.bloatOemRun")); const r = await runPowershell(OEM_BLOAT); setStatus("✓ " + (r.output.split("\n").pop() || t("unins.doneCap")).trim()); await reload(); setWorking(false); } })}
-          className="btn btn-ghost">Bloatware OEM</button>
         <button disabled={working || loading} onClick={reload}
           className="btn btn-ghost">{t("common.refresh")}</button>
       </div>

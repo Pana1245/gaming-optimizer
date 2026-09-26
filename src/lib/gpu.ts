@@ -2,22 +2,13 @@ import type { RegOp } from "../engineTweaks";
 import { runPowershell } from "./api";
 
 const GFX = String.raw`HKLM:\SYSTEM\CurrentControlSet\Control\GraphicsDrivers`;
-const GAMES = String.raw`HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Multimedia\SystemProfile\Tasks\Games`;
-const GAMECFG = String.raw`HKCU:\System\GameConfigStore`;
 const DWM = String.raw`HKLM:\SOFTWARE\Microsoft\Windows\Dwm`;
 
 // Optimizaciones universales de GPU (cualquier marca). Se aplican por el Motor →
-// reversibles desde el Historial.
+// reversibles desde el Historial. HAGS y Game DVR NO van acá: ya están en
+// Optimizaciones → Gaming (antes estaban repetidos en 3 lugares). "Prioridad de GPU"
+// se quitó: ponía 8, que ya es el valor por defecto de Windows (placebo).
 export const GPU_OPS: RegOp[] = [
-  { id: "gpu_hags", group: "GPU", name: "GPU Scheduling por hardware (HAGS)",
-    desc: "Deja que la GPU gestione su planificación: menos latencia y overhead de CPU.",
-    key: GFX, prop: "HwSchMode", type: "DWord", value: 2 },
-  { id: "gpu_prio", group: "GPU", name: "Prioridad de GPU alta para juegos",
-    desc: "Sube la prioridad de GPU de las tareas multimedia/juego.",
-    key: GAMES, prop: "GPU Priority", type: "DWord", value: 8 },
-  { id: "gpu_dvr", group: "GPU", name: "Desactivar Game DVR",
-    desc: "Apaga la grabación en segundo plano de Windows que roba FPS.",
-    key: GAMECFG, prop: "GameDVR_Enabled", type: "DWord", value: 0 },
   { id: "gpu_tdr", group: "GPU", name: "Evitar cuelgues del driver bajo carga (TDR)", risk: "advanced",
     desc: "Sube TdrDelay a 10s: da más tiempo a la GPU antes de reiniciar el driver. Útil si tenés crasheos 'el driver dejó de responder y se recuperó'.",
     key: GFX, prop: "TdrDelay", type: "DWord", value: 10 },
