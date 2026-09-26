@@ -20,6 +20,21 @@ const InstallerCtx = createContext<Ctx>({
 
 export const useInstaller = () => useContext(InstallerCtx);
 
+// Paquetes cuyo manifiesto de winget declara `ElevationRequirement: elevationProhibited`:
+// winget se niega a instalarlos desde un proceso admin (esta app lo es) y el intento
+// elevado falla o se cuelga. Van DIRECTO a la instalación des-elevada. Revisado contra
+// microsoft/winget-pkgs para todo el catálogo (sólo Spotify lo tiene).
+const USER_ONLY = new Set(["Spotify.Spotify"]);
+
+// La primera línea de la salida de winget suele ser ruido ("Encontrado X…", spinners).
+// Preferimos la línea que realmente describe el error.
+const errorLine = (out: string) => {
+  const lines = out.split("\n").map((l) => l.trim()).filter((l) => /\w/.test(l) && !/[▀-▟]/.test(l));
+  return (lines.find((l) => /error|fall|fail|c[oó]digo|code|0x[0-9a-f]{6,}|denegad|denied|hash/i.test(l))
+    ?? lines[lines.length - 1] ?? "Error").slice(0, 120);
+};
+const inUse = (out: string) => /in use|en uso|packageInUse|c[oó]digo.*\b26\b/i.test(out);
+
 // Instala una app DES-ELEVADA (como el usuario normal, sin admin) vía una tarea
 // programada de nivel limitado. Necesario para apps per-usuario como Spotify, cuyo
 // instalador se niega a correr elevado. Devuelve 'GO_OK' o 'GO_FAIL <detalle>'.
@@ -82,17 +97,21 @@ export function InstallerProvider({ children }: { children: ReactNode }) {
       // --source winget: evita la fuente msstore (falla con --disable-interactivity).
       // --force: instalación forzosa (aunque haya otra versión / chequeos no críticos).
       const cmd = `winget install --id "${app.id}" --exact --source winget --silent --force --accept-package-agreements --accept-source-agreements --disable-interactivity`;
-      let r = await runPowershell(cmd);
+      const userOnly = USER_ONLY.has(app.id);
+      // Los paquetes que prohíben admin ni se intentan elevados (fallan o se cuelgan).
+      let r = userOnly ? { ok: false, output: "" } : await runPowershell(cmd);
       let viaUser = false;
-      // Si falla elevado, reintenta DES-ELEVADO (apps per-usuario como Spotify).
+      // Si falla elevado (o el paquete prohíbe admin), instala DES-ELEVADO.
       if (!isOk(r)) {
-        addLog("  ↩ reintentando sin admin (modo usuario)…");
+        addLog(userOnly ? "  ↪ instalando en modo usuario (este paquete no admite admin)…" : "  ↩ reintentando sin admin (modo usuario)…");
         const d = await runPowershell(deElevatedInstall(app.id));
         if (d.output.includes("GO_OK")) { r = { ok: true, output: "" }; viaUser = true; }
         else r = { ok: false, output: d.output.replace(/GO_FAIL/g, "").trim() || r.output };
       }
       if (isOk(r)) { ok++; addLog(wasAlready(r) ? "  ✓ Ya estaba instalado" : viaUser ? "  ✓ Instalado (modo usuario)" : "  ✓ Instalado"); }
-      else addLog(`  ✗ ${(r.output.split("\n").find((l) => l.trim()) || "Error").slice(0, 80)}`);
+      else addLog(inUse(r.output)
+        ? `  ✗ ${app.name} está abierto — cerralo y reintentá`
+        : `  ✗ ${errorLine(r.output)}`);
       setProgress((i + 1) / apps.length);
     }
     addLog(`Completado: ${ok}/${apps.length} aplicaciones.`);
