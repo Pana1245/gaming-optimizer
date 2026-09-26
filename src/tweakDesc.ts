@@ -14,7 +14,6 @@ export const TWEAK_DESC: Record<string, string> = {
   "Optimizar TCP": "Ajusta parámetros TCP (autotuning, RSS) para mejor rendimiento de red.",
   "Deshabilitar Large Send Offload (LSO)": "Desactiva LSO, que en muchas placas de red causa picos de latencia.",
   "Reservar 0% de ancho de banda para QoS": "Libera el 20% de ancho de banda que Windows reserva por defecto para QoS. Avanzado.",
-  "Plan de energía Ultimate Performance": "Activa el plan oculto 'Ultimate Performance', aún más agresivo que Alto rendimiento.",
   "MSI mode en la GPU (menos latencia)": "Activa interrupciones por mensaje (MSI) en la GPU para reducir latencia. Avanzado: requiere reiniciar.",
   "Bloquear telemetría (archivo hosts)": "Agrega los dominios de telemetría de Microsoft al archivo hosts para bloquearlos. Avanzado.",
   "Desactivar Recall (captura de IA)": "Desactiva Recall de Windows 11, que toma capturas periódicas de tu pantalla.",

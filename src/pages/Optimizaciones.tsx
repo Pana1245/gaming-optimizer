@@ -3,6 +3,7 @@ import { motion } from "framer-motion";
 import { CATEGORIES } from "../catalog";
 import { EXTRA_TWEAKS, EXTRA_CATEGORIES } from "../extraCatalog";
 import { TWEAK_DESC } from "../tweakDesc";
+import { CATEGORY_EN, TWEAK_EN, TWEAK_DESC_EN } from "../catalogEn";
 import { runPowershell, getSystemInfo } from "../lib/api";
 import { notify } from "../lib/notify";
 import { useScrollMemory } from "../lib/useScrollMemory";
@@ -90,7 +91,10 @@ const MODO_GAMER: Record<string, number[]> = {
 };
 
 export default function Optimizaciones() {
-  const { t } = useI18n();
+  const { t, lang } = useI18n();
+  // Nombre/descripción del tweak en el idioma actual (las claves son el nombre en español).
+  const tn = (name: string) => (lang === "en" && TWEAK_EN[name]) || name;
+  const td = (name: string) => (lang === "en" && TWEAK_DESC_EN[name]) || TWEAK_DESC[name];
   const [winVer, setWinVer] = useState(11);
   const [sel, setSel] = useState<Record<string, boolean>>({});
   const [log, setLog] = useState<string[]>(["Listo."]);
@@ -177,7 +181,7 @@ export default function Optimizaciones() {
     addLog(t("opt.step2").replace("{n}", String(list.length)));
     let ok = 0;
     for (let i = 0; i < list.length; i++) {
-      addLog(`▸ ${list[i].name}`);
+      addLog(`▸ ${tn(list[i].name)}`);
       const r = await runPowershell(list[i].script);
       if (!mounted.current) return;
       if (r.ok) ok++;
@@ -219,7 +223,7 @@ export default function Optimizaciones() {
               >
                 <div className="flex items-center gap-2.5 mb-2.5">
                   <span className="w-1.5 h-1.5 rounded-full" style={{ background: c.color }} />
-                  <h2 className="section-label">{c.name}</h2>
+                  <h2 className="section-label">{(lang === "en" && CATEGORY_EN[c.id]) || c.name}</h2>
                   <span className="text-[12px] text-text-mute">{selCount}/{c.tweaks.length}</span>
                 </div>
                 {c.id === "winutil" && (
@@ -229,10 +233,10 @@ export default function Optimizaciones() {
                   {c.tweaks.map((t, i) => (
                     <div key={i} className="px-3">
                       <EnergyCheckbox
-                        label={t.name}
+                        label={tn(t.name)}
                         badge={t.os ? `W${t.os}` : undefined}
                         risk={t.risk === "advanced" || ADVANCED.has(t.name) ? "advanced" : "safe"}
-                        desc={TWEAK_DESC[t.name]}
+                        desc={td(t.name)}
                         checked={!!sel[`${c.id}:${i}`]}
                         onChange={(v) => setSel((s) => ({ ...s, [`${c.id}:${i}`]: v }))}
                       />
