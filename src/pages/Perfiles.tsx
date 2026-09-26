@@ -50,7 +50,7 @@ export default function Perfiles() {
       }
       notify(`${p.emoji} ${t("profiles.notifyPre")} ${nameOf(p)} ${t("profiles.notifyApplied")}`, `${ok} ${t("profiles.notifyBody")} ${planOf(p)}.`);
     } catch (err) {
-      addLog(`✗ ${t("profiles.applyErr")} ${err instanceof Error ? err.message : String(err)}`);
+      addLog(`✗ ${t("profiles.applyErr")} ${t(err instanceof Error ? err.message : String(err))}`);
     } finally {
       setApplyingId(null);
     }

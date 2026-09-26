@@ -1,5 +1,6 @@
 import { motion } from "framer-motion";
 import Tooltip from "./Tooltip";
+import { useI18n } from "../lib/i18n";
 
 interface Props {
   checked: boolean;
@@ -11,6 +12,7 @@ interface Props {
 }
 
 export default function EnergyCheckbox({ checked, onChange, label, badge, risk, desc }: Props) {
+  const { t } = useI18n();
   return (
     <div
       className="flex items-center gap-3 py-2.5 px-2 -mx-2 rounded-md cursor-pointer hover:bg-white/[0.025] transition-colors"
@@ -50,7 +52,7 @@ export default function EnergyCheckbox({ checked, onChange, label, badge, risk, 
             <>
               {desc}
               {risk === "advanced" && (
-                <span className="block mt-1 text-[#ffb74d]">⚠ Avanzado — modifica ajustes del sistema</span>
+                <span className="block mt-1 text-[#ffb74d]">{t("common.advancedWarn")}</span>
               )}
             </>
           }

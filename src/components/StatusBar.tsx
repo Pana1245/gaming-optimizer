@@ -34,7 +34,7 @@ export default function StatusBar() {
       <div className="flex items-center gap-2 min-w-0">
         <span className="w-1.5 h-1.5 rounded-full bg-accent shrink-0" />
         <span className="truncate">
-          {info ? [info.win, info.cpu, info.gpu].filter(Boolean).join("  ·  ") : "Cargando…"}
+          {info ? [info.win, info.cpu, info.gpu].filter(Boolean).join("  ·  ") : t("common.loading")}
         </span>
       </div>
       <div className="flex items-center gap-3 shrink-0">

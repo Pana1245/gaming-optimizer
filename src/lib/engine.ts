@@ -19,11 +19,11 @@ export interface LedgerEntry {
  *  Atómico y sin problemas de escaping/spawn. Devuelve la entrada para el ledger. */
 export async function applyOp(op: RegOp): Promise<LedgerEntry> {
   const r = await regApply(op.key, op.prop, op.type, String(op.value));
-  if (!r.ok) throw new Error("No se pudo escribir el registro");
+  if (!r.ok) throw new Error("engine.errWrite");
   // Si no se leyó el valor previo de un DWord, no persistimos una entrada
   // "reversible" engañosa: deshacerla podría escribir un valor equivocado.
   if (r.prior === "" && op.type === "DWord")
-    throw new Error("No se pudo leer el valor previo; se aborta para no dañar el registro al deshacer");
+    throw new Error("engine.errPrior");
   return {
     id: `${Date.now()}_${op.id}`,
     tweakId: op.id, name: op.name, key: op.key, prop: op.prop, type: op.type,

@@ -57,7 +57,7 @@ export default function Motor() {
           addLog(e.verified ? `  ✓ ${t("motor.verified")}  (${showVal(e.prior)} → ${e.value})` : `  ✗ ${t("motor.notVerified")}`);
       } catch (err) {
         // No persistimos la entrada: si falló el apply, no debe quedar como reversible.
-        if (mounted.current) addLog(`  ✗ ${t("motor.errorPre")} ${err instanceof Error ? err.message : String(err)}`);
+        if (mounted.current) addLog(`  ✗ ${t("motor.errorPre")} ${t(err instanceof Error ? err.message : String(err))}`);
       }
     }
     // Persistir SIEMPRE, aunque el usuario haya navegado durante el apply: los cambios

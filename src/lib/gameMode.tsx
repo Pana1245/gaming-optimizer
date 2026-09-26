@@ -2,6 +2,7 @@ import { createContext, useContext, useEffect, useRef, useState, type ReactNode 
 import { listen, type UnlistenFn } from "@tauri-apps/api/event";
 import { startGameWatch, stopGameWatch, runPowershell, clearStandbyRam } from "./api";
 import { ensureNotify, notify } from "./notify";
+import { useI18n } from "./i18n";
 
 // Guarda el plan de energía y SystemResponsiveness previos para restaurarlos al salir.
 const GUID_RX = String.raw`([0-9a-fA-F]{8}-([0-9a-fA-F]{4}-){3}[0-9a-fA-F]{12})`;
@@ -84,7 +85,12 @@ export function GameModeProvider({ children }: { children: ReactNode }) {
   const [pro, setProState] = useState(() => localStorage.getItem("gm_pro") !== "0");
   const [games, setGames] = useState<string[]>(loadGames);
   const [playing, setPlaying] = useState<string | null>(null);
-  const [log, setLog] = useState<string[]>(["Listo. Activá el modo y elegí a qué juegos vigilar."]);
+  const { t } = useI18n();
+  // Los listeners se registran una sola vez: leen el idioma ACTUAL vía ref.
+  const tRef = useRef(t);
+  tRef.current = t;
+  const tr = (k: string) => tRef.current(k);
+  const [log, setLog] = useState<string[]>(() => [t("gml.ready")]);
   const playingRef = useRef<string | null>(null);
   playingRef.current = playing;
   const proRef = useRef(pro);
@@ -117,8 +123,8 @@ export function GameModeProvider({ children }: { children: ReactNode }) {
       const g = e.payload;
       enqueue(async () => {
         setPlaying(g);
-        addLog(`🎮 ${g} detectado → activando Modo Gamer`);
-        notify("🎮 Modo Gamer activado", `Detecté ${g}. Optimizando para jugar.`);
+        addLog(tr("gml.detected").replace("{g}", g));
+        notify(tr("gml.onTitle"), tr("gml.onBody").replace("{g}", g));
         await runPowershell(GAMER_ON);
         if (proRef.current) {
           await runPowershell(prioScript(g));
@@ -128,14 +134,14 @@ export function GameModeProvider({ children }: { children: ReactNode }) {
           appliedProRef.current = true;
           const ram = await clearStandbyRam(localStorage.getItem("lang") || "es");
           const bgN = bg.output.match(/BG=(\d+)/)?.[1] ?? "0";
-          addLog(`⚡ Pro: prioridad Alta · ${bgN} apps de fondo bajadas · ${ram.ok ? "RAM liberada" : "RAM sin cambios"}`);
+          addLog(tr("gml.pro").replace("{n}", bgN).replace("{ram}", tr(ram.ok ? "gml.ramFreed" : "gml.ramSame")));
         }
       });
     }).then((u) => uns.push(u));
     listen("game-off", () => {
       enqueue(async () => {
-        addLog("↩ Juego cerrado → restaurando");
-        notify("Modo Gamer desactivado", "El juego se cerró. Volví al estado normal.");
+        addLog(tr("gml.closed"));
+        notify(tr("gml.offTitle"), tr("gml.offBody"));
         await runPowershell(GAMER_OFF);
         if (appliedProRef.current) { await runPowershell(BG_RESTORE); appliedProRef.current = false; }
         setPlaying(null);
@@ -150,7 +156,7 @@ export function GameModeProvider({ children }: { children: ReactNode }) {
     if (enabled) {
       ensureNotify();
       startGameWatch(games);
-      addLog(`Vigilando ${games.length} juegos…${pro ? " (modo pro)" : ""}`);
+      addLog(tr("gml.watching").replace("{n}", String(games.length)) + (pro ? tr("gml.proSuffix") : ""));
     } else {
       stopGameWatch();
       if (playingRef.current) {
@@ -160,7 +166,7 @@ export function GameModeProvider({ children }: { children: ReactNode }) {
           setPlaying(null);
         });
       }
-      addLog("Auto Game-Mode desactivado.");
+      addLog(tr("gml.off"));
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [enabled, games]);

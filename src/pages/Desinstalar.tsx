@@ -92,13 +92,13 @@ $leaf = if($loc){ Split-Path $loc -Leaf } else { '' }
 $folderTerms = @($leaf,$clean,$pub) | Where-Object { $_ -and $_.Length -gt 2 -and ($bad -notcontains $_.ToLower()) } | Select-Object -Unique
 $appTerms = @($leaf,$clean) | Where-Object { $_ -and $_.Length -gt 2 -and ($bad -notcontains $_.ToLower()) } | Select-Object -Unique
 $found=@()
-if(SafeFolder $loc){ $found += [pscustomobject]@{type='folder'; label='Carpeta de instalación'; path=$loc} }
-if($key){ $found += [pscustomobject]@{type='regkey'; label='Clave de desinstalación'; path=('Registry::'+$key)} }
+if(SafeFolder $loc){ $found += [pscustomobject]@{type='folder'; label='folder'; path=$loc} }
+if($key){ $found += [pscustomobject]@{type='regkey'; label='uninstallKey'; path=('Registry::'+$key)} }
 foreach($root in @($env:APPDATA,$env:LOCALAPPDATA,$env:ProgramData,$env:ProgramFiles,[Environment]::GetEnvironmentVariable('ProgramFiles(x86)'))){
   if(!$root){ continue }
   foreach($t in $folderTerms){
     $p = Join-Path $root $t
-    if((SafeFolder $p) -and (@($found.path) -notcontains $p)){ $found += [pscustomobject]@{type='folder'; label='Datos / carpeta'; path=$p} }
+    if((SafeFolder $p) -and (@($found.path) -notcontains $p)){ $found += [pscustomobject]@{type='folder'; label='data'; path=$p} }
   }
 }
 foreach($rr in @('HKCU:\Software','HKLM:\Software','HKLM:\Software\Wow6432Node')){
@@ -106,7 +106,7 @@ foreach($rr in @('HKCU:\Software','HKLM:\Software','HKLM:\Software\Wow6432Node')
     $cands=@("$rr\$t")
     if($pub -and ($bad -notcontains $pub.ToLower())){ $cands += "$rr\$pub\$t" }
     foreach($c in $cands){
-      if((Test-Path -LiteralPath $c) -and (@($found.path) -notcontains $c)){ $found += [pscustomobject]@{type='regkey'; label='Registro'; path=$c} }
+      if((Test-Path -LiteralPath $c) -and (@($found.path) -notcontains $c)){ $found += [pscustomobject]@{type='regkey'; label='reg'; path=$c} }
     }
   }
 }
@@ -325,7 +325,7 @@ export default function Desinstalar() {
                 <input type="checkbox" checked={it.checked} onChange={() => toggleItem(i)}
                   className="mt-1 shrink-0" style={{ accentColor: "#00e676" }} />
                 <span className="min-w-0">
-                  <span className="text-[11px] text-text-mute">{it.label}</span>
+                  <span className="text-[11px] text-text-mute">{t("unins.lo." + it.label)}</span>
                   <span className="block text-[12px] text-text-dim font-mono break-all leading-snug">{it.path}</span>
                 </span>
               </label>

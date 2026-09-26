@@ -75,7 +75,7 @@ export default function Graficos() {
       addLog(`${ok}/${ops.length} ${t("gpu.verified")}`);
       notify(t("gpu.notifyTitle"), `${ok} ${t("gpu.notifyBody")}`);
     } catch (err) {
-      addLog(`✗ ${t("gpu.applyErr")} ${err instanceof Error ? err.message : String(err)}`);
+      addLog(`✗ ${t("gpu.applyErr")} ${t(err instanceof Error ? err.message : String(err))}`);
     } finally {
       setBusy(false);
     }
@@ -88,7 +88,7 @@ export default function Graficos() {
       const r = await runPowershell(script);
       addLog(r.output.trim());
     } catch (err) {
-      addLog(`✗ ${t("gpu.errPrefix")} ${err instanceof Error ? err.message : String(err)}`);
+      addLog(`✗ ${t("gpu.errPrefix")} ${t(err instanceof Error ? err.message : String(err))}`);
     } finally {
       setVendorBusy(false);
     }

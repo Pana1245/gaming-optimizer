@@ -1,6 +1,7 @@
 import { createContext, useContext, useState, type ReactNode } from "react";
 import { runPowershell } from "./api";
 import { notify } from "./notify";
+import { useI18n } from "./i18n";
 
 export interface InstallApp { id: string; name: string; }
 
@@ -62,7 +63,8 @@ else { Write-Output ('GO_FAIL ' + (($otxt -replace '\s+', ' ').Trim())) }`;
 
 export function InstallerProvider({ children }: { children: ReactNode }) {
   const [running, setRunning] = useState(false);
-  const [log, setLog] = useState<string[]>(["Listo."]);
+  const { t } = useI18n();
+  const [log, setLog] = useState<string[]>(() => [t("inst.ready")]);
   const [progress, setProgress] = useState(0);
   const [done, setDone] = useState<string | null>(null);
 
@@ -75,16 +77,16 @@ export function InstallerProvider({ children }: { children: ReactNode }) {
     setRunning(true);
     setProgress(0);
     setDone(null);
-    setLog(["Listo."]);
+    setLog([t("inst.ready")]);
 
     const wingetOk = await runPowershell(`if (Get-Command winget -ErrorAction SilentlyContinue) { "OK" } else { "NO" }`);
     if (!/OK/.test(wingetOk.output)) {
-      addLog("✗ winget (App Installer) no está instalado en esta PC.");
-      addLog('  Instalalo gratis desde Microsoft Store buscando "App Installer" y reintentá.');
+      addLog(t("inst.noWinget1"));
+      addLog(t("inst.noWinget2"));
       setRunning(false);
       return;
     }
-    addLog(`Instalando ${apps.length} aplicaciones vía winget…`);
+    addLog(t("inst.installingN").replace("{n}", String(apps.length)));
     let ok = 0;
     const isOk = (r: { ok: boolean; output: string }) =>
       r.ok || /already installed|ya está instalad|no applicable|no aplicable|reboot|reinici/i.test(r.output);
@@ -103,21 +105,22 @@ export function InstallerProvider({ children }: { children: ReactNode }) {
       let viaUser = false;
       // Si falla elevado (o el paquete prohíbe admin), instala DES-ELEVADO.
       if (!isOk(r)) {
-        addLog(userOnly ? "  ↪ instalando en modo usuario (este paquete no admite admin)…" : "  ↩ reintentando sin admin (modo usuario)…");
+        addLog(userOnly ? t("inst.userMode") : t("inst.retryUser"));
         const d = await runPowershell(deElevatedInstall(app.id));
         if (d.output.includes("GO_OK")) { r = { ok: true, output: "" }; viaUser = true; }
         else r = { ok: false, output: d.output.replace(/GO_FAIL/g, "").trim() || r.output };
       }
-      if (isOk(r)) { ok++; addLog(wasAlready(r) ? "  ✓ Ya estaba instalado" : viaUser ? "  ✓ Instalado (modo usuario)" : "  ✓ Instalado"); }
+      if (isOk(r)) { ok++; addLog(wasAlready(r) ? t("inst.already") : viaUser ? t("inst.okUser") : t("inst.ok")); }
       else addLog(inUse(r.output)
-        ? `  ✗ ${app.name} está abierto — cerralo y reintentá`
+        ? t("inst.inUse").replace("{name}", app.name)
         : `  ✗ ${errorLine(r.output)}`);
       setProgress((i + 1) / apps.length);
     }
-    addLog(`Completado: ${ok}/${apps.length} aplicaciones.`);
+    const sum = (k: string) => t(k).replace("{ok}", String(ok)).replace("{total}", String(apps.length));
+    addLog(sum("inst.completed"));
     setRunning(false);
-    notify("Instalación completada", `${ok}/${apps.length} aplicaciones instaladas.`);
-    setDone(`${ok}/${apps.length} aplicaciones instaladas.`);
+    notify(t("inst.notifyTitle"), sum("inst.summary"));
+    setDone(sum("inst.summary"));
   };
 
   const clearDone = () => setDone(null);
