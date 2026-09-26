@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { ENGINE_TWEAKS } from "../engineTweaks";
+import { opName, opDesc, ledgerName } from "../lib/opNames";
 import { getSystemInfo } from "../lib/api";
 import { applyOp, undoEntry, loadLedger, saveLedger, type LedgerEntry } from "../lib/engine";
 import { useScrollMemory } from "../lib/useScrollMemory";
@@ -11,7 +12,7 @@ import { useI18n } from "../lib/i18n";
 const fmtTime = (ts: number) => new Date(ts).toLocaleString();
 
 export default function Motor() {
-  const { t } = useI18n();
+  const { t, lang } = useI18n();
   const showVal = (v: string) => (v === "__ABSENT__" ? t("motor.notExisted") : v);
   const [winVer, setWinVer] = useState(11);
   const [tab, setTab] = useState<"apply" | "history">("apply");
@@ -48,7 +49,7 @@ export default function Motor() {
     const newEntries: LedgerEntry[] = [];
     let ok = 0;
     for (const op of selected) {
-      if (mounted.current) addLog(`▸ ${op.name}`);
+      if (mounted.current) addLog(`▸ ${opName(op, lang)}`);
       try {
         const e = await applyOp(op);
         newEntries.push(e);
@@ -76,7 +77,7 @@ export default function Motor() {
     setBusy(true);
     const ok = await undoEntry(e);
     if (!ok) {
-      addLog(`✗ ${t("motor.undoFail").replace("{name}", e.name)}`);
+      addLog(`✗ ${t("motor.undoFail").replace("{name}", ledgerName(e, lang))}`);
       if (mounted.current) setBusy(false);
       return;
     }
@@ -123,11 +124,11 @@ export default function Motor() {
             <div ref={listRef} className={`overflow-y-auto pr-3 -mr-3 space-y-6 ${busy ? "pointer-events-none opacity-50" : ""}`}>
               {groups.map((g) => (
                 <section key={g}>
-                  <h2 className="section-label mb-2">{g}</h2>
+                  <h2 className="section-label mb-2">{t(`motor.group.${g}`)}</h2>
                   <div className="rounded-xl border border-line divide-y divide-line/60">
                     {tweaks.filter((t) => t.group === g).map((t) => (
                       <div key={t.id} className="px-3">
-                        <EnergyCheckbox label={t.name} desc={t.desc}
+                        <EnergyCheckbox label={opName(t, lang)} desc={opDesc(t, lang)}
                           risk={t.risk === "advanced" ? "advanced" : "safe"}
                           checked={!!sel[t.id]}
                           onChange={(v) => setSel((s) => ({ ...s, [t.id]: v }))} />
@@ -176,7 +177,7 @@ export default function Motor() {
                       className="w-2 h-2 rounded-full shrink-0"
                       style={{ background: e.verified ? "#00e676" : "#ff5470" }} />
                     <div className="flex-1 min-w-0">
-                      <div className="text-[13px] text-text truncate">{e.name}</div>
+                      <div className="text-[13px] text-text truncate">{ledgerName(e, lang)}</div>
                       <div className="text-[12px] text-text-mute font-mono truncate">
                         {showVal(e.prior)} → {e.value} · {fmtTime(e.ts)}
                       </div>

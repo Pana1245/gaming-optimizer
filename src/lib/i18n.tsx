@@ -435,6 +435,14 @@ const STR: Record<string, { es: string; en: string }> = {
   "unins.lo.uninstallKey": { es: "Clave de desinstalación", en: "Uninstall key" },
   "unins.lo.data": { es: "Datos / carpeta", en: "Data / folder" },
   "unins.lo.reg": { es: "Registro", en: "Registry" },
+
+  // ── Motor: grupos ──
+  "motor.group.Gaming": { es: "Gaming", en: "Gaming" },
+  "motor.group.Apariencia": { es: "Apariencia", en: "Appearance" },
+  "motor.group.Explorador": { es: "Explorador", en: "File Explorer" },
+  "motor.group.Privacidad": { es: "Privacidad", en: "Privacy" },
+  "motor.group.Sistema": { es: "Sistema", en: "System" },
+  "motor.group.GPU": { es: "GPU", en: "GPU" },
 };
 
 interface Ctx { lang: Lang; setLang: (l: Lang) => void; t: (k: string) => string; }

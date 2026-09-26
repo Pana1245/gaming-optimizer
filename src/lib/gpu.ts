@@ -10,10 +10,10 @@ const DWM = String.raw`HKLM:\SOFTWARE\Microsoft\Windows\Dwm`;
 // se quitó: ponía 8, que ya es el valor por defecto de Windows (placebo).
 export const GPU_OPS: RegOp[] = [
   { id: "gpu_tdr", group: "GPU", name: "Evitar cuelgues del driver bajo carga (TDR)", risk: "advanced",
-    desc: "Sube TdrDelay a 10s: da más tiempo a la GPU antes de reiniciar el driver. Útil si tenés crasheos 'el driver dejó de responder y se recuperó'.",
+    desc: "Sube TdrDelay a 10s: da más tiempo a la GPU antes de reiniciar el driver. Útil si tenés crasheos 'el driver dejó de responder y se recuperó'.", nameEn: "Prevent driver hangs under load (TDR)", descEn: "Raises TdrDelay to 10s: gives the GPU more time before the driver resets. Useful if you get 'display driver stopped responding and has recovered' crashes.",
     key: GFX, prop: "TdrDelay", type: "DWord", value: 10 },
   { id: "gpu_mpo", group: "GPU", name: "Desactivar MPO (arregla parpadeos / stutter)", risk: "advanced",
-    desc: "Multi-Plane Overlay causa parpadeos o tirones en algunas GPUs y setups multimonitor. Desactivarlo lo soluciona.",
+    desc: "Multi-Plane Overlay causa parpadeos o tirones en algunas GPUs y setups multimonitor. Desactivarlo lo soluciona.", nameEn: "Disable MPO (fixes flicker / stutter)", descEn: "Multi-Plane Overlay causes flicker or stutter on some GPUs and multi-monitor setups. Disabling it fixes that.",
     key: DWM, prop: "OverlayTestMode", type: "DWord", value: 5 },
 ];
 

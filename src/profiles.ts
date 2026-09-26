@@ -24,8 +24,10 @@ const GAMECFG = String.raw`HKCU:\System\GameConfigStore`;
 const PERSONALIZE = String.raw`HKCU:\SOFTWARE\Microsoft\Windows\CurrentVersion\Themes\Personalize`;
 const GFX = String.raw`HKLM:\SYSTEM\CurrentControlSet\Control\GraphicsDrivers`;
 
+// Nombres en inglés de las ops de perfil que no son iguales en ambos idiomas.
+const OP_EN: Record<string, string> = {"Game Mode de Windows": "Windows Game Mode", "Transparencia OFF": "Transparency OFF", "Transparencia ON": "Transparency ON"};
 const op = (id: string, name: string, key: string, prop: string, value: number, group: string): RegOp =>
-  ({ id, name, desc: "", group, key, prop, type: "DWord", value });
+  ({ id, name, nameEn: OP_EN[name] ?? name, desc: "", group, key, prop, type: "DWord", value });
 
 // Terminan con `exit $LASTEXITCODE` (el de powercfg) para que el frontend sepa si
 // el plan se aplicó de verdad — powercfg es nativo y su fallo no altera `ok` solo.

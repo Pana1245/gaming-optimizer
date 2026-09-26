@@ -2,6 +2,7 @@ import { useRef, useState } from "react";
 import { motion } from "framer-motion";
 import { HudTitle } from "../components/NeonCard";
 import { PROFILES, type Profile } from "../profiles";
+import { opName } from "../lib/opNames";
 import { applyOp, loadLedger, saveLedger } from "../lib/engine";
 import { runPowershell } from "../lib/api";
 import { notify } from "../lib/notify";
@@ -35,7 +36,7 @@ export default function Perfiles() {
       for (const op of p.ops) {
         const e = await applyOp(op);
         ledger.push(e);
-        addLog(`${e.verified ? "✓" : "✗"} ${op.name}`);
+        addLog(`${e.verified ? "✓" : "✗"} ${opName(op, lang)}`);
         if (e.verified) ok++;
       }
       await saveLedger(ledger);
