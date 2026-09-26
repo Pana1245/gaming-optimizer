@@ -3,7 +3,7 @@ import NeonCard, { HudTitle } from "../components/NeonCard";
 import EnergyCheckbox from "../components/EnergyCheckbox";
 import { getSystemInfo, runPowershell } from "../lib/api";
 import { applyOp, loadLedger, saveLedger } from "../lib/engine";
-import { GPU_OPS, isNvidia, isAmd, getNvInfo, NV_MAXPERF, NV_RESTORE, AMD_MAXPERF, AMD_RESTORE, type NvInfo } from "../lib/gpu";
+import { GPU_OPS, isNvidia, isAmd, isIntegrated, getNvInfo, NV_MAXPERF, NV_RESTORE, AMD_MAXPERF, AMD_RESTORE, type NvInfo } from "../lib/gpu";
 import { notify } from "../lib/notify";
 import { useI18n } from "../lib/i18n";
 
@@ -20,7 +20,7 @@ function Metric({ label, value, unit, color }: { label: string; value: number; u
 
 export default function Graficos() {
   const { t, lang } = useI18n();
-  const [gpu, setGpu] = useState("");
+  const [gpus, setGpus] = useState<{ name: string; vram_gb: number }[] | null>(null);
   const [nv, setNv] = useState<NvInfo | null>(null);
   const [sel, setSel] = useState<Record<string, boolean>>(() =>
     Object.fromEntries(GPU_OPS.map((o) => [o.id, o.risk !== "advanced"])));
@@ -35,12 +35,17 @@ export default function Graficos() {
     queueMicrotask(() => logRef.current?.scrollTo(0, logRef.current.scrollHeight));
   };
 
-  const nvidia = isNvidia(gpu);
-  const amd = isAmd(gpu);
+  // Todas las placas físicas: una PC con Ryzen (integrada AMD) + NVIDIA tiene que
+  // mostrar las DOS secciones, no sólo la de la placa "con más memoria".
+  const list = gpus ?? [];
+  const nvidia = list.some((g) => isNvidia(g.name));
+  const amd = list.some((g) => isAmd(g.name));
 
   useEffect(() => {
     mounted.current = true;
-    getSystemInfo().then((i) => mounted.current && setGpu(i.gpu)).catch(() => {});
+    getSystemInfo()
+      .then((i) => mounted.current && setGpus(i.gpus?.length ? i.gpus : i.gpu ? [{ name: i.gpu, vram_gb: 0 }] : []))
+      .catch(() => mounted.current && setGpus([]));
     return () => { mounted.current = false; };
   }, []);
 
@@ -98,7 +103,23 @@ export default function Graficos() {
         <div className="flex items-center gap-3 mb-1">
           <span className="section-label">{t("gpu.detected")}</span>
         </div>
-        <div className="text-[15px] font-semibold text-text">{gpu || t("gpu.detecting")}</div>
+        {gpus === null && <div className="text-[15px] font-semibold text-text">{t("gpu.detecting")}</div>}
+        {gpus !== null && list.length === 0 && <div className="text-[15px] font-semibold text-text">{t("gpu.none")}</div>}
+        <div className="space-y-1.5">
+          {list.map((g) => {
+            const vendor = isNvidia(g.name) ? { c: "#76b900", n: "NVIDIA" } : isAmd(g.name) ? { c: "#ed1c24", n: "AMD" } : { c: "#3b9eff", n: "" };
+            return (
+              <div key={g.name} className="flex items-center gap-2 flex-wrap">
+                <span className="text-[15px] font-semibold text-text">{g.name}</span>
+                {vendor.n && <span className="text-[10.5px] font-semibold px-1.5 py-0.5 rounded" style={{ color: vendor.c, border: `1px solid ${vendor.c}55` }}>{vendor.n}</span>}
+                <span className="text-[10.5px] px-1.5 py-0.5 rounded border border-line text-text-mute">
+                  {isIntegrated(g.name) ? t("gpu.integrated") : t("gpu.dedicated")}
+                </span>
+                {g.vram_gb >= 1 && <span className="text-[11.5px] text-text-mute tabular-nums">{g.vram_gb} GB VRAM</span>}
+              </div>
+            );
+          })}
+        </div>
         {nvidia && nv && (
           <div className="flex gap-2.5 mt-3">
             <Metric label={t("gpu.m.temp")} value={nv.temp} unit="°C" color={nv.temp < 70 ? "#00e676" : nv.temp < 84 ? "#ffd24a" : "#ff5470"} />
@@ -110,7 +131,7 @@ export default function Graficos() {
         )}
         {nvidia && !nv && <p className="text-[12.5px] text-text-mute mt-2">{t("gpu.readingNv")}</p>}
         {amd && <p className="text-[12.5px] text-text-mute mt-2">{t("gpu.amdNote")}</p>}
-        {!nvidia && !amd && gpu && <p className="text-[12.5px] text-text-mute mt-2">{t("gpu.otherNote")}</p>}
+        {!nvidia && !amd && list.length > 0 && <p className="text-[12.5px] text-text-mute mt-2">{t("gpu.otherNote")}</p>}
       </NeonCard>
 
       {/* Optimizaciones universales */}

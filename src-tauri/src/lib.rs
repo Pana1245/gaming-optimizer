@@ -292,6 +292,12 @@ fn stats(state: tauri::State<AppState>) -> Stats {
     Stats { cpu, ram, disk }
 }
 
+#[derive(Serialize, Clone)]
+pub struct GpuEntry {
+    pub name: String,
+    pub vram_gb: f64,
+}
+
 #[derive(Serialize)]
 pub struct SysInfo {
     pub windows: String,
@@ -299,8 +305,67 @@ pub struct SysInfo {
     pub cores: usize,
     pub threads: usize,
     pub ram_gb: f64,
+    /// Placa principal (la de más VRAM) — se mantiene por compatibilidad.
     pub gpu: String,
+    /// Todas las placas físicas (iGPU + dGPU), de mayor a menor VRAM.
+    pub gpus: Vec<GpuEntry>,
     pub win_ver: u32,
+}
+
+/// Lista las placas de video FÍSICAS (PNPDeviceID PCI\*, descarta adaptadores
+/// virtuales tipo Parsec/escritorio remoto) ordenadas por VRAM real. No usa
+/// Win32_VideoController.AdapterRAM para ordenar: es uint32 y se traba en 4 GB
+/// (una RTX 3070 de 8 GB reporta 4 GB), así que una integrada podía "ganarle" a la
+/// dedicada. La VRAM sale de HardwareInformation.qwMemorySize/MemorySize del registro.
+const GPU_LIST_PS: &str = r#"try{[Console]::OutputEncoding=[System.Text.UTF8Encoding]::new($false)}catch{}
+$vram=@{}
+Get-ChildItem 'HKLM:\SYSTEM\CurrentControlSet\Control\Class\{4d36e968-e325-11ce-bfc1-08002be10318}' -EA SilentlyContinue | Where-Object { $_.PSChildName -match '^\d{4}$' } | ForEach-Object {
+  try {
+    $p=Get-ItemProperty $_.PSPath -EA SilentlyContinue
+    if($p.DriverDesc){
+      $m=[uint64]0
+      $q=$p.'HardwareInformation.qwMemorySize'
+      if($q){ $m=[uint64]$q }
+      else {
+        $s=$p.'HardwareInformation.MemorySize'
+        if($s -is [byte[]] -and $s.Length -ge 4){ $m=[uint64][BitConverter]::ToUInt32($s,0) }
+        elseif($s){ $m=[uint64][uint32]$s }
+      }
+      if(-not $vram.ContainsKey($p.DriverDesc) -or $m -gt $vram[$p.DriverDesc]){ $vram[$p.DriverDesc]=$m }
+    }
+  } catch {}
+}
+$list=@(Get-CimInstance Win32_VideoController | Where-Object { $_.PNPDeviceID -like 'PCI\*' })
+if($list.Count -eq 0){ $list=@(Get-CimInstance Win32_VideoController) }
+$list | ForEach-Object {
+  $v=[uint64]0
+  if($vram.ContainsKey($_.Name)){ $v=$vram[$_.Name] }
+  if(-not $v -and $_.AdapterRAM){ $v=[uint64]$_.AdapterRAM }
+  [pscustomobject]@{ n=$_.Name; v=$v }
+} | Sort-Object v -Descending | ForEach-Object { $_.n + "`t" + $_.v }"#;
+
+fn detect_gpus() -> Vec<GpuEntry> {
+    let utf16: Vec<u8> = GPU_LIST_PS.encode_utf16().flat_map(|u| u.to_le_bytes()).collect();
+    let encoded = general_purpose::STANDARD.encode(utf16);
+    let mut cmd = Command::new("powershell.exe");
+    cmd.args(["-NoProfile", "-ExecutionPolicy", "Bypass", "-EncodedCommand", &encoded]);
+    #[cfg(windows)]
+    cmd.creation_flags(CREATE_NO_WINDOW);
+    let out = cmd
+        .output()
+        .map(|o| String::from_utf8_lossy(&o.stdout).to_string())
+        .unwrap_or_default();
+    out.lines()
+        .filter_map(|l| {
+            let mut it = l.splitn(2, '\t');
+            let name = it.next()?.trim().to_string();
+            if name.is_empty() {
+                return None;
+            }
+            let bytes: f64 = it.next().and_then(|b| b.trim().parse().ok()).unwrap_or(0.0);
+            Some(GpuEntry { name, vram_gb: (bytes / 1_073_741_824.0 * 10.0).round() / 10.0 })
+        })
+        .collect()
 }
 
 /// Información estática del equipo.
@@ -330,19 +395,9 @@ async fn system_info() -> SysInfo {
         .unwrap_or(0);
     let win_ver = if build >= 22000 { 11 } else { 10 };
 
-    // GPU vía PowerShell (sysinfo no expone GPU)
-    let gpu = {
-        let script = "(Get-CimInstance Win32_VideoController | Where-Object { $_.AdapterRAM -gt 0 } | Sort-Object AdapterRAM -Descending | Select-Object -First 1).Name";
-        let utf16: Vec<u8> = script.encode_utf16().flat_map(|u| u.to_le_bytes()).collect();
-        let encoded = general_purpose::STANDARD.encode(utf16);
-        let mut cmd = Command::new("powershell.exe");
-        cmd.args(["-NoProfile", "-ExecutionPolicy", "Bypass", "-EncodedCommand", &encoded]);
-        #[cfg(windows)]
-        cmd.creation_flags(CREATE_NO_WINDOW);
-        cmd.output()
-            .map(|o| String::from_utf8_lossy(&o.stdout).trim().to_string())
-            .unwrap_or_default()
-    };
+    // GPU vía PowerShell (sysinfo no expone GPU): todas las físicas, la principal primero.
+    let gpus = detect_gpus();
+    let gpu = gpus.first().map(|g| g.name.clone()).unwrap_or_default();
 
     SysInfo {
         windows: os_long,
@@ -351,6 +406,7 @@ async fn system_info() -> SysInfo {
         threads,
         ram_gb: (ram_gb * 10.0).round() / 10.0,
         gpu,
+        gpus,
         win_ver,
     }
 }

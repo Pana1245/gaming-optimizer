@@ -28,6 +28,10 @@ export const GPU_OPS: RegOp[] = [
 
 export const isNvidia = (gpu: string) => /nvidia|geforce|rtx|gtx|quadro/i.test(gpu);
 export const isAmd = (gpu: string) => /amd|radeon|\brx\s?\d|vega|rdna/i.test(gpu);
+// Gráficos integrados (en el procesador): AMD Ryzen APU ("Radeon(TM) Graphics", "Vega 8
+// Graphics", "780M"), Intel UHD/Iris/HD. Sólo para rotular; las acciones van por marca.
+export const isIntegrated = (gpu: string) =>
+  /radeon\(tm\) graphics|radeon graphics|vega \d+ graphics|radeon(\(tm\))?\s*\d{3}m\b|intel.*(uhd|iris|hd graphics)/i.test(gpu);
 
 // ---- NVIDIA: monitor en vivo (nvidia-smi) -----------------------------------
 export interface NvInfo { name: string; temp: number; util: number; clock: number; power: number; memUsed: number; memTotal: number; }
@@ -52,7 +56,14 @@ export async function getNvInfo(): Promise<NvInfo | null> {
 const NV_CLASS = String.raw`HKLM:\SYSTEM\CurrentControlSet\Control\Class\{4d36e968-e325-11ce-bfc1-08002be10318}`;
 const NV_STORE = String.raw`HKCU:\Software\GamingOptimizer\GpuPrev`;
 
+// Subclaves del registro (0000, 0001…) de las placas PRESENTES. El registro de la
+// clase Display guarda también placas que ya no están (si cambiaste de GPU); sin este
+// filtro los scripts escribían en esas "fantasmas" y contaban adaptadores de más.
+// Si Get-PnpDevice no está disponible, $present queda vacío y no se filtra.
+const PRESENT_PS = String.raw`$present=@(Get-PnpDevice -Class Display -PresentOnly -EA SilentlyContinue | ForEach-Object { (Get-PnpDeviceProperty -InstanceId $_.InstanceId -KeyName 'DEVPKEY_Device_Driver' -EA SilentlyContinue).Data } | Where-Object { $_ } | ForEach-Object { ($_ -split '\\')[-1] })`;
+
 export const NV_MAXPERF = (en: boolean) => String.raw`$base='${NV_CLASS}'; $store='${NV_STORE}'
+${PRESENT_PS}
 if(!(Test-Path $store)){ New-Item $store -Force | Out-Null }
 # Sólo guardamos el estado original si todavía no hay un backup pendiente; así
 # aplicar dos veces no pisa los valores originales con los ya optimizados.
@@ -60,6 +71,7 @@ $saved=(Get-ItemProperty $store -Name '_NV_saved' -EA SilentlyContinue).'_NV_sav
 $n=0
 Get-ChildItem $base -EA SilentlyContinue | Where-Object { $_.PSChildName -match '^\d{4}$' } | ForEach-Object {
   $id=$_.PSChildName; $k=$_.PSPath
+  if($present.Count -gt 0 -and $present -notcontains $id){ return }
   $desc=(Get-ItemProperty $k -Name DriverDesc -EA SilentlyContinue).DriverDesc
   if($desc -match 'NVIDIA'){
     if($saved -ne '1'){
@@ -80,6 +92,7 @@ Get-ChildItem $base -EA SilentlyContinue | Where-Object { $_.PSChildName -match 
 if($n -gt 0){ Set-ItemProperty $store -Name '_NV_saved' -Value '1' -Force; Write-Output ('${en ? "NVIDIA: maximum performance applied to " : "NVIDIA: maximo rendimiento aplicado a "}'+$n+'${en ? " adapter(s). Restart to take effect." : " adaptador(es). Reinicia para que tome efecto."}') } else { Write-Output '${en ? "No NVIDIA adapter found in the registry." : "No encontre adaptador NVIDIA en el registro."}' }`;
 
 export const NV_RESTORE = (en: boolean) => String.raw`$base='${NV_CLASS}'; $store='${NV_STORE}'
+${PRESENT_PS}
 # Sin un backup válido no tocamos nada: borrar las propiedades del driver podía
 # destruir la configuración legítima del usuario.
 $saved=(Get-ItemProperty $store -Name '_NV_saved' -EA SilentlyContinue).'_NV_saved'
@@ -87,6 +100,7 @@ if($saved -ne '1'){ Write-Output '${en ? "No valid NVIDIA backup to restore; not
 $n=0
 Get-ChildItem $base -EA SilentlyContinue | Where-Object { $_.PSChildName -match '^\d{4}$' } | ForEach-Object {
   $id=$_.PSChildName; $k=$_.PSPath
+  if($present.Count -gt 0 -and $present -notcontains $id){ return }
   $desc=(Get-ItemProperty $k -Name DriverDesc -EA SilentlyContinue).DriverDesc
   if($desc -match 'NVIDIA'){
     foreach($v in 'PowerMizerEnable','PerfLevelSrc','PowerMizerLevel','PowerMizerLevelAC'){
@@ -104,11 +118,13 @@ Write-Output ('${en ? "NVIDIA: driver values restored (" : "NVIDIA: valores del 
 // EnableUlps=0 evita el downclock profundo en reposo; KMD_FRTEnabled=0 quita el
 // limitador de FPS por ahorro. Ambos se guardan para poder restaurarlos.
 export const AMD_MAXPERF = (en: boolean) => String.raw`$base='${NV_CLASS}'; $store='${NV_STORE}'
+${PRESENT_PS}
 if(!(Test-Path $store)){ New-Item $store -Force | Out-Null }
 $saved=(Get-ItemProperty $store -Name '_AMD_saved' -EA SilentlyContinue).'_AMD_saved'
 $n=0
 Get-ChildItem $base -EA SilentlyContinue | Where-Object { $_.PSChildName -match '^\d{4}$' } | ForEach-Object {
   $id=$_.PSChildName; $k=$_.PSPath
+  if($present.Count -gt 0 -and $present -notcontains $id){ return }
   $desc=(Get-ItemProperty $k -Name DriverDesc -EA SilentlyContinue).DriverDesc
   if($desc -match 'AMD|Radeon'){
     if($saved -ne '1'){
@@ -127,11 +143,13 @@ Get-ChildItem $base -EA SilentlyContinue | Where-Object { $_.PSChildName -match 
 if($n -gt 0){ Set-ItemProperty $store -Name '_AMD_saved' -Value '1' -Force; Write-Output ('${en ? "AMD: maximum performance applied to " : "AMD: maximo rendimiento aplicado a "}'+$n+'${en ? " adapter(s). Restart to take effect." : " adaptador(es). Reinicia para que tome efecto."}') } else { Write-Output '${en ? "No AMD/Radeon adapter found in the registry." : "No encontre adaptador AMD/Radeon en el registro."}' }`;
 
 export const AMD_RESTORE = (en: boolean) => String.raw`$base='${NV_CLASS}'; $store='${NV_STORE}'
+${PRESENT_PS}
 $saved=(Get-ItemProperty $store -Name '_AMD_saved' -EA SilentlyContinue).'_AMD_saved'
 if($saved -ne '1'){ Write-Output '${en ? "No valid AMD backup to restore; nothing was changed." : "No hay un backup válido de AMD; no se modificó nada."}'; return }
 $n=0
 Get-ChildItem $base -EA SilentlyContinue | Where-Object { $_.PSChildName -match '^\d{4}$' } | ForEach-Object {
   $id=$_.PSChildName; $k=$_.PSPath
+  if($present.Count -gt 0 -and $present -notcontains $id){ return }
   $desc=(Get-ItemProperty $k -Name DriverDesc -EA SilentlyContinue).DriverDesc
   if($desc -match 'AMD|Radeon'){
     foreach($v in 'EnableUlps','KMD_FRTEnabled'){

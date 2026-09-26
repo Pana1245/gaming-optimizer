@@ -9,7 +9,8 @@ export interface SysInfo {
   cores: number;
   threads: number;
   ram_gb: number;
-  gpu: string;
+  gpu: string;                                   // principal (más VRAM)
+  gpus: { name: string; vram_gb: number }[];     // todas las físicas, mayor VRAM primero
   win_ver: number;
 }
 

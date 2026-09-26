@@ -102,7 +102,7 @@ export default function Sistema() {
                 <Row k="Windows" v={`${info.windows} (W${info.win_ver})`} />
                 <Row k="CPU" v={info.cpu} />
                 <Row k={t("sys.cores")} v={t("sys.coresVal").replace("{p}", String(info.cores)).replace("{l}", String(info.threads))} />
-                <Row k="GPU" v={info.gpu || "—"} />
+                <Row k="GPU" v={(info.gpus?.length ? info.gpus.map((g) => g.name).join("  +  ") : info.gpu) || "—"} />
                 <Row k="RAM" v={`${info.ram_gb} GB`} />
               </div>
             ) : (

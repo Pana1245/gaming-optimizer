@@ -314,6 +314,9 @@ const STR: Record<string, { es: string; en: string }> = {
   // ── Gráficos ──
   "gpu.detected": { es: "GPU detectada", en: "Detected GPU" },
   "gpu.detecting": { es: "Detectando…", en: "Detecting…" },
+  "gpu.integrated": { es: "Integrada", en: "Integrated" },
+  "gpu.dedicated": { es: "Dedicada", en: "Dedicated" },
+  "gpu.none": { es: "No se detectó ninguna placa de video", en: "No graphics card detected" },
   "gpu.m.temp": { es: "Temp", en: "Temp" },
   "gpu.m.usage": { es: "Uso", en: "Usage" },
   "gpu.m.clock": { es: "Reloj", en: "Clock" },
