@@ -7,6 +7,7 @@ import { applyOp, loadLedger, saveLedger } from "../lib/engine";
 import { runPowershell } from "../lib/api";
 import { notify } from "../lib/notify";
 import { useI18n } from "../lib/i18n";
+import { trLog } from "../lib/logI18n";
 
 const Bolt = () => (
   <svg width="11" height="11" viewBox="0 0 24 24" fill="currentColor"><path d="M13 2 4.5 13.5H11l-1 8.5 8.5-11.5H12z" /></svg>
@@ -145,7 +146,7 @@ export default function Perfiles() {
           )}
         </div>
         <div ref={logRef} className="h-[104px] overflow-y-auto rounded-xl bg-[#08080a] border border-line p-3.5 font-mono text-[12.5px] leading-relaxed text-text-dim whitespace-pre-wrap">
-          {log.join("\n")}
+          {trLog(log.join("\n"), lang)}
         </div>
       </div>
     </div>

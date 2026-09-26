@@ -5,6 +5,7 @@ import { useScrollMemory } from "../lib/useScrollMemory";
 import { HudTitle } from "../components/NeonCard";
 import { StatusLine } from "../components/Feedback";
 import { useI18n } from "../lib/i18n";
+import { trLog } from "../lib/logI18n";
 
 interface Entry { name: string; cmd: string; scope: "HKCU" | "HKLM"; enabled: boolean; }
 
@@ -35,7 +36,7 @@ const toggleScript = (e: Entry, enable: boolean) => {
 };
 
 export default function Inicio() {
-  const { t } = useI18n();
+  const { t, lang } = useI18n();
   const [items, setItems] = useState<Entry[]>([]);
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState<string | null>(null);
@@ -108,7 +109,7 @@ export default function Inicio() {
         )}
       </div>
 
-      <StatusLine working={!!busy} text={status} />
+      <StatusLine working={!!busy} text={trLog(status, lang)} />
     </div>
   );
 }

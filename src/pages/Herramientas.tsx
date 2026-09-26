@@ -3,6 +3,7 @@ import NeonCard, { HudTitle } from "../components/NeonCard";
 import Modal from "../components/Modal";
 import { runPowershell } from "../lib/api";
 import { useI18n } from "../lib/i18n";
+import { trLog } from "../lib/logI18n";
 import {
   WU_DISABLE, WU_ENABLE, WU_PAUSE, getWuStatus,
   whoLocks, killProc, type Locker,
@@ -128,7 +129,7 @@ export default function Herramientas() {
         </div>
 
         {lockMsg && (
-          <p className="text-[13px]" style={{ color: lockMsg.startsWith("✓") ? "#00e676" : "#ff8a65" }}>{lockMsg}</p>
+          <p className="text-[13px]" style={{ color: lockMsg.startsWith("✓") ? "#00e676" : "#ff8a65" }}>{trLog(lockMsg, lang)}</p>
         )}
 
         {lockers && lockers.length > 0 && (

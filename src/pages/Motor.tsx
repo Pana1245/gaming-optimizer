@@ -8,6 +8,7 @@ import EnergyCheckbox from "../components/EnergyCheckbox";
 import { HudTitle } from "../components/NeonCard";
 import { IndeterminateBar } from "../components/Feedback";
 import { useI18n } from "../lib/i18n";
+import { trLog } from "../lib/logI18n";
 
 const fmtTime = (ts: number) => new Date(ts).toLocaleString();
 
@@ -142,7 +143,7 @@ export default function Motor() {
             <div className="flex flex-col min-h-0">
               <span className="section-label mb-2.5">{t("motor.verification")}</span>
               <div ref={logRef} className="flex-1 overflow-y-auto rounded-xl bg-surface border border-line p-4 font-mono text-[13px] leading-relaxed text-text-dim whitespace-pre-wrap">
-                {log.join("\n")}
+                {trLog(log.join("\n"), lang)}
               </div>
             </div>
           </div>

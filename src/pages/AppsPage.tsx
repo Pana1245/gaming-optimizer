@@ -7,6 +7,7 @@ import { useScrollMemory } from "../lib/useScrollMemory";
 import { HudTitle } from "../components/NeonCard";
 import Modal from "../components/Modal";
 import { useI18n } from "../lib/i18n";
+import { trLog } from "../lib/logI18n";
 
 const INSTALLED_NAMES = `$names=@()
 $roots=@('HKLM:\\Software\\Microsoft\\Windows\\CurrentVersion\\Uninstall\\*','HKLM:\\Software\\Wow6432Node\\Microsoft\\Windows\\CurrentVersion\\Uninstall\\*','HKCU:\\Software\\Microsoft\\Windows\\CurrentVersion\\Uninstall\\*')
@@ -22,7 +23,7 @@ const itemV = {
 export default function AppsPage() {
   // El estado de la instalación vive en el InstallerProvider (global) para que no se
   // corte ni pierda el progreso al cambiar de sección.
-  const { t } = useI18n();
+  const { t, lang } = useI18n();
   const { running, log, progress, done, install, clearDone } = useInstaller();
   const [sel, setSel] = useState<Record<string, boolean>>({});
   const [installed, setInstalled] = useState<Set<string>>(new Set());
@@ -130,7 +131,7 @@ export default function AppsPage() {
         <div className="flex flex-col min-h-0">
           <span className="section-label mb-2.5">{t("common.progress")}</span>
           <div ref={logRef} className="flex-1 overflow-y-auto rounded-xl bg-surface border border-line p-4 font-mono text-[13px] leading-relaxed text-text-dim whitespace-pre-wrap">
-            {log.join("\n")}
+            {trLog(log.join("\n"), lang)}
           </div>
         </div>
       </div>
@@ -154,7 +155,7 @@ export default function AppsPage() {
         </div>
       </div>
 
-      <Modal open={!!done} title={t("apps.doneTitle")} onClose={clearDone}>{done || ""}</Modal>
+      <Modal open={!!done} title={t("apps.doneTitle")} onClose={clearDone}>{trLog(done || "", lang)}</Modal>
     </div>
   );
 }

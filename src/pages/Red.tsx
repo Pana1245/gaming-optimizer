@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import NeonCard, { HudTitle } from "../components/NeonCard";
 import { runPowershell } from "../lib/api";
 import { useI18n } from "../lib/i18n";
+import { trLog } from "../lib/logI18n";
 import { IndeterminateBar } from "../components/Feedback";
 
 interface Dns { id: string; name: string; nameEn?: string; primary: string; secondary: string; note: string; noteEn: string; }
@@ -232,7 +233,7 @@ export default function Red() {
         </div>
       </div>
 
-      {msg && <p className="text-[13px] mt-2 shrink-0" style={{ color: msg.startsWith("✓") ? "#00e676" : "#ff5470" }}>{msg}</p>}
+      {msg && <p className="text-[13px] mt-2 shrink-0" style={{ color: msg.startsWith("✓") ? "#00e676" : "#ff5470" }}>{trLog(msg, lang)}</p>}
     </div>
   );
 }

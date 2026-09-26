@@ -4,6 +4,7 @@ import { runPowershell } from "../lib/api";
 import NeonCard, { HudTitle } from "../components/NeonCard";
 import { Spinner, IndeterminateBar } from "../components/Feedback";
 import { useI18n } from "../lib/i18n";
+import { trLog } from "../lib/logI18n";
 
 const SCRIPTS = {
   list: `$root="$env:SystemDrive\\OptimizacionBackup"; if(Test-Path $root){ Get-ChildItem $root -Directory | Sort-Object Name -Descending | Select-Object -ExpandProperty Name }`,
@@ -40,7 +41,7 @@ else { Write-Output "Registro restaurado. Reinicia el PC para aplicar." }`,
 };
 
 export default function RestaurarPage() {
-  const { t } = useI18n();
+  const { t, lang } = useI18n();
   const [log, setLog] = useState<string[]>(() => [t("common.ready")]);
   const [busy, setBusy] = useState(false);
   const [backups, setBackups] = useState<string[]>([]);
@@ -130,7 +131,7 @@ export default function RestaurarPage() {
           </div>
           {busy && <IndeterminateBar className="mb-2" />}
           <div ref={logRef} className="flex-1 overflow-y-auto rounded-xl bg-surface border border-line p-4 font-mono text-[13px] leading-relaxed text-text-dim whitespace-pre-wrap">
-            {log.join("\n")}
+            {trLog(log.join("\n"), lang)}
           </div>
         </div>
       </div>

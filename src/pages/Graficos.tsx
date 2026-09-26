@@ -6,6 +6,7 @@ import { applyOp, loadLedger, saveLedger } from "../lib/engine";
 import { GPU_OPS, isNvidia, isAmd, isIntegrated, getNvInfo, NV_MAXPERF, NV_RESTORE, AMD_MAXPERF, AMD_RESTORE, type NvInfo } from "../lib/gpu";
 import { notify } from "../lib/notify";
 import { useI18n } from "../lib/i18n";
+import { trLog } from "../lib/logI18n";
 
 function Metric({ label, value, unit, color }: { label: string; value: number; unit: string; color: string }) {
   return (
@@ -202,7 +203,7 @@ export default function Graficos() {
 
       {/* registro */}
       <div ref={logRef} className="flex-1 min-h-[88px] overflow-y-auto rounded-xl bg-[#08080a] border border-line p-3.5 font-mono text-[12.5px] leading-relaxed text-text-dim whitespace-pre-wrap">
-        {log.join("\n")}
+        {trLog(log.join("\n"), lang)}
       </div>
     </div>
   );

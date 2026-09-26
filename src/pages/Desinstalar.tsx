@@ -6,6 +6,7 @@ import { HudTitle } from "../components/NeonCard";
 import Modal from "../components/Modal";
 import { Spinner, IndeterminateBar } from "../components/Feedback";
 import { useI18n } from "../lib/i18n";
+import { trLog } from "../lib/logI18n";
 import { useUninstall, type UApp } from "../lib/uninstall";
 
 // La lista y los iconos se precargan al arrancar la app (ver UninstallProvider),
@@ -165,7 +166,7 @@ const fmtSize = (mb: number) =>
   !mb ? "" : mb >= 1024 ? `${(mb / 1024).toFixed(1)} GB` : `${mb.toFixed(0)} MB`;
 
 export default function Desinstalar() {
-  const { t } = useI18n();
+  const { t, lang } = useI18n();
   const { apps, icons, loading, reload, removeApp } = useUninstall();
   const [query, setQuery] = useState("");
   const [busy, setBusy] = useState<string | null>(null);
@@ -305,7 +306,7 @@ export default function Desinstalar() {
       {(status || working) && (
         <div className="mt-4 pt-4 border-t border-line text-[13px] font-mono text-text-dim flex items-center gap-2">
           {working && <Spinner />}
-          <span className="truncate">{status}</span>
+          <span className="truncate">{trLog(status, lang)}</span>
         </div>
       )}
 

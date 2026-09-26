@@ -6,6 +6,7 @@ import { HudTitle } from "../components/NeonCard";
 import { IndeterminateBar } from "../components/Feedback";
 import Modal from "../components/Modal";
 import { useI18n } from "../lib/i18n";
+import { trLog } from "../lib/logI18n";
 
 const sizeOnly = (paths: string) => String.raw`$ps=@(${paths})
 $s=0; foreach($d in $ps){ if(Test-Path $d){ $s += (Get-ChildItem $d -Recurse -Force -EA SilentlyContinue | Measure-Object Length -Sum).Sum } }
@@ -55,7 +56,7 @@ const ITEMS: Item[] = [
 const fmtMB = (mb: number) => (mb >= 1024 ? `${(mb / 1024).toFixed(1)} GB` : `${mb.toFixed(mb < 10 ? 1 : 0)} MB`);
 
 export default function Limpieza() {
-  const { t } = useI18n();
+  const { t, lang } = useI18n();
   const [sel, setSel] = useState<Record<string, boolean>>(() =>
     Object.fromEntries(ITEMS.map((i) => [i.id, !i.off])));
   const [sizes, setSizes] = useState<Record<string, number>>({});
@@ -142,7 +143,7 @@ export default function Limpieza() {
         <div className="flex flex-col min-h-0">
           <span className="section-label mb-2.5">{t("common.progress")}</span>
           <div ref={logRef} className="flex-1 overflow-y-auto rounded-xl bg-surface border border-line p-4 font-mono text-[13px] leading-relaxed text-text-dim whitespace-pre-wrap">
-            {log.join("\n")}
+            {trLog(log.join("\n"), lang)}
           </div>
         </div>
       </div>
@@ -169,7 +170,7 @@ export default function Limpieza() {
         onConfirm={run} confirmText={t("clean.confirmBtn")} closeText={t("common.cancel")}>
         {`${t("clean.confirmBody1")} ${selected.length} ${t("clean.confirmBody2")}${totalEstimated > 0 ? ` (~${fmtMB(totalEstimated)})` : ""}.\n${t("clean.confirmBody3")}`}
       </Modal>
-      <Modal open={!!done} title={t("clean.doneTitle")} onClose={() => setDone(null)}>{done || ""}</Modal>
+      <Modal open={!!done} title={t("clean.doneTitle")} onClose={() => setDone(null)}>{trLog(done || "", lang)}</Modal>
     </div>
   );
 }

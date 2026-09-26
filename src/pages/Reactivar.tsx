@@ -3,6 +3,7 @@ import { motion } from "framer-motion";
 import { runPowershell } from "../lib/api";
 import NeonCard, { HudTitle } from "../components/NeonCard";
 import { useI18n } from "../lib/i18n";
+import { trLog } from "../lib/logI18n";
 
 interface Fix {
   id: string;
@@ -210,7 +211,7 @@ export default function Reactivar() {
                 </div>
                 {msg && (
                   <div className="text-[13px] mt-3 pt-3 border-t border-white/[0.06]" style={{ color: okMsg ? "#00e676" : "#ff8a65" }}>
-                    {msg}
+                    {trLog(msg, lang)}
                   </div>
                 )}
               </NeonCard>

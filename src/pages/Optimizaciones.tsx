@@ -11,6 +11,7 @@ import EnergyCheckbox from "../components/EnergyCheckbox";
 import { HudTitle } from "../components/NeonCard";
 import Modal from "../components/Modal";
 import { useI18n } from "../lib/i18n";
+import { trLog } from "../lib/logI18n";
 
 // Categorías base + tweaks nuevos fusionados por id + categorías extra (WinUtil)
 const ALL_CATEGORIES = [
@@ -255,7 +256,7 @@ export default function Optimizaciones() {
             ref={logRef}
             className="flex-1 overflow-y-auto rounded-xl bg-surface border border-line p-4 font-mono text-[13px] leading-relaxed text-text-dim whitespace-pre-wrap"
           >
-            {log.join("\n")}
+            {trLog(log.join("\n"), lang)}
           </div>
         </div>
       </div>
@@ -294,7 +295,7 @@ export default function Optimizaciones() {
       <Modal open={!!done} title={t("opt.resultTitle")} onClose={() => { setDone(null); setCanReboot(false); }}
         onConfirm={canReboot ? () => { reboot(); setDone(null); setCanReboot(false); } : undefined}
         confirmText={t("opt.reboot")} closeText={t("opt.rebootLater")}>
-        {done || ""}
+        {trLog(done || "", lang)}
       </Modal>
     </div>
   );

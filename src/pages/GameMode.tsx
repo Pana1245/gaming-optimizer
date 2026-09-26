@@ -4,10 +4,11 @@ import { useGameMode } from "../lib/gameMode";
 import { detectGames, type DetectedGame } from "../lib/detect";
 import NeonCard, { HudTitle } from "../components/NeonCard";
 import { useI18n } from "../lib/i18n";
+import { trLog } from "../lib/logI18n";
 
 export default function GameMode() {
   const { enabled, setEnabled, pro, setPro, games, addGame, removeGame, playing, log } = useGameMode();
-  const { t } = useI18n();
+  const { t, lang } = useI18n();
   const [input, setInput] = useState("");
   const [scanning, setScanning] = useState(false);
   const [found, setFound] = useState<DetectedGame[] | null>(null);
@@ -121,7 +122,7 @@ export default function GameMode() {
         <div className="flex flex-col min-h-0">
           <span className="section-label mb-2.5">{t("gm.activity")}</span>
           <div className="flex-1 overflow-y-auto rounded-xl bg-surface border border-line p-4 font-mono text-[13px] leading-relaxed text-text-dim whitespace-pre-wrap">
-            {log.join("\n")}
+            {trLog(log.join("\n"), lang)}
           </div>
         </div>
       </div>

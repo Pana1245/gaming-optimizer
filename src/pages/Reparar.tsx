@@ -4,6 +4,7 @@ import { runStream } from "../lib/api";
 import NeonCard, { HudTitle } from "../components/NeonCard";
 import { Spinner, IndeterminateBar } from "../components/Feedback";
 import { useI18n } from "../lib/i18n";
+import { trLog } from "../lib/logI18n";
 
 const ACTIONS = [
   { id: "sfc", title: "Reparar archivos del sistema (SFC)", desc: "Escanea y repara archivos de Windows dañados. Puede tardar varios minutos.",
@@ -19,7 +20,7 @@ const ACTIONS = [
 ];
 
 export default function Reparar() {
-  const { t } = useI18n();
+  const { t, lang } = useI18n();
   const [busy, setBusy] = useState<string | null>(null);
   const [log, setLog] = useState<string[]>(() => [t("common.ready")]);
   const logRef = useRef<HTMLDivElement>(null);
@@ -90,7 +91,7 @@ export default function Reparar() {
           </div>
           {busy && <IndeterminateBar className="mb-2" />}
           <div ref={logRef} className="flex-1 overflow-y-auto rounded-xl bg-surface border border-line p-4 font-mono text-[13px] leading-relaxed text-text-dim whitespace-pre-wrap">
-            {log.join("\n")}
+            {trLog(log.join("\n"), lang)}
           </div>
         </div>
       </div>
