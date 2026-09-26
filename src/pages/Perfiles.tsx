@@ -42,7 +42,7 @@ export default function Perfiles() {
       }
       await saveLedger(ledger);
       const planRes = await runPowershell(p.planScript);
-      addLog(planRes.ok ? `✓ ${planOf(p)}` : `✗ ${planOf(p)} — no se pudo cambiar el plan de energía`);
+      addLog(planRes.ok ? `✓ ${planOf(p)}` : `✗ ${planOf(p)} — ${t("profiles.planFail")}`);
       addLog(`${ok}/${p.ops.length} ${t("profiles.verified")}`);
       // Sólo marcamos el perfil como activo si el plan de energía se aplicó de
       // verdad: si falló, no persistimos un "activo" cuyo plan nunca se aplicó.

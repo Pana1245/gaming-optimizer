@@ -443,6 +443,7 @@ const STR: Record<string, { es: string; en: string }> = {
   "motor.group.Privacidad": { es: "Privacidad", en: "Privacy" },
   "motor.group.Sistema": { es: "Sistema", en: "System" },
   "motor.group.GPU": { es: "GPU", en: "GPU" },
+  "profiles.planFail": { es: "no se pudo cambiar el plan de energía", en: "couldn't change the power plan" },
 };
 
 interface Ctx { lang: Lang; setLang: (l: Lang) => void; t: (k: string) => string; }
