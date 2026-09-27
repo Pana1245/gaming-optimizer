@@ -206,6 +206,10 @@ export default function Red() {
   const [applying, setApplying] = useState<string | null>(null);
   const [msg, setMsg] = useState<string | null>(null);
   const [hasSaved, setHasSaved] = useState(false);
+  // Pestañas: el test de DNS ya no arranca solo al entrar (competía por la línea con
+  // el test de velocidad); corre la primera vez que se abre la pestaña DNS.
+  const [tab, setTab] = useState<"speed" | "conn" | "dns">("speed");
+  const dnsTested = useRef(false);
   const mounted = useRef(true);
 
   const refreshCurrent = () =>
@@ -234,11 +238,15 @@ export default function Red() {
   useEffect(() => {
     mounted.current = true;
     refreshCurrent();
-    runTest();
     runPowershell(CHECK_DNS_SAVED).then((r) => mounted.current && setHasSaved(r.output.trim() === "YES")).catch(() => {});
     return () => { mounted.current = false; };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  useEffect(() => {
+    if (tab === "dns" && !dnsTested.current) { dnsTested.current = true; runTest(); }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [tab]);
 
   const apply = async (d: Dns | null) => {
     setApplying(d ? d.id : "auto");
@@ -292,9 +300,19 @@ export default function Red() {
     <div className="h-full flex flex-col px-8 py-7 overflow-hidden">
       <HudTitle tkey="page.network" />
 
-      <ConnTest />
-      <SpeedTest />
+      <div className="flex gap-1 mb-4 p-1 rounded-lg border border-line bg-surface w-fit shrink-0">
+        {(["speed", "conn", "dns"] as const).map((tb) => (
+          <button key={tb} onClick={() => setTab(tb)}
+            className={`px-3 h-7 rounded-md text-[13.5px] transition ${tab === tb ? "bg-white/[0.06] text-text" : "text-text-dim hover:text-text"}`}>
+            {t(`net.tab.${tb}`)}
+          </button>
+        ))}
+      </div>
 
+      {tab === "speed" && <div className="flex-1 min-h-0 overflow-y-auto -mr-2 pr-2"><SpeedTest /></div>}
+      {tab === "conn" && <ConnTest />}
+
+      {tab === "dns" && (<>
       <div className="flex items-center justify-between mb-3">
         <div className="text-[13.5px] text-text-mute">
           {t("net.current")} <span className="font-mono text-text-dim">{current}</span>
@@ -360,6 +378,7 @@ export default function Red() {
       </div>
 
       {msg && <p className="text-[13px] mt-2 shrink-0" style={{ color: msg.startsWith("✓") ? "#00e676" : "#ff5470" }}>{trLog(msg, lang)}</p>}
+      </>)}
     </div>
   );
 }

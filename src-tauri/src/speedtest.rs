@@ -1,6 +1,6 @@
 //! Test de velocidad REAL contra la red de Cloudflare (el mismo backend que usa
 //! speed.cloudflare.com; elige solo el servidor más cercano). Satura la línea con
-//! varias conexiones en paralelo: primero bajada, después subida, 10 s cada una.
+//! muchas conexiones en paralelo: primero bajada, después subida, 12 s cada una.
 //! Los primeros 2 s de cada fase no cuentan (arranque lento de TCP), como en los
 //! medidores serios. Además mide la latencia en reposo y BAJO CARGA (bufferbloat:
 //! el ping que tenés cuando la línea está llena, lo que se siente al jugar si
@@ -18,16 +18,45 @@ use serde::Serialize;
 use tauri::{AppHandle, Emitter};
 
 const BASE: &str = "https://speed.cloudflare.com";
-const DOWN_STREAMS: usize = 8;
-const UP_STREAMS: usize = 6;
-const PHASE_SECS: f64 = 10.0;
+// Agresivo: muchas conexiones y pedidos grandes para exprimir líneas rápidas.
+// (El servidor acepta hasta 50 MB por pedido; 100 MB devuelve 403.)
+const DOWN_STREAMS: usize = 16;
+const UP_STREAMS: usize = 10;
+const PHASE_SECS: f64 = 12.0;
 const WARMUP_SECS: f64 = 2.0;
-const DOWN_REQ_BYTES: u64 = 25_000_000;
+const DOWN_REQ_BYTES: u64 = 50_000_000;
 const UP_REQ_BYTES: usize = 8 * 1024 * 1024;
 const UP_CHUNK: usize = 64 * 1024;
 
 static RUNNING: AtomicBool = AtomicBool::new(false);
 static CANCEL: AtomicBool = AtomicBool::new(false);
+/// Segundos de espera que pidió el servidor con un 429 (0 = sin límite). Cloudflare
+/// bloquea ~1 h las descargas desde una IP tras mucho volumen de tests seguidos.
+static RETRY_AFTER: AtomicU64 = AtomicU64::new(0);
+
+/// Si la respuesta es 429, guarda el Retry-After y devuelve true (hay que dejar de pedir).
+fn rate_limited(resp: &reqwest::Response) -> bool {
+    if resp.status().as_u16() != 429 {
+        return false;
+    }
+    let secs = resp
+        .headers()
+        .get("retry-after")
+        .and_then(|v| v.to_str().ok())
+        .and_then(|v| v.trim().parse::<u64>().ok())
+        .unwrap_or(3600);
+    RETRY_AFTER.fetch_max(secs.max(1), Ordering::Relaxed);
+    true
+}
+
+/// Resultado parcial de una etapa, para ir llenando la UI mientras sigue el test.
+#[derive(Serialize, Clone)]
+struct Stage {
+    kind: &'static str, // "server" | "ping" | "download" | "upload"
+    value: f64,
+    extra: f64,
+    text: String,
+}
 
 #[derive(Serialize, Clone)]
 struct Progress {
@@ -45,9 +74,12 @@ pub struct SpeedResult {
     down_mbps: f64,
     up_mbps: f64,
     ping_ms: f64,
+    jitter_ms: f64,
     down_loaded_ms: f64,
     up_loaded_ms: f64,
     bytes_used: u64,
+    /// Minutos a esperar si el servidor limitó los tests (0 = no).
+    retry_min: u64,
     colo: String,
     country: String,
 }
@@ -65,6 +97,13 @@ fn median(mut v: Vec<f64>) -> f64 {
     if n % 2 == 1 { v[n / 2] } else { (v[n / 2 - 1] + v[n / 2]) / 2.0 }
 }
 
+fn jitter(v: &[f64]) -> f64 {
+    if v.len() < 2 {
+        return 0.0;
+    }
+    v.windows(2).map(|w| (w[1] - w[0]).abs()).sum::<f64>() / (v.len() - 1) as f64
+}
+
 fn round1(x: f64) -> f64 {
     (x * 10.0).round() / 10.0
 }
@@ -72,7 +111,7 @@ fn round1(x: f64) -> f64 {
 fn client() -> Option<reqwest::Client> {
     reqwest::Client::builder()
         .connect_timeout(Duration::from_secs(5))
-        .pool_max_idle_per_host(16)
+        .pool_max_idle_per_host(32)
         .user_agent("GamingOptimizer-speedtest")
         .build()
         .ok()
@@ -121,8 +160,10 @@ async fn probe_loop(stop: Arc<AtomicBool>) -> Vec<f64> {
 async fn down_worker(c: reqwest::Client, counter: Arc<AtomicU64>, stop: Arc<AtomicBool>) {
     while !stop.load(Ordering::Relaxed) && !cancelled() {
         let req = c.get(format!("{BASE}/__down?bytes={DOWN_REQ_BYTES}")).send();
-        // Un rechazo (403/429…) nunca se cuenta como datos: el cuerpo es un error.
+        // Un rechazo (403/429…) nunca se cuenta como datos: el cuerpo es un error. Con
+        // 429 el servidor nos limitó: dejar de pedir en el acto (insistir lo empeora).
         let resp = match tokio::time::timeout(Duration::from_secs(5), req).await {
+            Ok(Ok(r)) if rate_limited(&r) => return,
             Ok(Ok(r)) if r.status().is_success() => Some(r),
             _ => None,
         };
@@ -165,8 +206,10 @@ async fn up_worker(c: reqwest::Client, counter: Arc<AtomicU64>, stop: Arc<Atomic
             .header("Content-Type", "application/octet-stream")
             .body(reqwest::Body::wrap_stream(body))
             .send();
-        if !matches!(tokio::time::timeout(Duration::from_secs(20), req).await, Ok(Ok(_))) {
-            tokio::time::sleep(Duration::from_millis(250)).await;
+        match tokio::time::timeout(Duration::from_secs(20), req).await {
+            Ok(Ok(r)) if rate_limited(&r) => return,
+            Ok(Ok(_)) => {}
+            _ => tokio::time::sleep(Duration::from_millis(250)).await,
         }
     }
 }
@@ -225,6 +268,7 @@ async fn run_phase(app: &AppHandle, phase: &'static str, streams: usize, chunk: 
 async fn run(app: &AppHandle) -> SpeedResult {
     // reqwest viene sin proveedor criptográfico elegido (lo comparte con el updater).
     let _ = rustls::crypto::ring::default_provider().install_default();
+    RETRY_AFTER.store(0, Ordering::Relaxed);
     let mut r = SpeedResult::default();
     let Some(c) = client() else {
         r.error = "net.st.errConnect".into();
@@ -247,16 +291,21 @@ async fn run(app: &AppHandle) -> SpeedResult {
             return r;
         }
     }
+    let _ = app.emit("speed-stage", Stage { kind: "server", value: 0.0, extra: 0.0, text: format!("{}|{}", r.colo, r.country) });
 
     // Latencia en reposo.
     let _ = app.emit("speed-progress", Progress { phase: "ping", mbps: 0.0, pct: 0.0 });
     let mut pings = Vec::new();
-    for _ in 0..8 {
+    for _ in 0..10 {
         if let Some(ms) = latency_once(&c).await {
             pings.push(ms);
         }
     }
+    // El primero incluye abrir la conexión (TLS): no cuenta para el jitter.
+    let steady: Vec<f64> = pings.iter().skip(1).copied().collect();
+    r.jitter_ms = round1(jitter(&steady));
     r.ping_ms = round1(median(pings));
+    let _ = app.emit("speed-stage", Stage { kind: "ping", value: r.ping_ms, extra: r.jitter_ms, text: String::new() });
 
     // Bloque de subida pseudoaleatorio (que ninguna capa pueda comprimirlo).
     let mut buf = vec![0u8; UP_CHUNK];
@@ -273,6 +322,12 @@ async fn run(app: &AppHandle) -> SpeedResult {
     r.down_mbps = round1(d);
     r.down_loaded_ms = round1(median(dl));
     r.bytes_used = db;
+    if db == 0 && RETRY_AFTER.load(Ordering::Relaxed) > 0 {
+        r.retry_min = RETRY_AFTER.load(Ordering::Relaxed).div_ceil(60);
+        r.error = "net.st.errLimit".into();
+        return r;
+    }
+    let _ = app.emit("speed-stage", Stage { kind: "download", value: r.down_mbps, extra: r.down_loaded_ms, text: String::new() });
     if cancelled() {
         r.cancelled = true;
         return r;
@@ -285,6 +340,10 @@ async fn run(app: &AppHandle) -> SpeedResult {
     r.ok = !r.cancelled && d > 0.0;
     if !r.ok && !r.cancelled {
         r.error = "net.st.errNoData".into();
+    }
+    // Bajada OK pero la subida quedó limitada: se informa sin descartar la bajada.
+    if r.ok && ub == 0 && RETRY_AFTER.load(Ordering::Relaxed) > 0 {
+        r.retry_min = RETRY_AFTER.load(Ordering::Relaxed).div_ceil(60);
     }
     r
 }
