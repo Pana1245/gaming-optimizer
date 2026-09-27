@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { getVersion } from "@tauri-apps/api/app";
 import { getSystemInfo } from "../lib/api";
-import { useI18n } from "../lib/i18n";
+import { useI18n, LANGS } from "../lib/i18n";
 import { useUpdater, type UpdStatus } from "../lib/updater";
 import { useAccent, ACCENTS, type AccentName } from "../lib/theme";
 
@@ -51,9 +51,9 @@ export default function StatusBar() {
         </div>
         <span className="text-text-mute/50">·</span>
         <div className="flex items-center gap-1">
-          {(["es", "en"] as const).map((l, i) => (
+          {LANGS.map((l, i) => (
             <span key={l} className="flex items-center gap-1">
-              {i === 1 && <span className="text-text-mute/50">/</span>}
+              {i > 0 && <span className="text-text-mute/50">/</span>}
               <button onClick={() => setLang(l)}
                 className={`uppercase transition ${lang === l ? "text-accent font-medium" : "text-text-mute hover:text-text-dim"}`}>
                 {l}

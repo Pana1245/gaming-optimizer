@@ -6,7 +6,7 @@ import { opName } from "../lib/opNames";
 import { applyOp, loadLedger, saveLedger } from "../lib/engine";
 import { runPowershell } from "../lib/api";
 import { notify } from "../lib/notify";
-import { useI18n } from "../lib/i18n";
+import { useI18n, pick } from "../lib/i18n";
 import { trLog } from "../lib/logI18n";
 
 const Bolt = () => (
@@ -15,8 +15,8 @@ const Bolt = () => (
 
 export default function Perfiles() {
   const { t, lang } = useI18n();
-  const nameOf = (p: Profile) => (lang === "en" ? p.nameEn : p.name);
-  const planOf = (p: Profile) => (lang === "en" ? p.planLabelEn : p.planLabel);
+  const nameOf = (p: Profile) => pick(lang, p.name, p.nameEn, p.namePt);
+  const planOf = (p: Profile) => pick(lang, p.planLabel, p.planLabelEn, p.planLabelPt);
   const [activeId, setActiveId] = useState<string | null>(() => localStorage.getItem("profile_active"));
   const [applyingId, setApplyingId] = useState<string | null>(null);
   const [log, setLog] = useState<string[]>(() => [t("profiles.logIntro")]);
@@ -100,13 +100,13 @@ export default function Perfiles() {
                         style={{ background: `${p.color}1f`, color: p.color, boxShadow: `inset 0 0 0 1px ${p.color}44` }}>{t("profiles.active")}</span>
                     )}
                   </div>
-                  <p className="text-[12.5px] text-text-mute mt-0.5 leading-snug">{lang === "en" ? p.descEn : p.desc}</p>
+                  <p className="text-[12.5px] text-text-mute mt-0.5 leading-snug">{pick(lang, p.desc, p.descEn, p.descPt)}</p>
                 </div>
               </div>
 
               {/* viñetas */}
               <ul className="space-y-1.5 flex-1">
-                {(lang === "en" ? p.bulletsEn : p.bullets).map((b) => (
+                {pick(lang, p.bullets, p.bulletsEn, p.bulletsPt).map((b) => (
                   <li key={b} className="text-[12.5px] text-text-dim flex items-start gap-2.5">
                     <span className="mt-[6px] w-1.5 h-1.5 rounded-full shrink-0" style={{ background: p.color, boxShadow: `0 0 6px ${p.color}aa` }} />
                     <span className="leading-snug">{b}</span>

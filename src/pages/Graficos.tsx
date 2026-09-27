@@ -69,7 +69,7 @@ export default function Graficos() {
       for (const op of ops) {
         const e = await applyOp(op);
         ledger.push(e);
-        addLog(`${e.verified ? "✓" : "✗"} ${lang === "en" ? t(`gpu.op.${op.id}.name`) : op.name}`);
+        addLog(`${e.verified ? "✓" : "✗"} ${lang === "es" ? op.name : t(`gpu.op.${op.id}.name`)}`);
         if (e.verified) ok++;
       }
       await saveLedger(ledger);
@@ -147,7 +147,7 @@ export default function Graficos() {
         <div className="space-y-0.5">
           {GPU_OPS.map((o) => (
             <EnergyCheckbox key={o.id} checked={!!sel[o.id]} onChange={(v) => setSel((s) => ({ ...s, [o.id]: v }))}
-              label={lang === "en" ? t(`gpu.op.${o.id}.name`) : o.name} desc={lang === "en" ? t(`gpu.op.${o.id}.desc`) : o.desc} risk={o.risk === "advanced" ? "advanced" : "safe"}
+              label={lang === "es" ? o.name : t(`gpu.op.${o.id}.name`)} desc={lang === "es" ? o.desc : t(`gpu.op.${o.id}.desc`)} risk={o.risk === "advanced" ? "advanced" : "safe"}
               badge={o.risk === "advanced" ? t("gpu.advanced") : undefined} />
           ))}
         </div>

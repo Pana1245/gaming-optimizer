@@ -8,10 +8,10 @@ import { trLog } from "../lib/logI18n";
 interface Fix {
   id: string;
   emoji: string;
-  title: { es: string; en: string };
-  desc: { es: string; en: string };
-  btn: { es: string; en: string };
-  done: { es: string; en: string };
+  title: { es: string; en: string; pt: string };
+  desc: { es: string; en: string; pt: string };
+  btn: { es: string; en: string; pt: string };
+  done: { es: string; en: string; pt: string };
   script: string;
 }
 
@@ -20,15 +20,17 @@ const FIXES: Fix[] = [
   {
     id: "bluetooth",
     emoji: "📶",
-    title: { es: "Bluetooth", en: "Bluetooth" },
+    title: { es: "Bluetooth", en: "Bluetooth", pt: "Bluetooth" },
     desc: {
       es: "¿Se te apagó el Bluetooth después de optimizar? Este botón lo vuelve a prender.",
       en: "Did Bluetooth turn off after optimizing? This button turns it back on.",
+      pt: "O Bluetooth desligou depois de otimizar? Este botão liga de novo.",
     },
-    btn: { es: "Reactivar Bluetooth", en: "Re-enable Bluetooth" },
+    btn: { es: "Reactivar Bluetooth", en: "Re-enable Bluetooth", pt: "Reativar Bluetooth" },
     done: {
       es: "✓ Listo. Andá a Configuración → Bluetooth y prendé el interruptor. Si no aparece, reiniciá la PC.",
       en: "✓ Done. Go to Settings → Bluetooth and flip the switch. If it's missing, restart the PC.",
+      pt: "✓ Pronto. Vá em Configurações → Bluetooth e ligue a chave. Se não aparecer, reinicie o PC.",
     },
     script: String.raw`$base='HKCU:\SOFTWARE\Microsoft\Windows\CurrentVersion\CapabilityAccessManager\ConsentStore'
 foreach($p in 'radios','bluetoothSync'){ $k="$base\$p"; if(!(Test-Path $k)){ New-Item $k -Force | Out-Null }; Set-ItemProperty $k -Name Value -Value 'Allow' -Type String -Force }
@@ -39,15 +41,17 @@ Write-Output OK`,
   {
     id: "impresora",
     emoji: "🖨️",
-    title: { es: "Impresora", en: "Printer" },
+    title: { es: "Impresora", en: "Printer", pt: "Impressora" },
     desc: {
       es: "¿No podés imprimir? Reactiva el servicio de impresión de Windows (Cola de impresión).",
       en: "Can't print? Re-enables the Windows print service (Print Spooler).",
+      pt: "Não consegue imprimir? Reativa o serviço de impressão do Windows (Spooler de Impressão).",
     },
-    btn: { es: "Reactivar impresora", en: "Re-enable printer" },
+    btn: { es: "Reactivar impresora", en: "Re-enable printer", pt: "Reativar impressora" },
     done: {
       es: "✓ Servicio de impresión activado. Ya deberías poder imprimir.",
       en: "✓ Print service on. You should be able to print now.",
+      pt: "✓ Serviço de impressão ativado. Agora você já deve conseguir imprimir.",
     },
     script: String.raw`Set-Service Spooler -StartupType Automatic -EA SilentlyContinue
 Start-Service Spooler -EA SilentlyContinue
@@ -56,15 +60,17 @@ Write-Output OK`,
   {
     id: "busqueda",
     emoji: "🔎",
-    title: { es: "Búsqueda de Windows", en: "Windows Search" },
+    title: { es: "Búsqueda de Windows", en: "Windows Search", pt: "Pesquisa do Windows" },
     desc: {
       es: "¿La búsqueda del menú Inicio no encuentra nada? Reactiva el buscador de Windows.",
       en: "Start menu search finds nothing? Re-enables Windows Search.",
+      pt: "A pesquisa do menu Iniciar não encontra nada? Reativa a Pesquisa do Windows.",
     },
-    btn: { es: "Reactivar búsqueda", en: "Re-enable search" },
+    btn: { es: "Reactivar búsqueda", en: "Re-enable search", pt: "Reativar pesquisa" },
     done: {
       es: "✓ Búsqueda activada. Puede tardar unos minutos en indexar los archivos.",
       en: "✓ Search on. It may take a few minutes to index your files.",
+      pt: "✓ Pesquisa ativada. Pode levar alguns minutos para indexar os arquivos.",
     },
     script: String.raw`Set-Service WSearch -StartupType Automatic -EA SilentlyContinue
 Start-Service WSearch -EA SilentlyContinue
@@ -73,15 +79,17 @@ Write-Output OK`,
   {
     id: "antivirus",
     emoji: "🛡️",
-    title: { es: "Antivirus (Windows Defender)", en: "Antivirus (Windows Defender)" },
+    title: { es: "Antivirus (Windows Defender)", en: "Antivirus (Windows Defender)", pt: "Antivírus (Windows Defender)" },
     desc: {
       es: "¿Se apagó el antivirus de Windows? Volvé a protegerte reactivando Windows Defender.",
       en: "Did the Windows antivirus turn off? Protect yourself again by re-enabling Windows Defender.",
+      pt: "O antivírus do Windows desligou? Proteja-se de novo reativando o Windows Defender.",
     },
-    btn: { es: "Reactivar antivirus", en: "Re-enable antivirus" },
+    btn: { es: "Reactivar antivirus", en: "Re-enable antivirus", pt: "Reativar antivírus" },
     done: {
       es: "✓ Antivirus reactivado. Reiniciá la PC para que Windows Defender se encienda del todo.",
       en: "✓ Antivirus re-enabled. Restart the PC so Windows Defender fully turns on.",
+      pt: "✓ Antivírus reativado. Reinicie o PC para o Windows Defender ligar por completo.",
     },
     script: String.raw`# 1) Quitar SOLO los valores de politica que apagan Defender (no toda la rama,
 #    que puede tener politicas legitimas de empresa u otras configuraciones).
@@ -103,15 +111,17 @@ Write-Output OK`,
   {
     id: "permisos",
     emoji: "🔐",
-    title: { es: "Permisos de las aplicaciones", en: "App permissions" },
+    title: { es: "Permisos de las aplicaciones", en: "App permissions", pt: "Permissões dos aplicativos" },
     desc: {
       es: "¿Alguna app dejó de funcionar (sin ubicación, contactos, micrófono…)? Devuelve los permisos que se hayan bloqueado.",
       en: "Some app stopped working (no location, contacts, mic…)? This restores the blocked permissions.",
+      pt: "Algum app parou de funcionar (sem localização, contatos, microfone…)? Isto devolve as permissões bloqueadas.",
     },
-    btn: { es: "Restaurar permisos", en: "Restore permissions" },
+    btn: { es: "Restaurar permisos", en: "Restore permissions", pt: "Restaurar permissões" },
     done: {
       es: "✓ Permisos restaurados. Cerrá y volvé a abrir las apps que estaban fallando.",
       en: "✓ Permissions restored. Close and reopen the apps that were failing.",
+      pt: "✓ Permissões restauradas. Feche e abra de novo os apps que estavam falhando.",
     },
     script: String.raw`$base='HKCU:\SOFTWARE\Microsoft\Windows\CurrentVersion\CapabilityAccessManager\ConsentStore'
 $perms=@('location','userAccountInformation','contacts','appointments','phoneCall','phoneCallHistory','email','userDataTasks','chat','radios','bluetoothSync','appDiagnostics','documentsLibrary','picturesLibrary','broadFileSystemAccess','backgroundSpatialPerception','gazeInput','activity','trackerPlugin','graphicsCaptureProgrammatic','graphicsCaptureWithoutBorder','microphone','webcam','videosLibrary','userNotificationListener')
@@ -121,30 +131,34 @@ Write-Output OK`,
   {
     id: "energia",
     emoji: "🔋",
-    title: { es: "Plan de energía normal", en: "Normal power plan" },
+    title: { es: "Plan de energía normal", en: "Normal power plan", pt: "Plano de energia normal" },
     desc: {
       es: "¿La PC calienta o consume mucho después de poner Máximo rendimiento? Vuelve al modo Equilibrado de Windows.",
       en: "PC running hot or using lots of power after Maximum performance? Go back to Windows' Balanced mode.",
+      pt: "O PC esquenta ou gasta muita energia depois do Desempenho máximo? Volte ao modo Equilibrado do Windows.",
     },
-    btn: { es: "Volver a Equilibrado", en: "Back to Balanced" },
+    btn: { es: "Volver a Equilibrado", en: "Back to Balanced", pt: "Voltar ao Equilibrado" },
     done: {
       es: "✓ Plan de energía Equilibrado activado.",
       en: "✓ Balanced power plan activated.",
+      pt: "✓ Plano de energia Equilibrado ativado.",
     },
     script: String.raw`powercfg /setactive SCHEME_BALANCED; Write-Output OK`,
   },
   {
     id: "onedrive",
     emoji: "☁️",
-    title: { es: "OneDrive y apps de Windows", en: "OneDrive & Windows apps" },
+    title: { es: "OneDrive y apps de Windows", en: "OneDrive & Windows apps", pt: "OneDrive e apps do Windows" },
     desc: {
       es: "¿Desapareció OneDrive o alguna app de Windows al quitar bloatware? Intenta reinstalarlas.",
       en: "Did OneDrive or a Windows app disappear when removing bloatware? This tries to reinstall them.",
+      pt: "O OneDrive ou algum app do Windows sumiu ao remover bloatware? Isto tenta reinstalá-los.",
     },
-    btn: { es: "Reinstalar", en: "Reinstall" },
+    btn: { es: "Reinstalar", en: "Reinstall", pt: "Reinstalar" },
     done: {
       es: "✓ Reinstalación iniciada. OneDrive puede tardar unos minutos; algunas apps podrían necesitar la Microsoft Store.",
       en: "✓ Reinstall started. OneDrive may take a few minutes; some apps might need the Microsoft Store.",
+      pt: "✓ Reinstalação iniciada. O OneDrive pode levar alguns minutos; alguns apps podem precisar da Microsoft Store.",
     },
     script: String.raw`$od="$env:SystemRoot\SysWOW64\OneDriveSetup.exe"; if(!(Test-Path $od)){ $od="$env:SystemRoot\System32\OneDriveSetup.exe" }
 if(Test-Path $od){ Start-Process $od }
@@ -154,7 +168,7 @@ Write-Output OK`,
 ];
 
 export default function Reactivar() {
-  const { lang } = useI18n();
+  const { t, lang } = useI18n();
   const [busy, setBusy] = useState<string | null>(null);
   const [result, setResult] = useState<Record<string, string>>({});
 
@@ -168,7 +182,7 @@ export default function Reactivar() {
         ...r,
         [f.id]: res.ok
           ? f.done[lang]
-          : `✗ ${lang === "en" ? "Couldn't do it" : "No se pudo"}: ${(res.output || "").slice(0, 120)}`,
+          : `✗ ${t("react.fail")}: ${(res.output || "").slice(0, 120)}`,
       }));
     } catch (err) {
       setResult((r) => ({ ...r, [f.id]: `✗ ${err instanceof Error ? err.message : String(err)}` }));
@@ -206,7 +220,7 @@ export default function Reactivar() {
                     disabled={!!busy}
                     className="shrink-0 px-5 h-10 rounded-lg text-[13px] font-semibold text-[#05140c] bg-accent hover:brightness-110 transition disabled:opacity-40 disabled:hover:brightness-100"
                   >
-                    {running ? (lang === "en" ? "Working…" : "Reactivando…") : f.btn[lang]}
+                    {running ? t("react.working") : f.btn[lang]}
                   </motion.button>
                 </div>
                 {msg && (

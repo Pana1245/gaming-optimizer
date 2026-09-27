@@ -4,13 +4,14 @@ import { CATEGORIES } from "../catalog";
 import { EXTRA_TWEAKS, EXTRA_CATEGORIES } from "../extraCatalog";
 import { TWEAK_DESC } from "../tweakDesc";
 import { CATEGORY_EN, TWEAK_EN, TWEAK_DESC_EN } from "../catalogEn";
+import { CATEGORY_PT, TWEAK_PT, TWEAK_DESC_PT } from "../catalogPt";
 import { runPowershell, getSystemInfo } from "../lib/api";
 import { notify } from "../lib/notify";
 import { useScrollMemory } from "../lib/useScrollMemory";
 import EnergyCheckbox from "../components/EnergyCheckbox";
 import { HudTitle } from "../components/NeonCard";
 import Modal from "../components/Modal";
-import { useI18n } from "../lib/i18n";
+import { useI18n, pick } from "../lib/i18n";
 import { trLog } from "../lib/logI18n";
 
 // Categorías base + tweaks nuevos fusionados por id + categorías extra (WinUtil)
@@ -94,8 +95,8 @@ const MODO_GAMER: Record<string, number[]> = {
 export default function Optimizaciones() {
   const { t, lang } = useI18n();
   // Nombre/descripción del tweak en el idioma actual (las claves son el nombre en español).
-  const tn = (name: string) => (lang === "en" && TWEAK_EN[name]) || name;
-  const td = (name: string) => (lang === "en" && TWEAK_DESC_EN[name]) || TWEAK_DESC[name];
+  const tn = (name: string) => pick(lang, name, TWEAK_EN[name], TWEAK_PT[name]);
+  const td = (name: string) => pick(lang, TWEAK_DESC[name], TWEAK_DESC_EN[name], TWEAK_DESC_PT[name]);
   const [winVer, setWinVer] = useState(11);
   const [sel, setSel] = useState<Record<string, boolean>>({});
   const [log, setLog] = useState<string[]>(["Listo."]);
@@ -224,7 +225,7 @@ export default function Optimizaciones() {
               >
                 <div className="flex items-center gap-2.5 mb-2.5">
                   <span className="w-1.5 h-1.5 rounded-full" style={{ background: c.color }} />
-                  <h2 className="section-label">{(lang === "en" && CATEGORY_EN[c.id]) || c.name}</h2>
+                  <h2 className="section-label">{pick(lang, c.name, CATEGORY_EN[c.id], CATEGORY_PT[c.id])}</h2>
                   <span className="text-[12px] text-text-mute">{selCount}/{c.tweaks.length}</span>
                 </div>
                 {c.id === "winutil" && (

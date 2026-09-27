@@ -5,9 +5,9 @@ import { useI18n } from "../lib/i18n";
 /** Pantalla de precarga: logo con anillo giratorio + glow, título con degradado
  *  y barra de progreso. Llama onDone() al terminar la animación. */
 export default function Splash({ onDone }: { onDone: () => void }) {
-  const { lang } = useI18n();
+  const { t } = useI18n();
   const [pct, setPct] = useState(0);
-  const loadingTxt = lang === "en" ? "Loading" : "Cargando";
+  const loadingTxt = t("splash.loading");
 
   useEffect(() => {
     // Progreso simulado suave hasta 100%, luego cierra.

@@ -6,7 +6,7 @@ import { useInstaller } from "../lib/installer";
 import { useScrollMemory } from "../lib/useScrollMemory";
 import { HudTitle } from "../components/NeonCard";
 import Modal from "../components/Modal";
-import { useI18n } from "../lib/i18n";
+import { useI18n, pick } from "../lib/i18n";
 import { trLog } from "../lib/logI18n";
 
 const INSTALLED_NAMES = `$names=@()
@@ -78,7 +78,7 @@ export default function AppsPage() {
               <motion.section key={c.category} variants={itemV}>
                 <div className="flex items-center gap-2.5 mb-2.5">
                   <span className="w-1.5 h-1.5 rounded-full" style={{ background: c.color }} />
-                  <h2 className="section-label">{lang === "en" ? c.categoryEn : c.category}</h2>
+                  <h2 className="section-label">{pick(lang, c.category, c.categoryEn, c.categoryPt)}</h2>
                   <span className="text-[12px] text-text-mute">{selCount}/{c.apps.length}</span>
                   <button
                     onClick={() => setSel((s) => {

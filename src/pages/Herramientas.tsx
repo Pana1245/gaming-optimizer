@@ -71,13 +71,13 @@ export default function Herramientas() {
       const o = r.output.trim();
       if (mounted.current) {
         if (o.startsWith("PROTECTED"))
-          setLockMsg(`✗ ${lang === "en" ? "Protected system process; not closed" : "Proceso crítico del sistema; no se cerró"}: ${l.name}`);
+          setLockMsg(`✗ ${t("tools.kill.protected")}: ${l.name}`);
         else if (o === "GONE")
-          setLockMsg(`✓ ${l.name} ${lang === "en" ? "was already closed" : "ya estaba cerrado"}`);
+          setLockMsg(`✓ ${l.name} ${t("tools.kill.already")}`);
         else if (o === "OK")
-          setLockMsg(`✓ ${l.name} ${lang === "en" ? "closed" : "cerrado"}`);
+          setLockMsg(`✓ ${l.name} ${t("tools.kill.closed")}`);
         else
-          setLockMsg(`✗ ${lang === "en" ? "Couldn't close" : "No se pudo cerrar"} ${l.name}`);
+          setLockMsg(`✗ ${t("tools.kill.fail")} ${l.name}`);
       }
     } catch (err) {
       if (mounted.current) setLockMsg(`✗ ${t("tools.unlock.killErr")} ${err instanceof Error ? err.message : String(err)}`);
@@ -147,14 +147,12 @@ export default function Herramientas() {
         )}
       </NeonCard>
 
-      <Modal open={!!confirmKill} title={lang === "en" ? "Close process?" : "¿Cerrar proceso?"}
+      <Modal open={!!confirmKill} title={t("tools.kill.title")}
         onClose={() => setConfirmKill(null)}
         onConfirm={() => confirmKill && doKill(confirmKill)}
-        confirmText={lang === "en" ? "Close process" : "Cerrar proceso"} closeText="Cancelar">
+        confirmText={t("tools.unlock.kill")} closeText={t("common.cancel")}>
         {confirmKill
-          ? `${confirmKill.name} · PID ${confirmKill.pid}\n\n${lang === "en"
-              ? "Forcing a process to close can lose unsaved work. Critical system processes are protected."
-              : "Forzar el cierre de un proceso puede perder trabajo sin guardar. Los procesos críticos del sistema están protegidos."}`
+          ? `${confirmKill.name} · PID ${confirmKill.pid}\n\n${t("tools.kill.warn")}`
           : ""}
       </Modal>
     </div>

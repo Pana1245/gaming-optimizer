@@ -3,11 +3,16 @@ import { motion, useSpring, useTransform } from "framer-motion";
 import {
   AreaChart, Area, ResponsiveContainer, YAxis, Tooltip,
 } from "recharts";
-import { getStats, getSystemInfo, type SysInfo } from "../lib/api";
+import { getStats, getSystemInfo, runPowershell, type SysInfo } from "../lib/api";
 import NeonCard, { HudTitle } from "../components/NeonCard";
 import { useI18n } from "../lib/i18n";
 
 interface Pt { t: number; v: number; }
+
+// Estado REAL (no el registro): VirtualizationBasedSecurityStatus 2 = corriendo;
+// SecurityServicesRunning contiene 2 = Integridad de memoria (HVCI) activa.
+const VBS_PS = String.raw`$d = Get-CimInstance -Namespace root\Microsoft\Windows\DeviceGuard -ClassName Win32_DeviceGuard -ErrorAction SilentlyContinue
+"vbs=$([int]$d.VirtualizationBasedSecurityStatus);hvci=$([int](@($d.SecurityServicesRunning) -contains 2))"`;
 const MAX = 40;
 
 function AnimatedNumber({ value }: { value: number }) {
@@ -65,6 +70,7 @@ export default function Sistema() {
   const [cpuV, setCpuV] = useState(0);
   const [ramV, setRamV] = useState(0);
   const [info, setInfo] = useState<SysInfo | null>(null);
+  const [vbs, setVbs] = useState<{ vbs: boolean; hvci: boolean } | null>(null);
 
   useEffect(() => {
     let t = 0;
@@ -80,6 +86,10 @@ export default function Sistema() {
     const id = setInterval(tick, 1000);
     tick();
     getSystemInfo().then(setInfo).catch(() => {});
+    runPowershell(VBS_PS).then((r) => {
+      const m = r.output.match(/vbs=(\d+);hvci=(\d+)/);
+      if (m) setVbs({ vbs: m[1] === "2", hvci: m[2] === "1" });
+    }).catch(() => {});
     return () => clearInterval(id);
   }, []);
 
@@ -104,6 +114,11 @@ export default function Sistema() {
                 <Row k={t("sys.cores")} v={t("sys.coresVal").replace("{p}", String(info.cores)).replace("{l}", String(info.threads))} />
                 <Row k="GPU" v={(info.gpus?.length ? info.gpus.map((g) => g.name).join("  +  ") : info.gpu) || "—"} />
                 <Row k="RAM" v={`${info.ram_gb} GB`} />
+                {vbs && (
+                  <Row k="VBS" v={vbs.vbs
+                    ? `${t("sys.vbsOn")}${vbs.hvci ? ` · ${t("sys.hvciOn")}` : ""} — ${t("sys.vbsHint")}`
+                    : t("sys.vbsOff")} />
+                )}
               </div>
             ) : (
               <div className="text-text-mute text-sm mt-3">{t("sys.loading")}</div>

@@ -1,26 +1,26 @@
 import { useEffect, useRef, useState } from "react";
 import NeonCard, { HudTitle } from "../components/NeonCard";
 import { runPowershell } from "../lib/api";
-import { useI18n } from "../lib/i18n";
+import { useI18n, pick } from "../lib/i18n";
 import { trLog } from "../lib/logI18n";
 import { IndeterminateBar } from "../components/Feedback";
 
-interface Dns { id: string; name: string; nameEn?: string; primary: string; secondary: string; note: string; noteEn: string; }
+interface Dns { id: string; name: string; nameEn?: string; namePt?: string; primary: string; secondary: string; note: string; noteEn: string; notePt: string; }
 
 // Lista curada de resolutores públicos confiables.
 const DNS_LIST: Dns[] = [
-  { id: "cloudflare", name: "Cloudflare", primary: "1.1.1.1", secondary: "1.0.0.1", note: "El más rápido en general", noteEn: "Fastest overall" },
-  { id: "cloudflare-sec", name: "Cloudflare Seguro", nameEn: "Cloudflare Secure", primary: "1.1.1.2", secondary: "1.0.0.2", note: "Bloquea malware", noteEn: "Blocks malware" },
-  { id: "google", name: "Google", primary: "8.8.8.8", secondary: "8.8.4.4", note: "Muy estable y conocido", noteEn: "Very stable and well-known" },
-  { id: "quad9", name: "Quad9", primary: "9.9.9.9", secondary: "149.112.112.112", note: "Bloquea sitios maliciosos", noteEn: "Blocks malicious sites" },
-  { id: "opendns", name: "OpenDNS (Cisco)", primary: "208.67.222.222", secondary: "208.67.220.220", note: "Con filtros opcionales", noteEn: "With optional filters" },
-  { id: "adguard", name: "AdGuard", primary: "94.140.14.14", secondary: "94.140.15.15", note: "Bloquea publicidad y rastreadores", noteEn: "Blocks ads and trackers" },
-  { id: "adguard-clean", name: "AdGuard sin filtro", nameEn: "AdGuard no filter", primary: "94.140.14.140", secondary: "94.140.14.141", note: "Sin bloqueos", noteEn: "No blocking" },
-  { id: "quad9-open", name: "Quad9 sin filtro", nameEn: "Quad9 no filter", primary: "9.9.9.10", secondary: "149.112.112.10", note: "Sin bloqueos", noteEn: "No blocking" },
-  { id: "comodo", name: "Comodo Secure", primary: "8.26.56.26", secondary: "8.20.247.20", note: "Enfocado en seguridad", noteEn: "Security-focused" },
-  { id: "level3", name: "Level3", primary: "4.2.2.1", secondary: "4.2.2.2", note: "Clásico, suele ser rápido", noteEn: "Classic, usually fast" },
-  { id: "dnswatch", name: "DNS.Watch", primary: "84.200.69.80", secondary: "84.200.70.40", note: "Sin censura ni logs", noteEn: "No censorship or logs" },
-  { id: "controld", name: "Control D", primary: "76.76.2.0", secondary: "76.76.10.0", note: "Personalizable", noteEn: "Customizable" },
+  { id: "cloudflare", name: "Cloudflare", primary: "1.1.1.1", secondary: "1.0.0.1", note: "El más rápido en general", noteEn: "Fastest overall", notePt: "O mais rápido em geral" },
+  { id: "cloudflare-sec", name: "Cloudflare Seguro", nameEn: "Cloudflare Secure", namePt: "Cloudflare Seguro", primary: "1.1.1.2", secondary: "1.0.0.2", note: "Bloquea malware", noteEn: "Blocks malware", notePt: "Bloqueia malware" },
+  { id: "google", name: "Google", primary: "8.8.8.8", secondary: "8.8.4.4", note: "Muy estable y conocido", noteEn: "Very stable and well-known", notePt: "Muito estável e conhecido" },
+  { id: "quad9", name: "Quad9", primary: "9.9.9.9", secondary: "149.112.112.112", note: "Bloquea sitios maliciosos", noteEn: "Blocks malicious sites", notePt: "Bloqueia sites maliciosos" },
+  { id: "opendns", name: "OpenDNS (Cisco)", primary: "208.67.222.222", secondary: "208.67.220.220", note: "Con filtros opcionales", noteEn: "With optional filters", notePt: "Com filtros opcionais" },
+  { id: "adguard", name: "AdGuard", primary: "94.140.14.14", secondary: "94.140.15.15", note: "Bloquea publicidad y rastreadores", noteEn: "Blocks ads and trackers", notePt: "Bloqueia anúncios e rastreadores" },
+  { id: "adguard-clean", name: "AdGuard sin filtro", nameEn: "AdGuard no filter", namePt: "AdGuard sem filtro", primary: "94.140.14.140", secondary: "94.140.14.141", note: "Sin bloqueos", noteEn: "No blocking", notePt: "Sem bloqueios" },
+  { id: "quad9-open", name: "Quad9 sin filtro", nameEn: "Quad9 no filter", namePt: "Quad9 sem filtro", primary: "9.9.9.10", secondary: "149.112.112.10", note: "Sin bloqueos", noteEn: "No blocking", notePt: "Sem bloqueios" },
+  { id: "comodo", name: "Comodo Secure", primary: "8.26.56.26", secondary: "8.20.247.20", note: "Enfocado en seguridad", noteEn: "Security-focused", notePt: "Focado em segurança" },
+  { id: "level3", name: "Level3", primary: "4.2.2.1", secondary: "4.2.2.2", note: "Clásico, suele ser rápido", noteEn: "Classic, usually fast", notePt: "Clássico, costuma ser rápido" },
+  { id: "dnswatch", name: "DNS.Watch", primary: "84.200.69.80", secondary: "84.200.70.40", note: "Sin censura ni logs", noteEn: "No censorship or logs", notePt: "Sem censura nem logs" },
+  { id: "controld", name: "Control D", primary: "76.76.2.0", secondary: "76.76.10.0", note: "Personalizable", noteEn: "Customizable", notePt: "Personalizável" },
 ];
 
 const ipsArg = DNS_LIST.map((d) => `'${d.primary}'`).join(",");
@@ -72,6 +72,128 @@ Remove-ItemProperty $store -Name DnsPrev -Force -EA SilentlyContinue
 Write-Output 'DNS anterior restaurado'`;
 
 const CHECK_DNS_SAVED = String.raw`if((Get-ItemProperty 'HKCU:\Software\GamingOptimizer' -Name DnsPrev -EA SilentlyContinue).DnsPrev){ Write-Output 'YES' } else { Write-Output 'NO' }`;
+
+// Test de conexión para jugar: 50 rondas de ping a internet (1.1.1.1 + 8.8.8.8) y al
+// router. Comparar ambos dice DÓNDE está el problema: si el router ya pierde/varía, es
+// la red local (Wi-Fi, cable); si sólo falla internet, es el proveedor. ~10 s.
+const CONN_TEST = String.raw`$r = Get-NetRoute -DestinationPrefix '0.0.0.0/0' -EA SilentlyContinue | Sort-Object { $_.RouteMetric + $_.InterfaceMetric } | Select-Object -First 1
+$gw = if($r){ "$($r.NextHop)" } else { '' }
+$ad = if($r){ Get-NetAdapter -InterfaceIndex $r.ifIndex -EA SilentlyContinue } else { $null }
+$wifi = [bool]($ad -and ("$($ad.PhysicalMediaType) $($ad.MediaType) $($ad.InterfaceDescription)" -match '802\.11|Wireless|Wi-?Fi'))
+$link = if($ad){ "$($ad.LinkSpeed)" } else { '' }
+$hasGw = [bool]($gw -and $gw -ne '0.0.0.0')
+$p = New-Object System.Net.NetworkInformation.Ping
+function Try-Ping($h){ try { $x = $p.Send($h, 800); if($x.Status -eq 'Success'){ return [int]$x.RoundtripTime } } catch {}; return -1 }
+# Internet: 1.1.1.1 y 8.8.8.8 en cada ronda. Los DNS publicos descartan pings sueltos
+# cuando reciben muchos; contar perdida solo si AMBOS fallan evita culpar al proveedor
+# por eso. Ping/jitter salen de la mejor respuesta de cada ronda.
+$net = New-Object System.Collections.Generic.List[int]; $netLost = 0
+$gwOk = New-Object System.Collections.Generic.List[int]; $gwLost = 0
+for($i=0; $i -lt 50; $i++){
+  $a = Try-Ping '1.1.1.1'; $b = Try-Ping '8.8.8.8'
+  $best = @(@($a, $b) | Where-Object { $_ -ge 0 } | Sort-Object)
+  if($best.Count -gt 0){ $net.Add($best[0]) } else { $netLost++ }
+  if($hasGw){ $g = Try-Ping $gw; if($g -ge 0){ $gwOk.Add($g) } else { $gwLost++ } }
+  Start-Sleep -Milliseconds 120
+}
+function Stat($v, $lost){
+  $n = $v.Count; $sent = $n + $lost
+  if($n -eq 0){ return [ordered]@{ ok=$false; loss=100 } }
+  $j = 0; for($k=1; $k -lt $n; $k++){ $j += [math]::Abs($v[$k] - $v[$k-1]) }
+  $m = $v | Measure-Object -Average -Minimum -Maximum
+  [ordered]@{ ok=$true; avg=[math]::Round($m.Average,1); min=[int]$m.Minimum; max=[int]$m.Maximum
+    jitter= if($n -gt 1){ [math]::Round($j/($n-1),1) } else { 0 }; loss=[math]::Round(100*$lost/$sent,1) }
+}
+$o = [ordered]@{ wifi=$wifi; link=$link; net=(Stat $net $netLost) }
+if($hasGw){ $o.gw = (Stat $gwOk $gwLost) }
+$o | ConvertTo-Json -Compress -Depth 3`;
+
+interface ConnStat { ok: boolean; avg?: number; min?: number; max?: number; jitter?: number; loss: number; }
+interface ConnRes { wifi: boolean; link: string; net: ConnStat; gw?: ConnStat; }
+
+const verdictOf = (s: ConnStat) =>
+  !s.ok ? "bad"
+    : s.loss === 0 && (s.jitter ?? 0) < 5 ? "excellent"
+    : s.loss <= 2 && (s.jitter ?? 0) < 15 ? "good"
+    : s.loss <= 5 && (s.jitter ?? 0) < 30 ? "fair" : "bad";
+const VERDICT_COLOR: Record<string, string> = { excellent: "#00e676", good: "#7ee787", fair: "#ffd24a", bad: "#ff5470" };
+
+// Fuera de ConnTest: definida adentro se recreaba (y remontaba) en cada render.
+const ConnRow = ({ label, s, noResp }: { label: string; s?: ConnStat; noResp: string }) => (
+  <div className="grid grid-cols-[88px_repeat(4,1fr)] items-baseline gap-2 text-[13px]">
+    <span className="text-text-mute">{label}</span>
+    {!s || !s.ok ? (
+      <span className="col-span-4 text-text-mute text-[12px]">{noResp}</span>
+    ) : (
+      <>
+        <span><span className="font-mono font-semibold text-text">{s.avg}</span><span className="text-text-mute text-[11px]"> ms</span></span>
+        <span><span className="font-mono font-semibold" style={{ color: (s.jitter ?? 0) < 5 ? "#00e676" : (s.jitter ?? 0) < 15 ? "#ffd24a" : "#ff5470" }}>{s.jitter}</span><span className="text-text-mute text-[11px]"> ms</span></span>
+        <span className="font-mono font-semibold" style={{ color: s.loss === 0 ? "#00e676" : s.loss <= 2 ? "#ffd24a" : "#ff5470" }}>{s.loss}%</span>
+        <span><span className="font-mono text-text-dim">{s.max}</span><span className="text-text-mute text-[11px]"> ms</span></span>
+      </>
+    )}
+  </div>
+);
+
+function ConnTest() {
+  const { t } = useI18n();
+  const [busy, setBusy] = useState(false);
+  const [res, setRes] = useState<ConnRes | null>(null);
+  const [err, setErr] = useState(false);
+
+  const run = async () => {
+    setBusy(true); setErr(false);
+    try {
+      const r = await runPowershell(CONN_TEST);
+      setRes(JSON.parse(r.output.trim().split("\n").pop() || ""));
+    } catch { setErr(true); setRes(null); }
+    setBusy(false);
+  };
+
+  const tips: string[] = [];
+  if (res) {
+    const gwBad = res.gw?.ok && (res.gw.loss > 0 || (res.gw.jitter ?? 0) > 5);
+    const netBad = verdictOf(res.net) === "fair" || verdictOf(res.net) === "bad";
+    if (gwBad) tips.push(t(res.wifi ? "net.ct.tipLocalWifi" : "net.ct.tipLocalCable"));
+    else if (netBad && res.gw?.ok) tips.push(t("net.ct.tipIsp"));
+    if (res.wifi && !gwBad) tips.push(t("net.ct.tipWifi"));
+    if (!res.wifi && /^(10|100) Mbps$/.test(res.link)) tips.push(t("net.ct.tipSlowLink").replace("{link}", res.link));
+  }
+
+
+  const v = res ? verdictOf(res.net) : null;
+  return (
+    <NeonCard className="mb-4 shrink-0">
+      <div className="flex items-start justify-between gap-4">
+        <div className="min-w-0">
+          <div className="flex items-center gap-2">
+            <span className="text-[14px] font-semibold text-text">{t("net.ct.title")}</span>
+            {v && <span className="text-[11px] px-1.5 py-0.5 rounded font-semibold" style={{ background: `${VERDICT_COLOR[v]}22`, color: VERDICT_COLOR[v] }}>{t(`net.ct.v.${v}`)}</span>}
+          </div>
+          <div className="text-[12.5px] text-text-mute mt-0.5">
+            {res ? `${res.wifi ? "Wi-Fi" : t("net.ct.cable")}${res.link ? ` · ${res.link}` : ""}` : t("net.ct.desc")}
+          </div>
+        </div>
+        <button onClick={run} disabled={busy} className="btn btn-primary shrink-0">
+          {busy ? t("net.ct.running") : res ? t("net.ct.again") : t("net.ct.run")}
+        </button>
+      </div>
+      {busy && <div className="mt-3"><IndeterminateBar /></div>}
+      {err && <p className="text-[12.5px] mt-3" style={{ color: "#ff5470" }}>{t("net.ct.fail")}</p>}
+      {res && !busy && (
+        <div className="mt-3.5 space-y-1.5">
+          <div className="grid grid-cols-[88px_repeat(4,1fr)] gap-2 text-[11px] uppercase tracking-wider text-text-mute">
+            <span />
+            <span>{t("net.ct.ping")}</span><span>{t("net.ct.jitter")}</span><span>{t("net.ct.loss")}</span><span>{t("net.ct.max")}</span>
+          </div>
+          <ConnRow label={t("net.ct.internet")} s={res.net} noResp={t("net.ct.noresp")} />
+          <ConnRow label={t("net.ct.router")} s={res.gw} noResp={t("net.ct.noresp")} />
+          {tips.map((tip) => <p key={tip} className="text-[12.5px] text-text-dim pt-1.5">▸ {tip}</p>)}
+        </div>
+      )}
+    </NeonCard>
+  );
+}
 
 const color = (ms: number) => (ms < 30 ? "#00e676" : ms < 70 ? "#ffd24a" : "#ff8a65");
 
@@ -126,7 +248,7 @@ export default function Red() {
       if (d) { const s = await runPowershell(SAVE_DNS_PREV); if (s.output.includes("SAVED")) setHasSaved(true); }
       const r = await runPowershell(dnsScript(d ? [d.primary, d.secondary] : null));
       if (!mounted.current) return;
-      const label = d ? (lang === "en" ? (d.nameEn ?? d.name) : d.name) : t("net.autoDns");
+      const label = d ? pick(lang, d.name, d.nameEn, d.namePt) : t("net.autoDns");
       setMsg(r.ok ? `✓ ${label} ${t("net.applied")}` : `✗ ${r.output}`);
       await refreshCurrent();
     } catch (err) {
@@ -143,7 +265,7 @@ export default function Red() {
       const r = await runPowershell(RESTORE_DNS_PREV);
       if (!mounted.current) return;
       setMsg(/restaurado/i.test(r.output)
-        ? `✓ ${lang === "en" ? "Your previous DNS restored" : "Tus DNS anteriores restaurados"}`
+        ? `✓ ${t("net.restoredPrev")}`
         : `✗ ${r.output}`);
       setHasSaved(false);
       await refreshCurrent();
@@ -169,6 +291,8 @@ export default function Red() {
     <div className="h-full flex flex-col px-8 py-7 overflow-hidden">
       <HudTitle tkey="page.network" />
 
+      <ConnTest />
+
       <div className="flex items-center justify-between mb-3">
         <div className="text-[13.5px] text-text-mute">
           {t("net.current")} <span className="font-mono text-text-dim">{current}</span>
@@ -190,11 +314,11 @@ export default function Red() {
                 <div className="flex items-center gap-4">
                   <div className="min-w-0 flex-1">
                     <div className="flex items-center gap-2">
-                      <span className="text-[13.5px] font-semibold text-text">{lang === "en" ? (d.nameEn ?? d.name) : d.name}</span>
+                      <span className="text-[13.5px] font-semibold text-text">{pick(lang, d.name, d.nameEn, d.namePt)}</span>
                       {best && <span className="text-[11px] px-1.5 py-0.5 rounded font-medium" style={{ background: "#00e67622", color: "#00e676" }}>{t("net.fastest")}</span>}
                     </div>
                     <div className="text-[12px] font-mono text-text-dim mt-0.5">{d.primary} · {d.secondary}</div>
-                    <div className="text-[11.5px] text-text-mute mt-0.5">{lang === "en" ? d.noteEn : d.note}</div>
+                    <div className="text-[11.5px] text-text-mute mt-0.5">{pick(lang, d.note, d.noteEn, d.notePt)}</div>
                   </div>
 
                   <div className="w-20 text-right shrink-0">
@@ -222,7 +346,7 @@ export default function Red() {
             <div className="flex gap-2">
               {hasSaved && (
                 <button onClick={restorePrev} disabled={applying !== null} className="btn btn-ghost">
-                  {applying === "prev" ? "…" : (lang === "en" ? "Restore mine" : "Restaurar los míos")}
+                  {applying === "prev" ? "…" : t("net.restoreMine")}
                 </button>
               )}
               <button onClick={() => apply(null)} disabled={applying !== null} className="btn btn-ghost w-[84px]">

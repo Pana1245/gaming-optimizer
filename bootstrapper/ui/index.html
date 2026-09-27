@@ -114,7 +114,7 @@ body.leaving{transition:opacity .7s ease;opacity:0}
 <div class="titlebar" data-tauri-drag-region>
   <span class="tb-title"><img src="wolf.png" alt="" /><span data-i18n="tb">Instalador · Gaming Optimizer</span></span>
   <div class="tb-actions">
-    <button class="lang" id="lang"><span id="l-es" class="on">ES</span>·<span id="l-en">EN</span></button>
+    <button class="lang" id="lang"><span id="l-es" class="on">ES</span>·<span id="l-en">EN</span>·<span id="l-pt">PT</span></button>
     <button class="tb-btn" id="min" title="Minimizar">—</button>
     <button class="tb-btn close" id="close" title="Cerrar">✕</button>
   </div>
@@ -203,19 +203,32 @@ const T = {
     "launch.opening":"Opening Gaming Optimizer…",
     steps:["Preparing the installer…","Copying files…","Registering the app…","Creating shortcuts…","Almost done…"],
     cancelled:"Installation cancelled. You can retry whenever you want."
+  },
+  pt:{
+    tb:"Instalador · Gaming Optimizer",
+    "w.t1":"Instalar ","w.sub":"Otimizador de Windows para games — rápido, reversível e com um design minimalista.",
+    "w.c1":"🛡️ <b>100%</b> reversível","w.c2":"📦 <b>~5 MB</b>","w.c3":"🔓 <b>MIT</b> open-source",
+    "w.cta":"Instalar agora","w.fine":"Ao instalar você aceita a <a href='#' id='lic'>licença MIT</a>. Pode aparecer um aviso do Windows (UAC) para autorizar a instalação.",
+    "i.t":"Instalando…","i.hint":"Não feche esta janela.",
+    "d.t":"Pronto!","d.sub":"O Gaming Optimizer foi instalado com sucesso. De agora em diante ele se atualiza sozinho.","d.open":"Abrir Gaming Optimizer","d.close":"Fechar",
+    "e.t":"Não foi possível instalar","e.retry":"Tentar de novo","e.close":"Fechar",
+    "launch.opening":"Abrindo o Gaming Optimizer…",
+    steps:["Preparando o instalador…","Copiando arquivos…","Registrando o aplicativo…","Criando atalhos…","Quase pronto…"],
+    cancelled:"Instalação cancelada. Você pode tentar de novo quando quiser."
   }
 };
-let lang = "es";
+const LANGS = ["es","en","pt"];
+// Idioma inicial: portugués si Windows está en portugués; si no, español (igual que la app).
+let lang = (navigator.language||"").toLowerCase().startsWith("pt") ? "pt" : "es";
 function applyLang(){
   document.documentElement.lang = lang;
   document.querySelectorAll("[data-i18n]").forEach(el=>{
     const k = el.getAttribute("data-i18n");
     if(T[lang][k]!==undefined) el.innerHTML = T[lang][k];
   });
-  document.getElementById("l-es").classList.toggle("on", lang==="es");
-  document.getElementById("l-en").classList.toggle("on", lang==="en");
+  LANGS.forEach(l=>document.getElementById("l-"+l).classList.toggle("on", lang===l));
 }
-document.getElementById("lang").onclick = ()=>{ lang = lang==="es"?"en":"es"; applyLang(); };
+document.getElementById("lang").onclick = ()=>{ lang = LANGS[(LANGS.indexOf(lang)+1)%LANGS.length]; applyLang(); };
 
 /* ---------- screens ---------- */
 function show(id){

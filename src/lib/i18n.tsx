@@ -1,6 +1,13 @@
 import { createContext, useContext, useState, type ReactNode } from "react";
+import { PT } from "./i18nPt";
 
-export type Lang = "es" | "en";
+export type Lang = "es" | "en" | "pt";
+export const LANGS: Lang[] = ["es", "en", "pt"];
+
+// Elige el texto del idioma actual para datos que traen sus propias traducciones.
+// Portugués sin traducir cae al inglés (igual que t()).
+export const pick = <T,>(lang: Lang, es: T, en?: T, pt?: T): T =>
+  lang === "pt" ? (pt ?? en ?? es) : lang === "en" ? (en ?? es) : es;
 
 // Diccionario: clave → { es, en }. Cubre navegación y encabezados de página.
 const STR: Record<string, { es: string; en: string }> = {
@@ -29,7 +36,7 @@ const STR: Record<string, { es: string; en: string }> = {
   "page.profiles.title": { es: "Perfiles", en: "Profiles" },
   "page.profiles.sub": { es: "Configuraciones completas con un clic. Todo queda reversible en el Motor.", en: "Full setups in one click. Everything stays reversible in the Engine." },
   "page.network.title": { es: "Red", en: "Network" },
-  "page.network.sub": { es: "Cambiá el DNS y medí tu ping a servidores clave.", en: "Switch DNS and measure your ping to key servers." },
+  "page.network.sub": { es: "Medí tu conexión para jugar y cambiá a un DNS más rápido.", en: "Test your connection for gaming and switch to a faster DNS." },
   "page.gpu.title": { es: "Gráficos", en: "Graphics" },
   "page.gpu.sub": { es: "Optimizá tu placa de video y, si es NVIDIA, forzá el máximo rendimiento.", en: "Optimize your graphics card and, if NVIDIA, force maximum performance." },
   "page.opt.title": { es: "Optimizaciones", en: "Optimizations" },
@@ -445,6 +452,45 @@ const STR: Record<string, { es: string; en: string }> = {
   "motor.group.Privacidad": { es: "Privacidad", en: "Privacy" },
   "motor.group.Sistema": { es: "Sistema", en: "System" },
   "motor.group.GPU": { es: "GPU", en: "GPU" },
+  "net.ct.title": { es: "Test de conexión para jugar", en: "Gaming connection test" },
+  "net.ct.desc": { es: "Mide ping, jitter y pérdida de paquetes hacia internet y hacia tu router (~10 s).", en: "Measures ping, jitter and packet loss to the internet and to your router (~10 s)." },
+  "net.ct.run": { es: "Medir", en: "Run test" },
+  "net.ct.again": { es: "Medir de nuevo", en: "Run again" },
+  "net.ct.running": { es: "Midiendo…", en: "Testing…" },
+  "net.ct.fail": { es: "No se pudo medir la conexión.", en: "Couldn't measure the connection." },
+  "net.ct.cable": { es: "Cable", en: "Ethernet" },
+  "net.ct.internet": { es: "Internet", en: "Internet" },
+  "net.ct.router": { es: "Router", en: "Router" },
+  "net.ct.ping": { es: "Ping", en: "Ping" },
+  "net.ct.jitter": { es: "Jitter", en: "Jitter" },
+  "net.ct.loss": { es: "Pérdida", en: "Loss" },
+  "net.ct.max": { es: "Máximo", en: "Max" },
+  "net.ct.noresp": { es: "no responde al ping (algunos routers lo bloquean)", en: "doesn't answer ping (some routers block it)" },
+  "net.ct.v.excellent": { es: "Excelente", en: "Excellent" },
+  "net.ct.v.good": { es: "Buena", en: "Good" },
+  "net.ct.v.fair": { es: "Regular", en: "Fair" },
+  "net.ct.v.bad": { es: "Mala", en: "Poor" },
+  "net.ct.tipLocalWifi": { es: "El problema está en tu red local: ya hay pérdida o variación hasta el router. Con Wi-Fi es lo típico — probá con cable o acercate al router.", en: "The problem is on your local network: there's already loss or variation to the router. Typical on Wi-Fi — try a cable or move closer to the router." },
+  "net.ct.tipLocalCable": { es: "El problema está en tu red local: ya hay pérdida o variación hasta el router. Revisá el cable, el puerto o reiniciá el router.", en: "The problem is on your local network: there's already loss or variation to the router. Check the cable, the port, or restart the router." },
+  "net.ct.tipIsp": { es: "Tu red local está bien; la pérdida o el jitter vienen de tu proveedor de internet. Si se repite, conviene reclamarle.", en: "Your local network is fine; the loss or jitter comes from your internet provider. If it keeps happening, contact them." },
+  "net.ct.tipWifi": { es: "Estás por Wi-Fi: con cable el jitter suele bajar y desaparecen los picos.", en: "You're on Wi-Fi: a cable usually lowers jitter and removes spikes." },
+  "net.ct.tipSlowLink": { es: "Tu cable conecta a {link} en vez de 1 Gbps: suele ser un cable o puerto dañado.", en: "Your cable links at {link} instead of 1 Gbps: usually a damaged cable or port." },
+  "tools.kill.protected": { es: "Proceso crítico del sistema; no se cerró", en: "Protected system process; not closed" },
+  "tools.kill.already": { es: "ya estaba cerrado", en: "was already closed" },
+  "tools.kill.closed": { es: "cerrado", en: "closed" },
+  "tools.kill.fail": { es: "No se pudo cerrar", en: "Couldn't close" },
+  "tools.kill.title": { es: "¿Cerrar proceso?", en: "Close process?" },
+  "tools.kill.warn": { es: "Forzar el cierre de un proceso puede perder trabajo sin guardar. Los procesos críticos del sistema están protegidos.", en: "Forcing a process to close can lose unsaved work. Critical system processes are protected." },
+  "splash.loading": { es: "Cargando", en: "Loading" },
+  "react.fail": { es: "No se pudo", en: "Couldn't do it" },
+  "react.working": { es: "Reactivando…", en: "Working…" },
+  "net.restoredPrev": { es: "Tus DNS anteriores restaurados", en: "Your previous DNS restored" },
+  "net.restoreMine": { es: "Restaurar los míos", en: "Restore mine" },
+  "motor.group.Rendimiento": { es: "Rendimiento", en: "Performance" },
+  "sys.vbsOn": { es: "Activa", en: "On" },
+  "sys.hvciOn": { es: "Integridad de memoria activa", en: "Memory Integrity on" },
+  "sys.vbsOff": { es: "Inactiva (sin costo de FPS)", en: "Off (no FPS cost)" },
+  "sys.vbsHint": { es: "se puede desactivar en Motor de Cambios → Rendimiento", en: "can be turned off in Change Engine → Performance" },
   "profiles.planFail": { es: "no se pudo cambiar el plan de energía", en: "couldn't change the power plan" },
 };
 
@@ -452,9 +498,14 @@ interface Ctx { lang: Lang; setLang: (l: Lang) => void; t: (k: string) => string
 const I18nCtx = createContext<Ctx>({ lang: "es", setLang: () => {}, t: (k) => k });
 
 export function I18nProvider({ children }: { children: ReactNode }) {
-  const [lang, setLangS] = useState<Lang>(() => (localStorage.getItem("lang") as Lang) || "es");
+  const [lang, setLangS] = useState<Lang>(() => {
+    const saved = localStorage.getItem("lang") as Lang | null;
+    if (saved && LANGS.includes(saved)) return saved;
+    // Primera vez: portugués si Windows está en portugués; si no, español (como siempre).
+    return navigator.language?.toLowerCase().startsWith("pt") ? "pt" : "es";
+  });
   const setLang = (l: Lang) => { localStorage.setItem("lang", l); setLangS(l); };
-  const t = (k: string) => STR[k]?.[lang] ?? k;
+  const t = (k: string) => lang === "pt" ? (PT[k] ?? STR[k]?.en ?? k) : (STR[k]?.[lang] ?? k);
   return <I18nCtx.Provider value={{ lang, setLang, t }}>{children}</I18nCtx.Provider>;
 }
 

@@ -1,4 +1,4 @@
-// Traducción al inglés de los mensajes que imprimen los scripts de PowerShell en los
+// Traducción al inglés y al portugués de los mensajes que imprimen los scripts de PowerShell en los
 // registros (logs) de cada sección. Los scripts escriben en español; en vez de volver
 // bilingüe cada script, cada panel de log pasa sus líneas por trLog() al mostrarlas,
 // así también se traduce lo que ya estaba en pantalla si cambiás de idioma.
@@ -105,43 +105,151 @@ const EXACT: Record<string, string> = {
   "Plan de energia configurado": "Power plan set",
   "No encontre adaptador NVIDIA en el registro.": "No NVIDIA adapter found in the registry.",
   "No encontre adaptador AMD/Radeon en el registro.": "No AMD/Radeon adapter found in the registry.",
+  "No hay un backup válido de NVIDIA; no se modificó nada.": "No valid NVIDIA backup to restore; nothing was changed.",
+  "No hay un backup válido de AMD; no se modificó nada.": "No valid AMD backup to restore; nothing was changed.",
 };
 
-const RX: [RegExp, string][] = [
-  [/^Backup del registro: (\d+) ramas exportadas$/, "Registry backup: $1 branches exported"],
-  [/^Backup en: (.+)$/, "Backup at: $1"],
-  [/^Accesos directos rotos eliminados: (\d+)$/, "Broken shortcuts deleted: $1"],
-  [/^Dominios de telemetria bloqueados: (\d+)$/, "Telemetry domains blocked: $1"],
-  [/^MSI mode activado en (\d+) GPU\(s\)\. Reinicia para aplicar\.$/, "MSI mode enabled on $1 GPU(s). Restart to apply."],
-  [/^No se pudo crear el punto de restauracion: ?(.*)$/, "Couldn't create the restore point: $1"],
-  [/^No se pudo ejecutar el desinstalador: ?(.*)$/, "Couldn't run the uninstaller: $1"],
-  [/^Restauración incompleta: ?(.*)$/, "Restore incomplete: $1"],
-  [/^Restaurando backup: (.+)$/, "Restoring backup: $1"],
-  [/^Restos eliminados: (\d+)\/(\d+) — (\d+) en uso \(cerrá la app o reiniciá y reintentá\)$/, "Leftovers deleted: $1/$2 — $3 in use (close the app or restart and try again)"],
-  [/^Restos eliminados: (\d+)\/(\d+)$/, "Leftovers deleted: $1/$2"],
-  [/^Timer Resolution: ([\d.,]+)ms \(objetivo: 1ms\)$/, "Timer Resolution: $1ms (target: 1ms)"],
-  [/^Updates pausados hasta (.+)$/, "Updates paused until $1"],
-  [/^Apps de Microsoft removidas: (\d+)$/, "Microsoft apps removed: $1"],
-  [/^Bloatware de terceros removido: (\d+)$/, "Third-party bloatware removed: $1"],
-  [/^NVIDIA: maximo rendimiento aplicado a (\d+) adaptador\(es\)\. Reinicia para que tome efecto\.$/, "NVIDIA: maximum performance applied to $1 adapter(s). Restart to take effect."],
-  [/^AMD: maximo rendimiento aplicado a (\d+) adaptador\(es\)\. Reinicia para que tome efecto\.$/, "AMD: maximum performance applied to $1 adapter(s). Restart to take effect."],
+const EXACT_PT: Record<string, string> = {
+  "Listo.": "Pronto.",
+  "Aceleracion del mouse deshabilitada": "Aceleração do mouse desativada",
+  "Activacion por voz deshabilitada": "Ativação por voz desativada",
+  "Activity History deshabilitado": "Histórico de Atividades desativado",
+  "Algoritmo de Nagle deshabilitado": "Algoritmo de Nagle desativado",
+  "Apps Microsoft eliminadas": "Apps da Microsoft removidos",
+  "Apps de terceros eliminadas": "Apps de terceiros removidos",
+  "Apps del Inicio desancladas (metodo alternativo)": "Apps do Iniciar desafixados (método alternativo)",
+  "Apps del Inicio desancladas (reinicia para ver los cambios)": "Apps do Iniciar desafixados (reinicie para ver as mudanças)",
+  "Apps en segundo plano deshabilitadas": "Apps em segundo plano desativados",
+  "Archivos ocultos visibles": "Arquivos ocultos visíveis",
+  "Automatico": "Automático",
+  "AVISO: no se pudo crear punto de restauracion": "AVISO: não foi possível criar um ponto de restauração",
+  "BSOD detallado activado": "BSOD detalhado ativado",
+  "Barra de tareas a la izquierda": "Barra de tarefas à esquerda",
+  "Barra de tareas simplificada (buscador conservado)": "Barra de tarefas simplificada (pesquisa mantida)",
+  "Bing en Inicio desactivado": "Bing no Iniciar desativado",
+  "Bloatware eliminado (Sycnex DebloatAll)": "Bloatware removido (Sycnex DebloatAll)",
+  "Boton Chat/Teams eliminado de la barra de tareas": "Botão Chat/Teams removido da barra de tarefas",
+  "Caché de iconos reconstruida": "Cache de ícones reconstruído",
+  "Consumer features desactivado": "Consumer features desativado",
+  "Copilot desactivado": "Copilot desativado",
+  "Core Parking deshabilitado — todos los nucleos activos": "Core Parking desativado — todos os núcleos ativos",
+  "Creando punto de restauracion...": "Criando ponto de restauração...",
+  "DNS anterior restaurado": "DNS anterior restaurado",
+  "DNS aplicado": "DNS aplicado",
+  "DNS automatico restaurado": "DNS automático restaurado",
+  "Delay del menu reducido": "Atraso do menu reduzido",
+  "Desinstalador ejecutado": "Desinstalador executado",
+  "Desinstalador ejecutado (modo usuario)": "Desinstalador executado (modo usuário)",
+  "Edge debloated": "Edge sem bloatware",
+  "Efectos visuales optimizados": "Efeitos visuais otimizados",
+  "El backup no tiene archivos .reg.": "O backup não tem arquivos .reg.",
+  "Eliminando bloatware...": "Removendo bloatware...",
+  "Explorador reiniciado": "Explorer reiniciado",
+  "Extensiones visibles": "Extensões de arquivo visíveis",
+  "FSO deshabilitado": "FSO desativado",
+  "Finalizar tarea habilitado": "Finalizar tarefa ativado",
+  "Game Mode habilitado": "Modo de Jogo ativado",
+  "HAGS habilitado": "HAGS ativado",
+  "HPET desactivado (reinicia para aplicar)": "HPET desativado (reinicie para aplicar)",
+  "Hibernación desactivada": "Hibernação desativada",
+  "HomeGroup desactivado": "Grupo Doméstico desativado",
+  "Hora en UTC (dual-boot)": "Hora em UTC (dual-boot)",
+  "ID publicitario y Cortana deshabilitados": "ID de publicidade e Cortana desativados",
+  "IPv6 desactivado": "IPv6 desativado",
+  "LSO deshabilitado": "LSO desativado",
+  "Mensajes de inicio detallados": "Mensagens de inicialização detalhadas",
+  "Menú contextual clásico activado": "Menu de contexto clássico ativado",
+  "Modo oscuro activado": "Modo escuro ativado",
+  "No hay backups disponibles.": "Nenhum backup disponível.",
+  "No se pudo cambiar el plan de energia": "Não foi possível mudar o plano de energia",
+  "Notificaciones de apps deshabilitadas": "Notificações de apps desativadas",
+  "NumLock activado al inicio": "NumLock ativado na inicialização",
+  "OneDrive deshabilitado": "OneDrive desativado",
+  "OneDrive desinstalado (tus archivos en la carpeta OneDrive se conservan).": "OneDrive desinstalado (seus arquivos na pasta OneDrive são mantidos).",
+  "Panel de Widgets desactivado": "Painel de Widgets desativado",
+  "Paquete UWP eliminado": "Pacote UWP removido",
+  "Permisos configurados (camara/microfono/videos mantenidos)": "Permissões configuradas (câmera/microfone/vídeos mantidos)",
+  "Plan de energia: Alto rendimiento": "Plano de energia: Alto desempenho",
+  "Plan de energia: Maximo rendimiento (Ultimate Performance)": "Plano de energia: Desempenho máximo (Ultimate Performance)",
+  "Plan: ahorro de energia": "Plano: economia de energia",
+  "Plan: alto rendimiento": "Plano: alto desempenho",
+  "Plan: equilibrado": "Plano: equilibrado",
+  "Plan: maximo rendimiento": "Plano: desempenho máximo",
+  "Print Spooler deshabilitado": "Spooler de Impressão desativado",
+  "Prioridad CPU configurada": "Prioridade de CPU configurada",
+  "Punto de restauracion creado OK": "Ponto de restauração criado OK",
+  "Punto de restauracion creado correctamente.": "Ponto de restauração criado com sucesso.",
+  "QoS bandwidth al 100 para juegos": "Banda de QoS em 100% para jogos",
+  "Recall desactivado": "Recall desativado",
+  "Red reseteada. Reinicia para aplicar.": "Rede redefinida. Reinicie para aplicar.",
+  "Registro restaurado. Reinicia el PC para aplicar.": "Registro restaurado. Reinicie o PC para aplicar.",
+  "Reinicio automático desactivado": "Reinício automático desativado",
+  "Remote Registry deshabilitado": "Registro Remoto desativado",
+  "Segundos en el reloj activados": "Segundos no relógio ativados",
+  "Servicios Xbox deshabilitados": "Serviços do Xbox desativados",
+  "Sticky Keys desactivado": "Teclas de Aderência desativadas",
+  "Storage Sense desactivado": "Sensor de Armazenamento desativado",
+  "Sugerencias del Inicio desactivadas": "Sugestões do Iniciar desativadas",
+  "SysMain deshabilitado": "SysMain desativado",
+  "TCP optimizado": "TCP otimizado",
+  "Tareas de telemetria deshabilitadas": "Tarefas de telemetria desativadas",
+  "Telemetria deshabilitada": "Telemetria desativada",
+  "Telemetría de PowerShell desactivada": "Telemetria do PowerShell desativada",
+  "Teredo deshabilitado": "Teredo desativado",
+  "Timer Resolution configurado (activo al reiniciar)": "Timer Resolution configurado (ativo após reiniciar)",
+  "Transparencia deshabilitada": "Transparência desativada",
+  "Ubicación desactivada": "Localização desativada",
+  "Verifica que la Proteccion del sistema este activada y que haya espacio en disco.": "Verifique se a Proteção do Sistema está ativada e se há espaço livre em disco.",
+  "Wi-Fi Sense desactivado": "Wi-Fi Sense desativado",
+  "Windows Defender deshabilitado (reinicia para aplicar completamente)": "Windows Defender desativado (reinicie para aplicar por completo)",
+  "Windows Search deshabilitado": "Windows Search desativado",
+  "Windows Update desactivado": "Windows Update desativado",
+  "Windows Update reactivado": "Windows Update reativado",
+  "Xbox Game Bar deshabilitado": "Xbox Game Bar desativada",
+  "Plan de energia configurado": "Plano de energia configurado",
+  "No encontre adaptador NVIDIA en el registro.": "Nenhum adaptador NVIDIA encontrado no registro.",
+  "No encontre adaptador AMD/Radeon en el registro.": "Nenhum adaptador AMD/Radeon encontrado no registro.",
+  "No hay un backup válido de NVIDIA; no se modificó nada.": "Não há um backup válido da NVIDIA; nada foi alterado.",
+  "No hay un backup válido de AMD; no se modificó nada.": "Não há um backup válido da AMD; nada foi alterado.",
+};
+
+const RX: [RegExp, string, string][] = [
+  [/^(NVIDIA|AMD): valores del driver restaurados \((\d+)\)\. Reinicia para que tome efecto\.$/, "$1: driver values restored ($2). Restart to take effect.", "$1: valores do driver restaurados ($2). Reinicie para ter efeito."],
+  [/^Backup del registro: (\d+) ramas exportadas$/, "Registry backup: $1 branches exported", "Backup do registro: $1 ramos exportados"],
+  [/^Backup en: (.+)$/, "Backup at: $1", "Backup em: $1"],
+  [/^Accesos directos rotos eliminados: (\d+)$/, "Broken shortcuts deleted: $1", "Atalhos quebrados apagados: $1"],
+  [/^Dominios de telemetria bloqueados: (\d+)$/, "Telemetry domains blocked: $1", "Domínios de telemetria bloqueados: $1"],
+  [/^MSI mode activado en (\d+) GPU\(s\)\. Reinicia para aplicar\.$/, "MSI mode enabled on $1 GPU(s). Restart to apply.", "Modo MSI ativado em $1 GPU(s). Reinicie para aplicar."],
+  [/^No se pudo crear el punto de restauracion: ?(.*)$/, "Couldn't create the restore point: $1", "Não foi possível criar o ponto de restauração: $1"],
+  [/^No se pudo ejecutar el desinstalador: ?(.*)$/, "Couldn't run the uninstaller: $1", "Não foi possível executar o desinstalador: $1"],
+  [/^Restauración incompleta: ?(.*)$/, "Restore incomplete: $1", "Restauração incompleta: $1"],
+  [/^Restaurando backup: (.+)$/, "Restoring backup: $1", "Restaurando backup: $1"],
+  [/^Restos eliminados: (\d+)\/(\d+) — (\d+) en uso \(cerrá la app o reiniciá y reintentá\)$/, "Leftovers deleted: $1/$2 — $3 in use (close the app or restart and try again)", "Restos apagados: $1/$2 — $3 em uso (feche o app ou reinicie e tente de novo)"],
+  [/^Restos eliminados: (\d+)\/(\d+)$/, "Leftovers deleted: $1/$2", "Restos apagados: $1/$2"],
+  [/^Timer Resolution: ([\d.,]+)ms \(objetivo: 1ms\)$/, "Timer Resolution: $1ms (target: 1ms)", "Timer Resolution: $1ms (alvo: 1ms)"],
+  [/^Updates pausados hasta (.+)$/, "Updates paused until $1", "Atualizações pausadas até $1"],
+  [/^Apps de Microsoft removidas: (\d+)$/, "Microsoft apps removed: $1", "Apps da Microsoft removidos: $1"],
+  [/^Bloatware de terceros removido: (\d+)$/, "Third-party bloatware removed: $1", "Bloatware de terceiros removido: $1"],
+  [/^NVIDIA: maximo rendimiento aplicado a (\d+) adaptador\(es\)\. Reinicia para que tome efecto\.$/, "NVIDIA: maximum performance applied to $1 adapter(s). Restart to take effect.", "NVIDIA: desempenho máximo aplicado a $1 adaptador(es). Reinicie para ter efeito."],
+  [/^AMD: maximo rendimiento aplicado a (\d+) adaptador\(es\)\. Reinicia para que tome efecto\.$/, "AMD: maximum performance applied to $1 adapter(s). Restart to take effect.", "AMD: desempenho máximo aplicado a $1 adaptador(es). Reinicie para ter efeito."],
 ];
 
 // Prefijo que se conserva: sangría, [hora], y símbolos de estado (✓ ✗ ▸ ↩ ↪ ⚠ …).
 const PREFIX = /^(\s*(?:\[[^\]]*\]\s*)?(?:[✓✗▸↩↪⚠•·\-]\s*)*)([\s\S]*?)(\s*)$/u;
 
-function one(line: string): string {
+function one(line: string, pt: boolean): string {
   const m = line.match(PREFIX);
   if (!m) return line;
   const [, pre, body, post] = m;
-  const hit = EXACT[body];
+  const hit = (pt ? EXACT_PT : EXACT)[body];
   if (hit) return pre + hit + post;
-  for (const [rx, rep] of RX) if (rx.test(body)) return pre + body.replace(rx, rep) + post;
+  for (const [rx, en, ptRep] of RX) if (rx.test(body)) return pre + body.replace(rx, pt ? ptRep : en) + post;
   return line;
 }
 
-/** Traduce una o varias líneas de log al inglés (no-op en español). */
+/** Traduce una o varias líneas de log al inglés o portugués (no-op en español). */
 export function trLog(text: string, lang: string): string {
-  if (lang !== "en" || !text) return text;
-  return text.split("\n").map(one).join("\n");
+  if ((lang !== "en" && lang !== "pt") || !text) return text;
+  const pt = lang === "pt";
+  return text.split("\n").map((l) => one(l, pt)).join("\n");
 }

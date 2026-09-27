@@ -10,10 +10,10 @@ const DWM = String.raw`HKLM:\SOFTWARE\Microsoft\Windows\Dwm`;
 // se quitó: ponía 8, que ya es el valor por defecto de Windows (placebo).
 export const GPU_OPS: RegOp[] = [
   { id: "gpu_tdr", group: "GPU", name: "Evitar cuelgues del driver bajo carga (TDR)", risk: "advanced",
-    desc: "Sube TdrDelay a 10s: da más tiempo a la GPU antes de reiniciar el driver. Útil si tenés crasheos 'el driver dejó de responder y se recuperó'.", nameEn: "Prevent driver hangs under load (TDR)", descEn: "Raises TdrDelay to 10s: gives the GPU more time before the driver resets. Useful if you get 'display driver stopped responding and has recovered' crashes.",
+    desc: "Sube TdrDelay a 10s: da más tiempo a la GPU antes de reiniciar el driver. Útil si tenés crasheos 'el driver dejó de responder y se recuperó'.", nameEn: "Prevent driver hangs under load (TDR)", descEn: "Raises TdrDelay to 10s: gives the GPU more time before the driver resets. Useful if you get 'display driver stopped responding and has recovered' crashes.", namePt: "Evitar travamentos do driver sob carga (TDR)", descPt: "Aumenta o TdrDelay para 10s: dá mais tempo à GPU antes de reiniciar o driver. Útil se você tem crashes do tipo 'o driver parou de responder e se recuperou'.",
     key: GFX, prop: "TdrDelay", type: "DWord", value: 10 },
   { id: "gpu_mpo", group: "GPU", name: "Desactivar MPO (arregla parpadeos / stutter)", risk: "advanced",
-    desc: "Multi-Plane Overlay causa parpadeos o tirones en algunas GPUs y setups multimonitor. Desactivarlo lo soluciona.", nameEn: "Disable MPO (fixes flicker / stutter)", descEn: "Multi-Plane Overlay causes flicker or stutter on some GPUs and multi-monitor setups. Disabling it fixes that.",
+    desc: "Multi-Plane Overlay causa parpadeos o tirones en algunas GPUs y setups multimonitor. Desactivarlo lo soluciona.", nameEn: "Disable MPO (fixes flicker / stutter)", descEn: "Multi-Plane Overlay causes flicker or stutter on some GPUs and multi-monitor setups. Disabling it fixes that.", namePt: "Desativar MPO (corrige piscadas / stutter)", descPt: "O Multi-Plane Overlay causa piscadas ou travadinhas em algumas GPUs e setups com vários monitores. Desativá-lo resolve.",
     key: DWM, prop: "OverlayTestMode", type: "DWord", value: 5 },
 ];
 

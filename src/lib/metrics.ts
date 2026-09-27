@@ -2,7 +2,7 @@ import { runPowershell } from "./api";
 import { ENGINE_TWEAKS } from "../engineTweaks";
 
 // ---- Puntaje de optimización: lee el estado real del registro y lo compara ----
-export interface ScoreResult { applied: number; total: number; pct: number; missing: { name: string; nameEn?: string }[]; }
+export interface ScoreResult { applied: number; total: number; pct: number; missing: { name: string; nameEn?: string; namePt?: string }[]; }
 
 const SCORE_TWEAKS = ENGINE_TWEAKS.filter((t) => t.group === "Gaming" || t.group === "Privacidad");
 
@@ -17,7 +17,7 @@ export async function readScore(): Promise<ScoreResult> {
     if (m) state[m[1]] = m[2] === "1";
   }
   const applied = SCORE_TWEAKS.filter((t) => state[t.id]).length;
-  const missing = SCORE_TWEAKS.filter((t) => !state[t.id]).map((t) => ({ name: t.name, nameEn: t.nameEn }));
+  const missing = SCORE_TWEAKS.filter((t) => !state[t.id]).map((t) => ({ name: t.name, nameEn: t.nameEn, namePt: t.namePt }));
   const total = SCORE_TWEAKS.length;
   return { applied, total, pct: total ? Math.round((applied / total) * 100) : 0, missing };
 }
