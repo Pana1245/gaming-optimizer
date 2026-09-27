@@ -407,7 +407,7 @@ const STR: Record<string, { es: string; en: string }> = {
   "common.advancedWarn": { es: "⚠ Avanzado — modifica ajustes del sistema", en: "⚠ Advanced — changes system settings" },
   "inst.ready": { es: "Listo.", en: "Ready." },
   "inst.noWinget1": { es: "✗ winget (App Installer) no está instalado en esta PC.", en: "✗ winget (App Installer) is not installed on this PC." },
-  "inst.noWinget2": { es: "  Instalalo gratis desde Microsoft Store buscando \"App Installer\" y reintentá.", en: "  Install it for free from the Microsoft Store (search \"App Installer\") and try again." },
+  "inst.noWinget2": { es: "  Si Windows se instaló hace poco, esperá unos minutos (se activa solo) o actualizá \"App Installer\" desde Microsoft Store y reintentá.", en: "  If Windows was just installed, wait a few minutes (it activates by itself) or update \"App Installer\" from the Microsoft Store and try again." },
   "inst.installingN": { es: "Instalando {n} aplicaciones vía winget…", en: "Installing {n} apps via winget…" },
   "inst.userMode": { es: "  ↪ instalando en modo usuario (este paquete no admite admin)…", en: "  ↪ installing in user mode (this package doesn't allow admin)…" },
   "inst.retryUser": { es: "  ↩ reintentando sin admin (modo usuario)…", en: "  ↩ retrying without admin (user mode)…" },

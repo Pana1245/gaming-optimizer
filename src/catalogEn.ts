@@ -114,7 +114,7 @@ export const TWEAK_DESC_EN: Record<string, string> = {
   "Reservar 0% de ancho de banda para QoS": "Frees the 20% of bandwidth Windows reserves for QoS by default. Advanced.",
   "Deshabilitar telemetría de Windows": "Reduces Windows diagnostic data collection to the minimum.",
   "Deshabilitar ID publicitario y Cortana": "Turns off the advertising ID and the Cortana assistant.",
-  "Bloquear telemetría (archivo hosts)": "Adds Microsoft telemetry domains to the hosts file to block them. Advanced.",
+  "Bloquear telemetría (archivo hosts)": "Adds Microsoft telemetry domains to the hosts file. WARNING: Windows Defender flags this as a threat (HostsFileHijack) and reverts it. Not needed: \"Disable Windows telemetry\" already blocks it via the registry.",
   "Desactivar Recall (captura de IA)": "Disables Windows 11 Recall, which takes periodic screenshots of your screen.",
   "Desactivar animaciones y efectos visuales": "Removes window and menu animations for a snappier response.",
   "Deshabilitar transparencia de Windows": "Turns off transparency effects, saving some GPU.",

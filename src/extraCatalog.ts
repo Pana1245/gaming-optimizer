@@ -18,7 +18,9 @@ Write-Output "MSI mode activado en $n GPU(s). Reinicia para aplicar."`,
   privacy: [
     {
       name: "Bloquear telemetría (archivo hosts)",
-      risk: "advanced",
+      // optIn: Defender marca estos dominios en hosts como SettingsModifier:Win32/HostsFileHijack
+      // (alerta de amenaza + revierte las entradas). La telemetría ya se corta por registro.
+      risk: "advanced", optIn: true,
       script: String.raw`$hosts = "$env:windir\System32\drivers\etc\hosts"
 $domains = @('vortex.data.microsoft.com','telemetry.microsoft.com','watson.telemetry.microsoft.com','settings-win.data.microsoft.com','telecommand.telemetry.microsoft.com','oca.telemetry.microsoft.com','v10.events.data.microsoft.com')
 $c = Get-Content $hosts -ErrorAction SilentlyContinue

@@ -15,7 +15,7 @@ export const TWEAK_DESC: Record<string, string> = {
   "Deshabilitar Large Send Offload (LSO)": "Desactiva LSO, que en muchas placas de red causa picos de latencia.",
   "Reservar 0% de ancho de banda para QoS": "Libera el 20% de ancho de banda que Windows reserva por defecto para QoS. Avanzado.",
   "MSI mode en la GPU (menos latencia)": "Activa interrupciones por mensaje (MSI) en la GPU para reducir latencia. Avanzado: requiere reiniciar.",
-  "Bloquear telemetría (archivo hosts)": "Agrega los dominios de telemetría de Microsoft al archivo hosts para bloquearlos. Avanzado.",
+  "Bloquear telemetría (archivo hosts)": "Agrega los dominios de telemetría de Microsoft al archivo hosts. OJO: Windows Defender lo detecta como amenaza (HostsFileHijack) y revierte los cambios. No hace falta: \"Deshabilitar telemetría de Windows\" ya la corta por registro.",
   "Desactivar Recall (captura de IA)": "Desactiva Recall de Windows 11, que toma capturas periódicas de tu pantalla.",
   "Quitar OneDrive por completo": "Desinstala OneDrive y borra su carpeta. Avanzado: hacelo solo si no lo usás.",
   "Deshabilitar telemetría de Windows": "Reduce al mínimo la recolección de datos de diagnóstico de Windows.",

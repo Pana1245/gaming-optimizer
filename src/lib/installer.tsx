@@ -79,7 +79,14 @@ export function InstallerProvider({ children }: { children: ReactNode }) {
     setDone(null);
     setLog([t("inst.ready")]);
 
-    const wingetOk = await runPowershell(`if (Get-Command winget -ErrorAction SilentlyContinue) { "OK" } else { "NO" }`);
+    // En un Windows recién instalado App Installer está pero winget todavía no se
+    // registró (Windows lo hace en segundo plano tras el primer inicio de sesión).
+    // Se fuerza el registro con el comando que documenta Microsoft y se reintenta.
+    const wingetOk = await runPowershell(`if (-not (Get-Command winget -ErrorAction SilentlyContinue)) {
+  try { Add-AppxPackage -RegisterByFamilyName -MainPackage Microsoft.DesktopAppInstaller_8wekyb3d8bbwe -ErrorAction Stop } catch {}
+  $env:Path = [Environment]::GetEnvironmentVariable('Path','Machine') + ';' + [Environment]::GetEnvironmentVariable('Path','User')
+}
+if (Get-Command winget -ErrorAction SilentlyContinue) { "OK" } else { "NO" }`);
     if (!/OK/.test(wingetOk.output)) {
       addLog(t("inst.noWinget1"));
       addLog(t("inst.noWinget2"));
