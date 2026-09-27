@@ -76,18 +76,51 @@ $o.ram = [ordered]@{
   parts = @($mods | ForEach-Object { "$($_.PartNumber)".Trim() })
   gb = [math]::Round((($mods | Measure-Object Capacity -Sum).Sum) / 1GB)
 }
-$sysLetter = $env:SystemDrive.TrimEnd(':')
-$part = Get-Partition -DriveLetter $sysLetter -EA SilentlyContinue
-$pd = if ($part) { Get-PhysicalDisk -EA SilentlyContinue | Where-Object DeviceId -eq "$($part.DiskNumber)" } else { $null }
-$rel = if ($pd) { $pd | Get-StorageReliabilityCounter -EA SilentlyContinue } else { $null }
+# Salud de TODOS los discos internos (no USB), al estilo CrystalDiskInfo:
+# - HealthStatus de Windows + contadores de confiabilidad (desgaste, temperatura,
+#   horas de uso, errores sin corregir).
+# - SMART crudo (discos SATA): predicción de falla y atributos 5 (reasignados),
+#   197 (pendientes), 198 (incorregibles), 9 (horas) y 194 (temperatura).
+$smart = @{}
+try {
+  foreach ($s in @(Get-CimInstance -Namespace root\wmi -ClassName MSStorageDriver_FailurePredictStatus -EA Stop)) {
+    $smart[($s.InstanceName -replace '_\d+$', '').ToUpper()] = @{ predict = [bool]$s.PredictFailure; attrs = @{} }
+  }
+  foreach ($d in @(Get-CimInstance -Namespace root\wmi -ClassName MSStorageDriver_FailurePredictData -EA SilentlyContinue)) {
+    $k = ($d.InstanceName -replace '_\d+$', '').ToUpper()
+    if (-not $smart.ContainsKey($k)) { $smart[$k] = @{ predict = $false; attrs = @{} } }
+    $v = $d.VendorSpecific
+    # 2 bytes de versión y después entradas de 12 bytes: id, flags(2), actual, peor, crudo(6), reservado.
+    for ($i = 2; $i + 12 -le $v.Length; $i += 12) {
+      $id = [int]$v[$i]; if ($id -eq 0) { continue }
+      $raw = [uint64]0; for ($b = 5; $b -ge 0; $b--) { $raw = ($raw -shl 8) + [uint64]$v[$i + 5 + $b] }
+      $smart[$k].attrs["$id"] = $raw
+    }
+  }
+} catch {}
+$pnp = @{}; foreach ($dd in @(Get-CimInstance Win32_DiskDrive -EA SilentlyContinue)) { $pnp["$($dd.Index)"] = "$($dd.PNPDeviceID)".ToUpper() }
+$sysDisk = (Get-Partition -DriveLetter $env:SystemDrive.TrimEnd(':') -EA SilentlyContinue).DiskNumber
+$o.disks = @(foreach ($pd in @(Get-PhysicalDisk -EA SilentlyContinue | Where-Object { "$($_.BusType)" -ne 'USB' } | Sort-Object { [int]$_.DeviceId })) {
+  $r = $pd | Get-StorageReliabilityCounter -EA SilentlyContinue
+  $sm = $smart[$pnp["$($pd.DeviceId)"]]
+  $a = if ($sm) { $sm.attrs } else { @{} }
+  $num = { param($x) if ($x -ne $null) { [int64]$x } else { -1 } }
+  $hours = & $num $r.PowerOnHours; if ($hours -lt 0 -and $a.ContainsKey('9')) { $hours = [int64]($a['9'] -band 0xFFFFFFFF) }
+  $temp = & $num $r.Temperature; if ($temp -le 0 -and $a.ContainsKey('194')) { $temp = [int64]($a['194'] -band 0xFF) }
+  [ordered]@{
+    id = "$($pd.DeviceId)"; name = "$($pd.FriendlyName)".Trim(); media = "$($pd.MediaType)"; bus = "$($pd.BusType)"
+    sizeGb = [math]::Round($pd.Size / 1GB); health = "$($pd.HealthStatus)"; system = ("$($pd.DeviceId)" -eq "$sysDisk")
+    wear = & $num $r.Wear; temp = $temp; hours = $hours
+    readErr = & $num $r.ReadErrorsUncorrected; writeErr = & $num $r.WriteErrorsUncorrected
+    predict = [bool]($sm -and $sm.predict)
+    realloc = if ($a.ContainsKey('5')) { [int64]($a['5'] -band 0xFFFFFFFF) } else { -1 }
+    pending = if ($a.ContainsKey('197')) { [int64]($a['197'] -band 0xFFFFFFFF) } else { -1 }
+    uncorrect = if ($a.ContainsKey('198')) { [int64]($a['198'] -band 0xFFFFFFFF) } else { -1 }
+    smart = [bool]$sm
+  }
+})
 $ld = Get-CimInstance Win32_LogicalDisk -Filter "DeviceID='$($env:SystemDrive)'" -EA SilentlyContinue
-$o.disk = [ordered]@{
-  drive = $env:SystemDrive; model = "$($pd.FriendlyName)"; media = "$($pd.MediaType)"; health = "$($pd.HealthStatus)"
-  wear = if ($rel -and $rel.Wear -ne $null) { [int]$rel.Wear } else { -1 }
-  temp = if ($rel -and $rel.Temperature) { [int]$rel.Temperature } else { -1 }
-  freeGb = if ($ld) { [math]::Round($ld.FreeSpace / 1GB, 1) } else { -1 }
-  sizeGb = if ($ld) { [math]::Round($ld.Size / 1GB, 1) } else { -1 }
-}
+$o.sys = [ordered]@{ drive = $env:SystemDrive; freeGb = if ($ld) { [math]::Round($ld.FreeSpace / 1GB, 1) } else { -1 }; sizeGb = if ($ld) { [math]::Round($ld.Size / 1GB, 1) } else { -1 } }
 $o.gpus = @(Get-CimInstance Win32_VideoController -EA SilentlyContinue | Where-Object { "$($_.PNPDeviceID)" -like 'PCI*' } | ForEach-Object {
   [ordered]@{ name = "$($_.Name)"; version = "$($_.DriverVersion)"; days = if ($_.DriverDate) { [int]((Get-Date) - $_.DriverDate).TotalDays } else { -1 } } })
 # powercfg escribe en la página de códigos OEM de la consola: se lee con esa y se vuelve a UTF-8.
@@ -121,12 +154,18 @@ Write-Output OK`;
 interface Scan {
   displays: { dev: string; name: string; res: string; hz: number; max: number }[];
   ram: { modules: number; slots: number; speed: number; configured: number; type: number; parts: string[]; gb: number };
-  disk: { drive: string; model: string; media: string; health: string; wear: number; temp: number; freeGb: number; sizeGb: number };
+  disks: Disk[];
+  sys: { drive: string; freeGb: number; sizeGb: number };
   gpus: { name: string; version: string; days: number }[];
   power: { guid: string; name: string };
   gameMode: number; rebootPending: boolean;
   pagefile: { auto: boolean; count: number };
   startupOn: number;
+}
+interface Disk {
+  id: string; name: string; media: string; bus: string; sizeGb: number; health: string; system: boolean;
+  wear: number; temp: number; hours: number; readErr: number; writeErr: number;
+  predict: boolean; realloc: number; pending: number; uncorrect: number; smart: boolean;
 }
 type Status = "bad" | "warn" | "info" | "ok";
 interface Item {
@@ -161,7 +200,7 @@ const STATUS: Record<Status, { color: string; icon: string }> = {
 const ORDER: Status[] = ["bad", "warn", "info", "ok"];
 
 export default function Chequeo({ onNavigate }: { onNavigate: (page: string) => void }) {
-  const { t } = useI18n();
+  const { t, lang } = useI18n();
   const [scan, setScan] = useState<Scan | null>(null);
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState(false);
@@ -204,15 +243,41 @@ export default function Chequeo({ onNavigate }: { onNavigate: (page: string) => 
     if (ram.modules === 1 && ram.slots > 1) items.push({ id: "ram-ch", status: "warn", title: t("hc.ch.single.t"), detail: t("hc.ch.single.d") });
     else if (ram.modules >= 2) items.push({ id: "ram-ch", status: "ok", title: fill(t("hc.ch.ok.t"), { n: ram.modules, gb: ram.gb }), detail: t("hc.ch.ok.d") });
     if (ram.gb > 0 && ram.gb < 16) items.push({ id: "ram-gb", status: ram.gb < 8 ? "warn" : "info", title: fill(t("hc.ram.low.t"), { gb: ram.gb }), detail: t("hc.ram.low.d") });
-    // Disco
-    const dk = scan.disk, dv = { drive: dk.drive, model: dk.model || dk.drive, free: dk.freeGb, size: dk.sizeGb, wear: dk.wear, temp: dk.temp, health: dk.health };
-    let diskIssue = false;
-    if (dk.health && dk.health !== "Healthy") { diskIssue = true; items.push({ id: "disk-h", status: "bad", title: fill(t("hc.disk.health.t"), dv), detail: t("hc.disk.health.d") }); }
-    if (dk.media === "HDD") { diskIssue = true; items.push({ id: "disk-hdd", status: "warn", title: t("hc.disk.hdd.t"), detail: t("hc.disk.hdd.d") }); }
-    if (dk.wear >= 80) { diskIssue = true; items.push({ id: "disk-w", status: "warn", title: fill(t("hc.disk.wear.t"), dv), detail: t("hc.disk.wear.d") }); }
-    if (dk.temp >= 70) { diskIssue = true; items.push({ id: "disk-t", status: "warn", title: fill(t("hc.disk.hot.t"), dv), detail: t("hc.disk.hot.d") }); }
-    if (dk.freeGb >= 0 && (dk.freeGb < 15 || dk.freeGb < dk.sizeGb * 0.1)) { diskIssue = true; items.push({ id: "disk-f", status: "warn", title: fill(t("hc.disk.space.t"), dv), detail: t("hc.disk.space.d"), nav: "clean" }); }
-    if (!diskIssue && dk.freeGb >= 0) items.push({ id: "disk", status: "ok", title: fill(t("hc.disk.ok.t"), dv), detail: fill(t("hc.disk.ok.d"), dv) });
+    // Discos (todos los internos), con reglas al estilo CrystalDiskInfo
+    const nf = new Intl.NumberFormat(lang);
+    for (const dk of scan.disks) {
+      const hdd = dk.media === "HDD";
+      const kind = hdd ? t("hc.dk.hdd") : dk.bus === "NVMe" ? "SSD NVMe" : "SSD";
+      const bad: string[] = [], warn: string[] = [];
+      if (dk.health === "Unhealthy") bad.push(fill(t("hc.dk.r.health"), { v: dk.health }));
+      else if (dk.health && dk.health !== "Healthy") warn.push(fill(t("hc.dk.r.health"), { v: dk.health }));
+      if (dk.predict) bad.push(t("hc.dk.r.predict"));
+      if (dk.pending > 0) bad.push(fill(t("hc.dk.r.pending"), { n: dk.pending }));
+      if (dk.uncorrect > 0) bad.push(fill(t("hc.dk.r.uncorrect"), { n: dk.uncorrect }));
+      if (dk.realloc >= 50) bad.push(fill(t("hc.dk.r.realloc"), { n: dk.realloc }));
+      else if (dk.realloc > 0) warn.push(fill(t("hc.dk.r.realloc"), { n: dk.realloc }));
+      if (dk.readErr > 0) warn.push(fill(t("hc.dk.r.readErr"), { n: dk.readErr }));
+      if (!hdd && dk.wear >= 90) bad.push(fill(t("hc.dk.r.wear"), { n: dk.wear }));
+      else if (!hdd && dk.wear >= 70) warn.push(fill(t("hc.dk.r.wear"), { n: dk.wear }));
+      if (dk.temp >= (hdd ? 55 : 70)) warn.push(fill(t("hc.dk.r.hot"), { n: dk.temp }));
+      // Datos que sí hay (el desgaste sólo si es > 0: muchos SSD SATA informan 0 siempre).
+      const facts = [kind, `${dk.sizeGb} GB`];
+      if (dk.system) facts.push(t("hc.dk.sys"));
+      if (dk.hours >= 0) facts.push(fill(t("hc.dk.hours"), { n: nf.format(dk.hours) }));
+      if (dk.temp > 0) facts.push(`${dk.temp} °C`);
+      if (!hdd && dk.wear > 0) facts.push(fill(t("hc.dk.wearF"), { n: dk.wear }));
+      if (dk.smart && dk.realloc === 0 && dk.pending <= 0 && dk.uncorrect <= 0) facts.push(t("hc.dk.smartOk"));
+      const v = { name: dk.name || kind };
+      const id = `disk-${dk.id}`;
+      if (bad.length) items.push({ id, status: "bad", title: fill(t("hc.dk.bad.t"), v), detail: `${[...bad, ...warn].join(" · ")}. ${t("hc.dk.bad.d")}` });
+      else if (warn.length) items.push({ id, status: "warn", title: fill(t("hc.dk.warn.t"), v), detail: `${warn.join(" · ")}. ${t("hc.dk.warn.d")}` });
+      else if (hdd && dk.hours > 35000) items.push({ id, status: "info", title: fill(t("hc.dk.old.t"), v), detail: `${facts.join(" · ")}. ${t("hc.dk.old.d")}` });
+      else items.push({ id, status: "ok", title: fill(t("hc.dk.ok.t"), v), detail: facts.join(" · ") });
+      if (dk.system && hdd) items.push({ id: "disk-hdd", status: "warn", title: t("hc.disk.hdd.t"), detail: t("hc.disk.hdd.d") });
+    }
+    const sy = scan.sys;
+    if (sy.freeGb >= 0 && (sy.freeGb < 15 || sy.freeGb < sy.sizeGb * 0.1))
+      items.push({ id: "disk-f", status: "warn", title: fill(t("hc.disk.space.t"), { drive: sy.drive, free: sy.freeGb }), detail: t("hc.disk.space.d"), nav: "clean" });
     // Driver de video
     for (const g of scan.gpus) {
       if (g.days < 0) continue;
