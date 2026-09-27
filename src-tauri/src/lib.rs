@@ -1,3 +1,5 @@
+mod speedtest;
+
 use std::io::Read;
 use std::process::{Command, Stdio};
 use std::sync::atomic::{AtomicBool, Ordering};
@@ -723,7 +725,8 @@ pub fn run() {
         .invoke_handler(tauri::generate_handler![
             run_powershell, run_powershell_stream, stats, system_info,
             ledger_read, ledger_write, start_game_watch, stop_game_watch,
-            clear_standby_ram, reg_apply, reg_undo
+            clear_standby_ram, reg_apply, reg_undo,
+            speedtest::speed_test, speedtest::speed_cancel
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

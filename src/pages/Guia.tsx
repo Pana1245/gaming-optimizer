@@ -206,12 +206,13 @@ const GUIDE: Item[] = [
   {
     id: "network", icon: "🌐",
     title: { es: "Red", en: "Network", pt: "Rede" },
-    desc: { es: "Test de conexión para jugar y DNS más rápido.", en: "Gaming connection test and faster DNS.", pt: "Teste de conexão para jogar e DNS mais rápido." },
+    desc: { es: "Test de conexión, test de velocidad y DNS más rápido.", en: "Connection test, speed test and faster DNS.", pt: "Teste de conexão, teste de velocidade e DNS mais rápido." },
     points: {
       es: [
         "Test de conexión: mide ping, jitter y pérdida de paquetes hacia internet Y hacia tu router, así sabés si el lag viene de tu Wi-Fi/red o de tu proveedor.",
         "Jitter = cuánto varía el ping; con más de 15 ms se sienten tirones aunque el ping sea bajo. Cualquier pérdida de paquetes se nota en la partida.",
         "También avisa si estás por Wi-Fi o si tu cable conecta a 100 Mbps (señal de cable o puerto dañado).",
+        "Test de velocidad: satura tu conexión (8 descargas y 6 subidas en paralelo contra el servidor de Cloudflare más cercano) y mide bajada, subida y el ping con la línea llena (bufferbloat: el lag que sentís si alguien descarga mientras jugás). Consume cientos de MB.",
         "DNS: mide la velocidad real de resolución de cada servidor y los ordena; aplicás el más rápido con un clic o volvés al del router.",
         "Un DNS rápido acelera la resolución de nombres (webs, login de juegos), no el ping dentro de la partida.",
       ],
@@ -219,6 +220,7 @@ const GUIDE: Item[] = [
         "Connection test: measures ping, jitter and packet loss to the internet AND to your router, so you know whether lag comes from your Wi-Fi/network or your provider.",
         "Jitter = how much the ping varies; above 15 ms you feel stutter even with low ping. Any packet loss shows up in-match.",
         "It also warns if you're on Wi-Fi or if your cable links at 100 Mbps (a sign of a damaged cable or port).",
+        "Speed test: saturates your connection (8 parallel downloads and 6 uploads against the nearest Cloudflare server) and measures download, upload and ping with the line maxed out (bufferbloat: the lag you feel if someone downloads while you play). It uses several hundred MB.",
         "DNS: measures each server's real resolution speed and ranks them; apply the fastest in one click or go back to your router's.",
         "A fast DNS speeds up name resolution (websites, game logins), not the in-match ping.",
       ],
@@ -226,6 +228,7 @@ const GUIDE: Item[] = [
         "Teste de conexão: mede ping, jitter e perda de pacotes até a internet E até o seu roteador, para você saber se o lag vem do seu Wi-Fi/rede ou do provedor.",
         "Jitter = quanto o ping varia; acima de 15 ms você sente travadinhas mesmo com ping baixo. Qualquer perda de pacotes aparece na partida.",
         "Também avisa se você está no Wi-Fi ou se o cabo conecta a 100 Mbps (sinal de cabo ou porta danificados).",
+        "Teste de velocidade: satura sua conexão (8 downloads e 6 uploads em paralelo contra o servidor da Cloudflare mais próximo) e mede download, upload e o ping com a linha cheia (bufferbloat: o lag que você sente se alguém baixa algo enquanto você joga). Consome centenas de MB.",
         "DNS: mede a velocidade real de resolução de cada servidor e ordena; aplique o mais rápido com um clique ou volte ao do roteador.",
         "Um DNS rápido acelera a resolução de nomes (sites, login dos jogos), não o ping dentro da partida.",
       ],

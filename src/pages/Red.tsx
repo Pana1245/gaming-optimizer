@@ -4,6 +4,7 @@ import { runPowershell } from "../lib/api";
 import { useI18n, pick } from "../lib/i18n";
 import { trLog } from "../lib/logI18n";
 import { IndeterminateBar } from "../components/Feedback";
+import SpeedTest from "../components/SpeedTest";
 
 interface Dns { id: string; name: string; nameEn?: string; namePt?: string; primary: string; secondary: string; note: string; noteEn: string; notePt: string; }
 
@@ -292,6 +293,7 @@ export default function Red() {
       <HudTitle tkey="page.network" />
 
       <ConnTest />
+      <SpeedTest />
 
       <div className="flex items-center justify-between mb-3">
         <div className="text-[13.5px] text-text-mute">
