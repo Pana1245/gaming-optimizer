@@ -20,17 +20,19 @@ import Reparar from "./pages/Reparar";
 import Sistema from "./pages/Sistema";
 import Guia from "./pages/Guia";
 import Panel from "./pages/Panel";
+import Chequeo from "./pages/Chequeo";
 import Perfiles from "./pages/Perfiles";
 import Red from "./pages/Red";
 import Graficos from "./pages/Graficos";
 import Herramientas from "./pages/Herramientas";
 import Reactivar from "./pages/Reactivar";
 import {
-  IconRocket, IconShieldCheck, IconGamepad, IconBroom, IconPower, IconApps, IconTrash, IconReset, IconWrench, IconChart, IconBook, IconGauge, IconLayers, IconGlobe, IconGpu, IconTools, IconLifeRing,
+  IconRocket, IconShieldCheck, IconGamepad, IconBroom, IconPower, IconApps, IconTrash, IconReset, IconWrench, IconChart, IconBook, IconGauge, IconLayers, IconGlobe, IconGpu, IconTools, IconLifeRing, IconPulse,
 } from "./components/icons";
 
 const MAIN: NavItem[] = [
   { id: "panel", label: "nav.panel", icon: <IconGauge /> },
+  { id: "health", label: "nav.health", icon: <IconPulse /> },
   { id: "profiles", label: "nav.profiles", icon: <IconLayers /> },
   { id: "opt", label: "nav.opt", icon: <IconRocket /> },
   { id: "gpu", label: "nav.gpu", icon: <IconGpu /> },
@@ -51,8 +53,9 @@ const FOOTER: NavItem[] = [
   { id: "system", label: "nav.system", icon: <IconChart /> },
 ];
 
-function renderPage(page: string) {
+function renderPage(page: string, go: (p: string) => void) {
   switch (page) {
+    case "health": return <Chequeo onNavigate={go} />;
     case "panel": return <Panel />;
     case "profiles": return <Perfiles />;
     case "network": return <Red />;
@@ -102,7 +105,7 @@ export default function App() {
               transition={{ duration: 0.28, ease: [0.22, 0.7, 0.2, 1] }}
               className="h-full relative z-10"
             >
-              {renderPage(page)}
+              {renderPage(page, setPage)}
             </motion.div>
           </AnimatePresence>
         </main>

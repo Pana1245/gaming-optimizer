@@ -64,6 +64,34 @@ const GUIDE: Item[] = [
     },
   },
   {
+    id: "health", icon: "🩺",
+    title: { es: "Chequeo de PC", en: "PC Check", pt: "Checkup do PC" },
+    desc: { es: "Encuentra problemas reales que le quitan rendimiento a tu PC.", en: "Finds real problems that cost your PC performance.", pt: "Encontra problemas reais que tiram desempenho do seu PC." },
+    points: {
+      es: [
+        "Revisa si el monitor va a menos Hz de los que soporta (ej. un monitor de 144 Hz funcionando a 60) y lo arregla con un clic.",
+        "RAM: detecta XMP/EXPO apagado (el kit corre más lento de lo que es) y si usás un solo módulo (single channel).",
+        "Disco de Windows: HDD en vez de SSD, salud, desgaste, temperatura y espacio libre.",
+        "Driver de video viejo, plan de energía de ahorro, Modo de juego apagado, memoria virtual desactivada, reinicio pendiente y exceso de programas de inicio.",
+        "No cambia nada por su cuenta: cada arreglo es un botón (el Modo de juego pasa por el Motor y queda reversible).",
+      ],
+      en: [
+        "Checks whether your monitor runs at fewer Hz than it supports (e.g. a 144 Hz monitor running at 60) and fixes it in one click.",
+        "RAM: detects XMP/EXPO turned off (the kit runs slower than rated) and single-stick setups (single channel).",
+        "Windows drive: HDD instead of SSD, health, wear, temperature and free space.",
+        "Old graphics driver, power-saving plan, Game Mode off, virtual memory off, pending restart and too many startup programs.",
+        "It changes nothing on its own: every fix is a button (Game Mode goes through the Engine and stays reversible).",
+      ],
+      pt: [
+        "Verifica se o monitor está com menos Hz do que suporta (ex. um monitor de 144 Hz rodando a 60) e corrige com um clique.",
+        "RAM: detecta XMP/EXPO desligado (o kit roda mais lento do que é) e se você usa só um pente (single channel).",
+        "Disco do Windows: HDD em vez de SSD, saúde, desgaste, temperatura e espaço livre.",
+        "Driver de vídeo antigo, plano de energia de economia, Modo de Jogo desligado, memória virtual desativada, reinício pendente e excesso de programas de inicialização.",
+        "Não muda nada sozinho: cada correção é um botão (o Modo de Jogo passa pelo Motor e fica reversível).",
+      ],
+    },
+  },
+  {
     id: "profiles", icon: "📚",
     title: { es: "Perfiles", en: "Profiles", pt: "Perfis" },
     desc: { es: "Configuraciones completas con un solo clic.", en: "Complete setups with a single click.", pt: "Configurações completas com um só clique." },

@@ -58,3 +58,6 @@ export const IconGpu = () => (
 export const IconTools = () => (
   <svg {...base}><path d="M14.7 6.3a4 4 0 0 1 5 5l-2.9-1.2-1 1 1.2 2.9a4 4 0 0 1-5-5l1.2 2.9 1-1z" /><path d="m5 16 5-5" /><path d="M2 21s2-1 4-3" /><circle cx="6.5" cy="17.5" r=".6" fill="currentColor" /></svg>
 );
+export const IconPulse = () => (
+  <svg {...base}><path d="M22 12h-4l-3 9L9 3l-3 9H2" /></svg>
+);
