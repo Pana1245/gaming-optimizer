@@ -11,7 +11,7 @@ interface Result {
   ok: boolean; cancelled: boolean; error: string;
   down_mbps: number; up_mbps: number;
   ping_ms: number; jitter_ms: number; down_loaded_ms: number; up_loaded_ms: number;
-  bytes_used: number; retry_min: number; colo: string; country: string;
+  bytes_used: number; down_server: string; retry_min: number; colo: string; country: string;
 }
 interface St {
   running: boolean; phase: string; mbps: number; pct: number;
@@ -34,7 +34,11 @@ const wire = () => {
     set({ ...p, ...pts, running: true });
   });
   listen<{ kind: string; value: number; extra: number; text: string }>("speed-stage", ({ payload: s }) => {
-    if (s.kind === "server") { const [colo, cc] = s.text.split("|"); set({ server: colo ? `${colo}${cc ? ` (${cc})` : ""}` : "" }); }
+    if (s.kind === "server") {
+      // "colo|país|respaldo": si Cloudflare limitó la bajada, se indica el servidor usado.
+      const [colo, cc, alt] = s.text.split("|");
+      set({ server: `${colo ? `Cloudflare · ${colo}${cc ? ` (${cc})` : ""}` : ""}${alt ? ` · ⬇ ${alt}` : ""}` });
+    }
     if (s.kind === "ping") set({ ping: s.value, jitter: s.extra });
     if (s.kind === "download") set({ down: s.value });
   });
@@ -213,7 +217,7 @@ export default function SpeedTest() {
       </div>
 
       {/* gráfico en vivo */}
-      {(s.downPts.length > 1 || s.upPts.length > 1) && (
+      {[...s.downPts, ...s.upPts].some((p) => p > 0) && (
         <div className="rounded-lg bg-[#08080a] border border-line/70 px-2 pt-1">
           <Chart down={s.downPts} up={s.upPts} />
         </div>
@@ -222,7 +226,7 @@ export default function SpeedTest() {
       {/* pie: servidor, datos, bufferbloat, cancelar */}
       <div className="flex items-center justify-between gap-4 mt-3 text-[12.5px]">
         <span className="text-text-mute truncate">
-          {s.server ? `${t("net.st.server")} Cloudflare · ${s.server}` : t("net.st.desc")}
+          {s.server ? `${t("net.st.server")} ${s.server}` : t("net.st.desc")}
           {r && r.ok ? ` · ${t("net.st.used")} ${fmtBytes(r.bytes_used)}` : ""}
         </span>
         {s.running && <button onClick={cancel} className="btn btn-ghost shrink-0">{t("common.cancel")}</button>}

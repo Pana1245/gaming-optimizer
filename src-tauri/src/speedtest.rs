@@ -27,12 +27,33 @@ const WARMUP_SECS: f64 = 2.0;
 const DOWN_REQ_BYTES: u64 = 50_000_000;
 const UP_REQ_BYTES: usize = 8 * 1024 * 1024;
 const UP_CHUNK: usize = 64 * 1024;
+/// Tope por fase: con fibra de 1 Gbps, 12 s serían ~1,5 GB. Con 1 GB alcanza para
+/// medir bien y no gasta datos de más (ni acerca el límite del servidor).
+const PHASE_CAP_BYTES: u64 = 1_000_000_000;
+
+/// Respaldo para la BAJADA cuando Cloudflare limita la IP (429 por ~1 h tras mucho
+/// volumen): archivos de prueba que Vultr publica en sus centros de datos para esto.
+/// Se elige el de menor latencia. (La subida sigue en Cloudflare, que no la limita.)
+const VULTR: &[(&str, &str)] = &[
+    ("scl-cl", "Santiago"), ("sao-br", "São Paulo"), ("mex-mx", "Ciudad de México"),
+    ("fl-us", "Miami"), ("ga-us", "Atlanta"), ("tx-us", "Dallas"), ("il-us", "Chicago"),
+    ("nj-us", "New Jersey"), ("wa-us", "Seattle"), ("sjo-ca-us", "Silicon Valley"),
+    ("lax-ca-us", "Los Angeles"), ("hon-hi-us", "Honolulu"), ("tor-ca", "Toronto"),
+    ("lon-gb", "London"), ("man-uk", "Manchester"), ("ams-nl", "Amsterdam"),
+    ("fra-de", "Frankfurt"), ("par-fr", "Paris"), ("mad-es", "Madrid"), ("waw-pl", "Warsaw"),
+    ("sto-se", "Stockholm"), ("tlv-il", "Tel Aviv"), ("jnb-za", "Johannesburg"),
+    ("bom-in", "Mumbai"), ("del-in", "Delhi"), ("blr-in", "Bangalore"), ("sgp", "Singapore"),
+    ("hnd-jp", "Tokyo"), ("osk-jp", "Osaka"), ("sel-kor", "Seoul"), ("syd-au", "Sydney"),
+    ("mel-au", "Melbourne"),
+];
 
 static RUNNING: AtomicBool = AtomicBool::new(false);
 static CANCEL: AtomicBool = AtomicBool::new(false);
 /// Segundos de espera que pidió el servidor con un 429 (0 = sin límite). Cloudflare
 /// bloquea ~1 h las descargas desde una IP tras mucho volumen de tests seguidos.
 static RETRY_AFTER: AtomicU64 = AtomicU64::new(0);
+/// La subida recibió 429 (distinto del chequeo de bajada, que puede fallar sola).
+static UP_LIMITED: AtomicBool = AtomicBool::new(false);
 
 /// Si la respuesta es 429, guarda el Retry-After y devuelve true (hay que dejar de pedir).
 fn rate_limited(resp: &reqwest::Response) -> bool {
@@ -78,6 +99,8 @@ pub struct SpeedResult {
     down_loaded_ms: f64,
     up_loaded_ms: f64,
     bytes_used: u64,
+    /// Servidor de respaldo usado para la bajada (vacío = Cloudflare).
+    down_server: String,
     /// Minutos a esperar si el servidor limitó los tests (0 = no).
     retry_min: u64,
     colo: String,
@@ -157,9 +180,9 @@ async fn probe_loop(stop: Arc<AtomicBool>) -> Vec<f64> {
     v
 }
 
-async fn down_worker(c: reqwest::Client, counter: Arc<AtomicU64>, stop: Arc<AtomicBool>) {
+async fn down_worker(c: reqwest::Client, url: String, counter: Arc<AtomicU64>, stop: Arc<AtomicBool>) {
     while !stop.load(Ordering::Relaxed) && !cancelled() {
-        let req = c.get(format!("{BASE}/__down?bytes={DOWN_REQ_BYTES}")).send();
+        let req = c.get(&url).send();
         // Un rechazo (403/429…) nunca se cuenta como datos: el cuerpo es un error. Con
         // 429 el servidor nos limitó: dejar de pedir en el acto (insistir lo empeora).
         let resp = match tokio::time::timeout(Duration::from_secs(5), req).await {
@@ -207,7 +230,10 @@ async fn up_worker(c: reqwest::Client, counter: Arc<AtomicU64>, stop: Arc<Atomic
             .body(reqwest::Body::wrap_stream(body))
             .send();
         match tokio::time::timeout(Duration::from_secs(20), req).await {
-            Ok(Ok(r)) if rate_limited(&r) => return,
+            Ok(Ok(r)) if rate_limited(&r) => {
+                UP_LIMITED.store(true, Ordering::Relaxed);
+                return;
+            }
             Ok(Ok(_)) => {}
             _ => tokio::time::sleep(Duration::from_millis(250)).await,
         }
@@ -215,7 +241,7 @@ async fn up_worker(c: reqwest::Client, counter: Arc<AtomicU64>, stop: Arc<Atomic
 }
 
 /// Corre una fase (bajada o subida). Devuelve (Mbps, bytes totales, latencias bajo carga).
-async fn run_phase(app: &AppHandle, phase: &'static str, streams: usize, chunk: Bytes) -> (f64, u64, Vec<f64>) {
+async fn run_phase(app: &AppHandle, phase: &'static str, streams: usize, down_url: &str, chunk: Bytes) -> (f64, u64, Vec<f64>) {
     let counter = Arc::new(AtomicU64::new(0));
     let stop = Arc::new(AtomicBool::new(false));
     let Some(c) = client() else { return (0.0, 0, Vec::new()) };
@@ -224,7 +250,7 @@ async fn run_phase(app: &AppHandle, phase: &'static str, streams: usize, chunk: 
     for _ in 0..streams {
         let (c, cnt, st) = (c.clone(), counter.clone(), stop.clone());
         workers.push(if phase == "download" {
-            tauri::async_runtime::spawn(down_worker(c, cnt, st))
+            tauri::async_runtime::spawn(down_worker(c, down_url.to_string(), cnt, st))
         } else {
             tauri::async_runtime::spawn(up_worker(c, cnt, st, chunk.clone()))
         });
@@ -249,7 +275,7 @@ async fn run_phase(app: &AppHandle, phase: &'static str, streams: usize, chunk: 
         let (t0, b0) = *window.front().unwrap_or(&(0.0, 0));
         let live = if t > t0 { (b - b0) as f64 * 8.0 / (t - t0) / 1e6 } else { 0.0 };
         let _ = app.emit("speed-progress", Progress { phase, mbps: round1(live), pct: (t / PHASE_SECS).min(1.0) });
-        if t >= PHASE_SECS || cancelled() {
+        if t >= PHASE_SECS || b >= PHASE_CAP_BYTES || cancelled() {
             break;
         }
     }
@@ -265,10 +291,46 @@ async fn run_phase(app: &AppHandle, phase: &'static str, streams: usize, chunk: 
     (mbps, end_b, lat)
 }
 
+/// ¿Cloudflare acepta la bajada ahora? Sólo lee la respuesta (el cuerpo se descarta
+/// al soltarla), así que no gasta datos.
+async fn cf_download_allowed(c: &reqwest::Client) -> bool {
+    match tokio::time::timeout(Duration::from_secs(6), c.get(format!("{BASE}/__down?bytes={DOWN_REQ_BYTES}")).send()).await {
+        Ok(Ok(r)) => !rate_limited(&r) && r.status().is_success(),
+        _ => false,
+    }
+}
+
+/// El centro de datos de Vultr con menor latencia (todos se prueban en paralelo).
+async fn nearest_vultr() -> Option<(&'static str, &'static str)> {
+    let c = client()?;
+    let mut tasks = Vec::new();
+    for &(code, name) in VULTR {
+        let c = c.clone();
+        tasks.push(tauri::async_runtime::spawn(async move {
+            let t = Instant::now();
+            let url = format!("https://{code}-ping.vultr.com/vultr.com.100MB.bin");
+            match tokio::time::timeout(Duration::from_secs(3), c.head(url).send()).await {
+                Ok(Ok(r)) if r.status().is_success() => Some((t.elapsed(), code, name)),
+                _ => None,
+            }
+        }));
+    }
+    let mut best: Option<(Duration, &'static str, &'static str)> = None;
+    for t in tasks {
+        if let Ok(Some(x)) = t.await {
+            if best.map_or(true, |b| x.0 < b.0) {
+                best = Some(x);
+            }
+        }
+    }
+    best.map(|(_, code, name)| (code, name))
+}
+
 async fn run(app: &AppHandle) -> SpeedResult {
     // reqwest viene sin proveedor criptográfico elegido (lo comparte con el updater).
     let _ = rustls::crypto::ring::default_provider().install_default();
     RETRY_AFTER.store(0, Ordering::Relaxed);
+    UP_LIMITED.store(false, Ordering::Relaxed);
     let mut r = SpeedResult::default();
     let Some(c) = client() else {
         r.error = "net.st.errConnect".into();
@@ -291,7 +353,17 @@ async fn run(app: &AppHandle) -> SpeedResult {
             return r;
         }
     }
-    let _ = app.emit("speed-stage", Stage { kind: "server", value: 0.0, extra: 0.0, text: format!("{}|{}", r.colo, r.country) });
+    let down_url = if cf_download_allowed(&c).await {
+        format!("{BASE}/__down?bytes={DOWN_REQ_BYTES}")
+    } else if let Some((code, name)) = nearest_vultr().await {
+        r.down_server = format!("Vultr {name}");
+        format!("https://{code}-ping.vultr.com/vultr.com.100MB.bin")
+    } else {
+        r.retry_min = RETRY_AFTER.load(Ordering::Relaxed).div_ceil(60);
+        r.error = if r.retry_min > 0 { "net.st.errLimit" } else { "net.st.errConnect" }.into();
+        return r;
+    };
+    let _ = app.emit("speed-stage", Stage { kind: "server", value: 0.0, extra: 0.0, text: format!("{}|{}|{}", r.colo, r.country, r.down_server) });
 
     // Latencia en reposo.
     let _ = app.emit("speed-progress", Progress { phase: "ping", mbps: 0.0, pct: 0.0 });
@@ -318,11 +390,11 @@ async fn run(app: &AppHandle) -> SpeedResult {
     }
     let chunk = Bytes::from(buf);
 
-    let (d, db, dl) = run_phase(app, "download", DOWN_STREAMS, chunk.clone()).await;
+    let (d, db, dl) = run_phase(app, "download", DOWN_STREAMS, &down_url, chunk.clone()).await;
     r.down_mbps = round1(d);
     r.down_loaded_ms = round1(median(dl));
     r.bytes_used = db;
-    if db == 0 && RETRY_AFTER.load(Ordering::Relaxed) > 0 {
+    if db == 0 && r.down_server.is_empty() && RETRY_AFTER.load(Ordering::Relaxed) > 0 {
         r.retry_min = RETRY_AFTER.load(Ordering::Relaxed).div_ceil(60);
         r.error = "net.st.errLimit".into();
         return r;
@@ -332,7 +404,7 @@ async fn run(app: &AppHandle) -> SpeedResult {
         r.cancelled = true;
         return r;
     }
-    let (u, ub, ul) = run_phase(app, "upload", UP_STREAMS, chunk).await;
+    let (u, ub, ul) = run_phase(app, "upload", UP_STREAMS, "", chunk).await;
     r.up_mbps = round1(u);
     r.up_loaded_ms = round1(median(ul));
     r.bytes_used = db + ub;
@@ -342,7 +414,7 @@ async fn run(app: &AppHandle) -> SpeedResult {
         r.error = "net.st.errNoData".into();
     }
     // Bajada OK pero la subida quedó limitada: se informa sin descartar la bajada.
-    if r.ok && ub == 0 && RETRY_AFTER.load(Ordering::Relaxed) > 0 {
+    if r.ok && ub == 0 && UP_LIMITED.load(Ordering::Relaxed) {
         r.retry_min = RETRY_AFTER.load(Ordering::Relaxed).div_ceil(60);
     }
     r
