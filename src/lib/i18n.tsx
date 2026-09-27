@@ -60,6 +60,7 @@ const STR: Record<string, { es: string; en: string }> = {
   "page.guide.sub": { es: "Qué hace cada sección y cómo funciona por dentro.", en: "What each section does and how it works under the hood." },
 
   // ── Comunes ──
+  "tools.lockPh": { es: "C:\\ruta\\al\\archivo.ext", en: "C:\\path\\to\\file.ext" },
   "common.and": { es: "y", en: "and" },
   "common.more": { es: "más", en: "more" },
   "mon.performance": { es: "Rendimiento", en: "Performance" },
@@ -71,6 +72,7 @@ const STR: Record<string, { es: string; en: string }> = {
   "panel.keyApplied": { es: "tweaks clave aplicados. Faltan:", en: "key tweaks applied. Missing:" },
   "panel.reading": { es: "Leyendo el registro…", en: "Reading the registry…" },
   "panel.scoreHint": { es: "Se mide leyendo el estado real del registro (Gaming + Privacidad). Aplicalos desde Optimizaciones o el Motor.", en: "Measured from the actual registry state (Gaming + Privacy). Apply them from Optimizations or the Engine." },
+  "panel.na": { es: "N/D", en: "N/A" },
   "panel.tempNA": { es: "sensor no disponible", en: "sensor unavailable" },
   "panel.tempHealthy": { es: "temperatura sana", en: "healthy temperature" },
   "panel.tempWarm": { es: "caliente bajo carga", en: "warm under load" },

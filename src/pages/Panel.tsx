@@ -6,6 +6,7 @@ import { getStats, clearStandbyRam, type Stats } from "../lib/api";
 import { readScore, readTemps, type ScoreResult, type Temps } from "../lib/metrics";
 import { useGameMode } from "../lib/gameMode";
 import { useI18n } from "../lib/i18n";
+import { opName } from "../lib/opNames";
 
 /** Número que anima desde 0 (o desde su valor previo) hasta el objetivo. */
 function AnimatedNumber({ value, decimals = 0 }: { value: number; decimals?: number }) {
@@ -59,7 +60,7 @@ function TempCard({ label, value, color }: { label: string; value: number | null
     <NeonCard className="flex-1">
       <div className="text-[12px] uppercase tracking-wider text-text-mute mb-1">{label}</div>
       <div className="text-[28px] font-bold leading-none" style={{ color: value !== null ? color : "#55555a" }}>
-        {value !== null ? <><AnimatedNumber value={value} />°C</> : "N/D"}
+        {value !== null ? <><AnimatedNumber value={value} />°C</> : t("panel.na")}
       </div>
       <div className="text-[11.5px] text-text-mute mt-1.5">{status}</div>
     </NeonCard>
@@ -133,7 +134,7 @@ export default function Panel() {
               ) : (
                 <p className="text-[13px] text-text-dim leading-relaxed">
                   {score.applied}/{score.total} {t("panel.keyApplied")}{" "}
-                  <span className="text-text-mute">{score.missing.slice(0, 3).join(" · ")}{score.missing.length > 3 ? ` ${t("common.and")} ${score.missing.length - 3} ${t("common.more")}` : ""}</span>
+                  <span className="text-text-mute">{score.missing.slice(0, 3).map((m) => opName(m, lang)).join(" · ")}{score.missing.length > 3 ? ` ${t("common.and")} ${score.missing.length - 3} ${t("common.more")}` : ""}</span>
                 </p>
               )
             ) : (

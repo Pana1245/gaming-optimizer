@@ -22,7 +22,9 @@
   font-display: swap;
 }
 
-* { box-sizing: border-box; margin: 0; padding: 0; }
+/* Sin reset global `* { margin:0; padding:0 }`: fuera de @layer le ganaba a TODAS las
+   utilidades de Tailwind v4 (p-*, px-*, m-*) y la app se veía sin espaciado. El
+   preflight de Tailwind ya hace ese reset dentro de @layer base. */
 
 html, body, #root { height: 100%; overflow: hidden; }
 
@@ -102,7 +104,8 @@ body {
   .neon-card:hover { transform: none; }
 }
 
-/* Botones unificados */
+/* Botones unificados (en @layer components para que utilidades como px-6 los ajusten) */
+@layer components {
 .btn {
   height: 2.25rem;
   padding: 0 1rem;
@@ -133,3 +136,4 @@ body {
 .btn-ghost { color: var(--color-text-dim); border: 1px solid var(--color-line); background: transparent; }
 .btn-ghost:hover { color: var(--color-text); border-color: var(--color-line-2); background: rgba(255, 255, 255, 0.025); }
 .btn-ghost:active { transform: translateY(1px); }
+}

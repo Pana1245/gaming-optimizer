@@ -195,7 +195,7 @@ export default function Reactivar() {
             <motion.div key={f.id} variants={{ hidden: { opacity: 0, y: 12 }, show: { opacity: 1, y: 0, transition: { duration: 0.3, ease: "easeOut" } } }}>
               <NeonCard>
                 <div className="flex items-center gap-4">
-                  <span className="text-[30px] leading-none shrink-0">{f.emoji}</span>
+                  <span className="w-10 h-10 text-[30px] leading-none shrink-0 flex items-center justify-center">{f.emoji}</span>
                   <div className="min-w-0 flex-1">
                     <div className="text-[15px] font-semibold text-text">{f.title[lang]}</div>
                     <div className="text-[13px] text-text-dim mt-0.5 leading-snug">{f.desc[lang]}</div>

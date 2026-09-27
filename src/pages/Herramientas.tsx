@@ -123,7 +123,7 @@ export default function Herramientas() {
         <div className="flex items-center gap-2 mb-3">
           <input value={path} onChange={(e) => setPath(e.target.value)}
             onKeyDown={(e) => e.key === "Enter" && scan()}
-            placeholder="C:\ruta\al\archivo.ext"
+            placeholder={t("tools.lockPh")}
             className="flex-1 h-9 px-3 rounded-lg bg-surface border border-line focus:border-accent outline-none text-[13px] text-text placeholder:text-text-mute font-mono transition" />
           <button onClick={scan} disabled={scanning} className="btn btn-primary">{scanning ? t("tools.unlock.scanning") : t("tools.unlock.scan")}</button>
         </div>

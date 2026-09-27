@@ -1,10 +1,10 @@
 // Catálogo de apps (IDs de winget). Mantenido a mano — verificar IDs con `winget show --id X --exact`.
 export interface AppItem { name: string; id: string; domain: string; }
-export interface AppCategory { category: string; color: string; apps: AppItem[]; }
+export interface AppCategory { category: string; categoryEn: string; color: string; apps: AppItem[]; }
 
 export const APP_CATALOG: AppCategory[] = [
   {
-    category: "Navegadores Web",
+    category: "Navegadores Web", categoryEn: "Web Browsers",
     color: "#42A5F5",
     apps: [
       { name: "Google Chrome", id: "Google.Chrome", domain: "google.com" },
@@ -16,7 +16,7 @@ export const APP_CATALOG: AppCategory[] = [
     ],
   },
   {
-    category: "Mensajería",
+    category: "Mensajería", categoryEn: "Messaging",
     color: "#7E57C2",
     apps: [
       { name: "Discord", id: "Discord.Discord", domain: "discord.com" },
@@ -28,7 +28,7 @@ export const APP_CATALOG: AppCategory[] = [
     ],
   },
   {
-    category: "Multimedia",
+    category: "Multimedia", categoryEn: "Multimedia",
     color: "#EF5350",
     apps: [
       { name: "VLC", id: "VideoLAN.VLC", domain: "videolan.org" },
@@ -45,7 +45,7 @@ export const APP_CATALOG: AppCategory[] = [
     ],
   },
   {
-    category: "Imagen y Diseño",
+    category: "Imagen y Diseño", categoryEn: "Image & Design",
     color: "#FF7043",
     apps: [
       { name: "GIMP", id: "GIMP.GIMP", domain: "gimp.org" },
@@ -61,7 +61,7 @@ export const APP_CATALOG: AppCategory[] = [
     ],
   },
   {
-    category: "Documentos y Oficina",
+    category: "Documentos y Oficina", categoryEn: "Documents & Office",
     color: "#26A69A",
     apps: [
       { name: "LibreOffice", id: "TheDocumentFoundation.LibreOffice", domain: "libreoffice.org" },
@@ -75,7 +75,7 @@ export const APP_CATALOG: AppCategory[] = [
     ],
   },
   {
-    category: "Seguridad",
+    category: "Seguridad", categoryEn: "Security",
     color: "#EC407A",
     apps: [
       { name: "Malwarebytes", id: "Malwarebytes.Malwarebytes", domain: "malwarebytes.com" },
@@ -84,7 +84,7 @@ export const APP_CATALOG: AppCategory[] = [
     ],
   },
   {
-    category: "Compresión",
+    category: "Compresión", categoryEn: "Compression",
     color: "#FFA726",
     apps: [
       { name: "7-Zip", id: "7zip.7zip", domain: "7-zip.org" },
@@ -93,7 +93,7 @@ export const APP_CATALOG: AppCategory[] = [
     ],
   },
   {
-    category: "Almacenamiento Cloud",
+    category: "Almacenamiento Cloud", categoryEn: "Cloud Storage",
     color: "#29B6F6",
     apps: [
       { name: "Dropbox", id: "Dropbox.Dropbox", domain: "dropbox.com" },
@@ -101,7 +101,7 @@ export const APP_CATALOG: AppCategory[] = [
     ],
   },
   {
-    category: "Gaming",
+    category: "Gaming", categoryEn: "Gaming",
     color: "#66BB6A",
     apps: [
       { name: "Steam", id: "Valve.Steam", domain: "steampowered.com" },
@@ -113,7 +113,7 @@ export const APP_CATALOG: AppCategory[] = [
     ],
   },
   {
-    category: "Utilidades",
+    category: "Utilidades", categoryEn: "Utilities",
     color: "#78909C",
     apps: [
       { name: "Everything", id: "voidtools.Everything", domain: "voidtools.com" },
@@ -133,7 +133,7 @@ export const APP_CATALOG: AppCategory[] = [
     ],
   },
   {
-    category: "Desarrollo",
+    category: "Desarrollo", categoryEn: "Development",
     color: "#FFCA28",
     apps: [
       { name: "Visual Studio Code", id: "Microsoft.VisualStudioCode", domain: "code.visualstudio.com" },
@@ -146,7 +146,7 @@ export const APP_CATALOG: AppCategory[] = [
     ],
   },
   {
-    category: "Runtimes y Redistributables",
+    category: "Runtimes y Redistributables", categoryEn: "Runtimes & Redistributables",
     color: "#BDBDBD",
     apps: [
       { name: ".NET Runtime 8 (x64)", id: "Microsoft.DotNet.DesktopRuntime.8", domain: "dotnet.microsoft.com" },

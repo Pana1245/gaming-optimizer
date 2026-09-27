@@ -28,8 +28,17 @@ foreach($root in $roots){
   }
  }
 }
-Get-AppxPackage -EA SilentlyContinue | Where-Object { -not $_.IsFramework } | ForEach-Object {
- $apps+=[pscustomobject]@{name="$($_.Name)";pub="$($_.Publisher)";type='uwp';size=0;date='';location="$($_.InstallLocation)";key="$($_.PackageFullName)";uninstall="$($_.PackageFullName)";scope='machine';icon=''}
+# UWP: sin frameworks ni paquetes de sistema (no se pueden quitar). Nombre y editor
+# legibles desde el AppxManifest; si son ms-resource, se arma desde el nombre del paquete.
+Get-AppxPackage -EA SilentlyContinue | Where-Object { -not $_.IsFramework -and -not $_.NonRemovable -and "$($_.SignatureKind)" -ne 'System' } | ForEach-Object {
+ $dn=''; $pd=''
+ try{ $mx=[xml](Get-Content -LiteralPath (Join-Path $_.InstallLocation 'AppxManifest.xml') -Raw -EA Stop); $dn="$($mx.Package.Properties.DisplayName)"; $pd="$($mx.Package.Properties.PublisherDisplayName)" }catch{}
+ if(-not $dn -or $dn -like 'ms-resource:*'){
+  $parts=@(($_.Name -replace '^(MicrosoftWindows|Microsoft|[0-9A-Fa-f]{5,8})\.','') -split '\.' | Select-Object -Unique)
+  $dn=(($parts -join ' ') -creplace '([a-z])([A-Z])','$1 $2')
+ }
+ if(-not $pd -or $pd -like 'ms-resource:*'){ $pd="$($_.Publisher)"; if($pd -match 'O=([^,]+)'){ $pd=$Matches[1] } elseif($pd -match 'CN=([^,]+)'){ $pd=$Matches[1] } }
+ $apps+=[pscustomobject]@{name=$dn;pub=$pd;type='uwp';size=0;date='';location="$($_.InstallLocation)";key="$($_.PackageFullName)";uninstall="$($_.PackageFullName)";scope='machine';icon=''}
 }
 $apps=$apps | Sort-Object name -Unique
 if($apps.Count -eq 0){'[]'}else{$apps|ConvertTo-Json -Compress -Depth 3}`;

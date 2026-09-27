@@ -64,7 +64,7 @@ export default function Perfiles() {
     <div className="h-full flex flex-col px-8 py-7 overflow-hidden">
       <HudTitle tkey="page.profiles" />
 
-      <div className="grid grid-cols-2 gap-4 flex-1 min-h-0">
+      <div className="grid grid-cols-2 auto-rows-max gap-4 flex-1 min-h-0 overflow-y-auto pr-1 pb-1">
         {PROFILES.map((p) => {
           const active = activeId === p.id;
           const isApplying = applyingId === p.id;

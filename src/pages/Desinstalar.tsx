@@ -31,9 +31,13 @@ const b64utf16 = (s: string) => {
   return btoa(bin);
 };
 
+// UWP: `name` es el nombre visible; el nombre real del paquete sale del PackageFullName
+// (Nombre_Versión_Arq_Recurso_IdEditor), que va en `key`.
+const pkgName = (a: App) => a.key.split("_")[0];
+
 const uninstallScript = (a: App) => {
   if (a.type === "uwp")
-    return `Get-AppxPackage -Name '${esc(a.name)}' -EA SilentlyContinue | Remove-AppxPackage -EA SilentlyContinue; Write-Output 'OK'`;
+    return `Get-AppxPackage -Name '${esc(pkgName(a))}' -EA SilentlyContinue | Remove-AppxPackage -EA SilentlyContinue; Write-Output 'OK'`;
 
   // Cuerpo que ejecuta el desinstalador. La cadena viene del registro (dato no
   // confiable): se decodifica de base64 como dato puro, nunca se interpola como código.
@@ -70,7 +74,7 @@ interface Leftover { type: "folder" | "regkey"; label: string; path: string; }
 
 // UWP: quitar el paquete de todos los usuarios (no deja restos del registro clásico).
 const forceUwp = (a: App) =>
-  `Get-AppxPackage -Name '${esc(a.name)}' -AllUsers -EA SilentlyContinue | Remove-AppxPackage -AllUsers -EA SilentlyContinue; Write-Output 'Paquete UWP eliminado'`;
+  `Get-AppxPackage -Name '${esc(pkgName(a))}' -AllUsers -EA SilentlyContinue | Remove-AppxPackage -AllUsers -EA SilentlyContinue; Write-Output 'Paquete UWP eliminado'`;
 
 // ESCÁNER estilo Geek Uninstaller: busca restos ESPECÍFICOS de la app (carpeta de
 // instalación, clave de desinstalación, carpetas de datos y claves de registro

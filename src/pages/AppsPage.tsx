@@ -78,7 +78,7 @@ export default function AppsPage() {
               <motion.section key={c.category} variants={itemV}>
                 <div className="flex items-center gap-2.5 mb-2.5">
                   <span className="w-1.5 h-1.5 rounded-full" style={{ background: c.color }} />
-                  <h2 className="section-label">{c.category}</h2>
+                  <h2 className="section-label">{lang === "en" ? c.categoryEn : c.category}</h2>
                   <span className="text-[12px] text-text-mute">{selCount}/{c.apps.length}</span>
                   <button
                     onClick={() => setSel((s) => {
@@ -112,7 +112,7 @@ export default function AppsPage() {
                           <div className={`text-[13px] truncate transition-colors ${on ? "text-text" : "text-text-dim group-hover:text-text"}`}>{a.name}</div>
                           {inst && (
                             <div title={t("apps.installedTitle")} className="flex items-center gap-1 text-[10.5px] text-accent/85 mt-0.5">
-                              <span className="w-1 h-1 rounded-full bg-accent" />{t("apps.installed")}
+                              {t("apps.installed")}
                             </div>
                           )}
                         </div>
