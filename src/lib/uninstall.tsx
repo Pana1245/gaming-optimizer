@@ -40,7 +40,7 @@ Get-AppxPackage -EA SilentlyContinue | Where-Object { -not $_.IsFramework -and -
  if(-not $pd -or $pd -like 'ms-resource:*'){ $pd="$($_.Publisher)"; if($pd -match 'O=([^,]+)'){ $pd=$Matches[1] } elseif($pd -match 'CN=([^,]+)'){ $pd=$Matches[1] } }
  $apps+=[pscustomobject]@{name=$dn;pub=$pd;type='uwp';size=0;date='';location="$($_.InstallLocation)";key="$($_.PackageFullName)";uninstall="$($_.PackageFullName)";scope='machine';icon=''}
 }
-$apps=$apps | Sort-Object name -Unique
+$apps=$apps | Sort-Object name,type -Unique
 if($apps.Count -eq 0){'[]'}else{$apps|ConvertTo-Json -Compress -Depth 3}`;
 
 // Extrae iconos como PNG base64, localmente (sin red). win32: del DisplayIcon

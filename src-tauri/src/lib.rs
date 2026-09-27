@@ -128,7 +128,8 @@ async fn run_powershell_stream(app: tauri::AppHandle, script: String, id: String
         let t_err = std::thread::spawn(move || {
             if let Some(se) = stderr {
                 let mut buf = Vec::new();
-                for b in se.bytes() {
+                // BufReader: sin él, .bytes() hace una llamada al sistema por byte.
+                for b in std::io::BufReader::new(se).bytes() {
                     match b {
                         Ok(b'\n') | Ok(b'\r') => {
                             if !buf.is_empty() {
@@ -156,7 +157,7 @@ async fn run_powershell_stream(app: tauri::AppHandle, script: String, id: String
             if let Some(out) = stdout {
                 // Leer byte a byte y emitir en cada \n o \r (captura el % de SFC/DISM)
                 let mut buf = Vec::new();
-                for b in out.bytes() {
+                for b in std::io::BufReader::new(out).bytes() {
                     match b {
                         Ok(b'\n') | Ok(b'\r') => {
                             if !buf.is_empty() {
@@ -388,9 +389,9 @@ async fn system_info() -> SysInfo {
     // en maquinas Win11, ocultando los tweaks os:11).
     let build: u32 = System::os_version()
         .and_then(|v| {
-            v.split(|c: char| c == '.' || c == ' ')
+            v.split(['.', ' '])
                 .filter_map(|s| s.parse::<u32>().ok())
-                .last()
+                .next_back()
         })
         .unwrap_or(0);
     let win_ver = if build >= 22000 { 11 } else { 10 };

@@ -40,6 +40,27 @@ if($failed -gt 0){ Write-Output ("Restauración incompleta: " + $failed + " arch
 else { Write-Output "Registro restaurado. Reinicia el PC para aplicar." }`,
 };
 
+// Fuera del componente: definida adentro se recreaba en cada render y remontaba las tarjetas.
+const Card = ({ title, desc, btn, onClick, primary, busy }: {
+  title: string; desc: string; btn: string; onClick: () => void; primary?: boolean; busy: boolean;
+}) => (
+  <motion.div variants={{ hidden: { opacity: 0, y: 12 }, show: { opacity: 1, y: 0, transition: { duration: 0.3, ease: "easeOut" } } }}>
+    <NeonCard>
+      <div className="flex items-center justify-between gap-4">
+        <div>
+          <div className="text-[14px] font-medium text-text">{title}</div>
+          <div className="text-[13px] text-text-dim mt-0.5">{desc}</div>
+        </div>
+        <motion.button whileTap={{ scale: 0.96 }} disabled={busy} onClick={onClick}
+          className={`shrink-0 px-4 h-9 rounded-lg text-[13px] font-medium transition disabled:opacity-40
+            ${primary ? "bg-accent text-black hover:bg-[#1aff8a] font-semibold" : "text-text-dim hover:text-text border border-line hover:border-line-2"}`}>
+          {btn}
+        </motion.button>
+      </div>
+    </NeonCard>
+  </motion.div>
+);
+
 export default function RestaurarPage() {
   const { t, lang } = useI18n();
   const [log, setLog] = useState<string[]>(() => [t("common.ready")]);
@@ -71,25 +92,6 @@ export default function RestaurarPage() {
 
   const openRstrui = () => runPowershell("Start-Process rstrui.exe");
 
-  const Card = ({ title, desc, btn, onClick, primary }: {
-    title: string; desc: string; btn: string; onClick: () => void; primary?: boolean;
-  }) => (
-    <motion.div variants={{ hidden: { opacity: 0, y: 12 }, show: { opacity: 1, y: 0, transition: { duration: 0.3, ease: "easeOut" } } }}>
-      <NeonCard>
-        <div className="flex items-center justify-between gap-4">
-          <div>
-            <div className="text-[14px] font-medium text-text">{title}</div>
-            <div className="text-[13px] text-text-dim mt-0.5">{desc}</div>
-          </div>
-          <motion.button whileTap={{ scale: 0.96 }} disabled={busy} onClick={onClick}
-            className={`shrink-0 px-4 h-9 rounded-lg text-[13px] font-medium transition disabled:opacity-40
-              ${primary ? "bg-accent text-black hover:bg-[#1aff8a] font-semibold" : "text-text-dim hover:text-text border border-line hover:border-line-2"}`}>
-            {btn}
-          </motion.button>
-        </div>
-      </NeonCard>
-    </motion.div>
-  );
 
   return (
     <div className="h-full flex flex-col px-8 py-7">
@@ -98,13 +100,13 @@ export default function RestaurarPage() {
       <div className="flex-1 grid grid-cols-[1fr_340px] gap-6 min-h-0">
         <motion.div className="space-y-3 overflow-y-auto pr-3 -mr-3"
           initial="hidden" animate="show" variants={{ show: { transition: { staggerChildren: 0.06 } } }}>
-          <Card title={t("restore.restoreLast")} primary
+          <Card busy={busy} title={t("restore.restoreLast")} primary
             desc={t("restore.restoreLastDesc")}
             btn={t("common.restore")} onClick={() => action("restore", t("restore.restoreLast"))} />
-          <Card title={t("restore.createPoint")}
+          <Card busy={busy} title={t("restore.createPoint")}
             desc={t("restore.createPointDesc")}
             btn={t("restore.createBtn")} onClick={() => action("checkpoint", t("restore.createPoint"))} />
-          <Card title={t("restore.winRestore")}
+          <Card busy={busy} title={t("restore.winRestore")}
             desc={t("restore.winRestoreDesc")}
             btn={t("restore.openBtn")} onClick={openRstrui} />
 
