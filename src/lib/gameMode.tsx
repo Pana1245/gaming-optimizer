@@ -151,12 +151,19 @@ export function GameModeProvider({ children }: { children: ReactNode }) {
   }, []);
 
   // Arranca/detiene el daemon según enabled/games (también al iniciar si quedó activado).
+  // Solo se registra en la actividad cuando algo cambió de verdad: al abrir la app con el
+  // modo apagado no hace falta un "desactivado" (y StrictMode no duplica líneas en dev).
+  const lastWatch = useRef<{ enabled: boolean; games: string[] } | null>(null);
   useEffect(() => {
     localStorage.setItem("gm_enabled", enabled ? "1" : "0");
+    const prev = lastWatch.current;
+    // Encendido: se registra al activarse o si cambió la lista. Apagado: solo si antes estaba activo.
+    const changed = enabled ? !prev?.enabled || prev.games !== games : !!prev?.enabled;
+    lastWatch.current = { enabled, games };
     if (enabled) {
       ensureNotify();
       startGameWatch(games);
-      addLog(tr("gml.watching").replace("{n}", String(games.length)) + (pro ? tr("gml.proSuffix") : ""));
+      if (changed) addLog(tr("gml.watching").replace("{n}", String(games.length)) + (pro ? tr("gml.proSuffix") : ""));
     } else {
       stopGameWatch();
       if (playingRef.current) {
@@ -166,7 +173,7 @@ export function GameModeProvider({ children }: { children: ReactNode }) {
           setPlaying(null);
         });
       }
-      addLog(tr("gml.off"));
+      if (changed) addLog(tr("gml.off"));
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [enabled, games]);
