@@ -12,7 +12,7 @@ interface Props {
 }
 
 /** Fila con casilla (Optimizaciones, Motor, Gráficos, Limpieza): nombre, etiquetas
- *  (W11 / Avanzado) y un ⓘ con la explicación del tweak. */
+ *  (W11 / Avanzado) y un "?" con la explicación del tweak. */
 export default function EnergyCheckbox({ checked, onChange, label, badge, risk, desc }: Props) {
   const { t } = useI18n();
   return (
@@ -31,7 +31,9 @@ export default function EnergyCheckbox({ checked, onChange, label, badge, risk, 
             </>
           }
         >
-          <span className="w-4 h-4 rounded-full border border-line-2 grid place-items-center text-[9.5px] font-semibold text-text-mute opacity-0 group-hover:opacity-100 transition-opacity">i</span>
+          {/* Siempre visible: el "?" invita a leer qué hace cada ajuste. Clic acá no toca la casilla. */}
+          <span onClick={(e) => e.stopPropagation()}
+            className="w-[18px] h-[18px] rounded-full grid place-items-center text-[11px] font-bold leading-none cursor-help text-accent bg-accent/10 border border-accent/35 hover:bg-accent/20 hover:border-accent/60 transition-colors">?</span>
         </Tooltip>
       )}
       <span className="ml-auto flex items-center gap-1.5 shrink-0">
