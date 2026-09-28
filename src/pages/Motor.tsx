@@ -5,7 +5,7 @@ import { getSystemInfo } from "../lib/api";
 import { applyOp, undoEntry, loadLedger, saveLedger, type LedgerEntry } from "../lib/engine";
 import { useScrollMemory } from "../lib/useScrollMemory";
 import EnergyCheckbox from "../components/EnergyCheckbox";
-import { HudTitle } from "../components/NeonCard";
+import { Page, Tabs, SectionTitle, List, Row, Badge, LogPanel, Empty } from "../components/ui";
 import { IndeterminateBar } from "../components/Feedback";
 import { useI18n } from "../lib/i18n";
 import { trLog } from "../lib/logI18n";
@@ -105,96 +105,70 @@ export default function Motor() {
   const activeCount = ledger.filter((e) => !e.undone).length;
   const history = [...ledger].reverse();
 
-  return (
-    <div className="h-full flex flex-col px-8 py-7">
-      <HudTitle tkey="page.engine" />
+  const applyActions = <>
+    <button disabled={busy} onClick={() => setSel(Object.fromEntries(tweaks.map((tw) => [tw.id, true])))} className="btn btn-ghost">{t("common.selectAll")}</button>
+    <button disabled={busy} onClick={() => setSel({})} className="btn btn-ghost">{t("common.deselect")}</button>
+    <button disabled={busy || selected.length === 0} onClick={apply} className="btn btn-primary px-5">
+      {busy ? t("gpu.applying") : `${t("motor.applyVerified")} (${selected.length})`}
+    </button>
+  </>;
+  const historyActions = (
+    <button disabled={busy || activeCount === 0} onClick={undoAll} className="btn btn-ghost">{t("motor.undoAll")}</button>
+  );
 
-      {/* Tabs */}
-      <div className="flex gap-1 mb-4 p-1 rounded-lg bg-surface border border-line w-max">
-        {(["apply", "history"] as const).map((tb) => (
-          <button key={tb} onClick={() => setTab(tb)}
-            className={`px-3 h-7 rounded-md text-[13.5px] transition ${tab === tb ? "bg-white/[0.06] text-text" : "text-text-dim hover:text-text"}`}>
-            {tb === "apply" ? t("motor.tabApply") : `${t("motor.tabHistory")}${activeCount ? ` (${activeCount})` : ""}`}
-          </button>
-        ))}
+  return (
+    <Page tkey="page.engine" actions={tab === "apply" ? applyActions : historyActions}>
+      <div className="flex items-center justify-between mb-5 shrink-0">
+        <Tabs value={tab} onChange={setTab} items={[
+          { id: "apply", label: t("motor.tabApply") },
+          { id: "history", label: `${t("motor.tabHistory")}${activeCount ? ` (${activeCount})` : ""}` },
+        ]} />
+        {tab === "history" && (
+          <span className="text-[12.5px] text-text-mute">{t("motor.activeCount").replace("{active}", String(activeCount)).replace("{total}", String(ledger.length))}</span>
+        )}
       </div>
+      {busy && <div className="-mt-2 mb-4 shrink-0"><IndeterminateBar /></div>}
 
       {tab === "apply" ? (
-        <>
-          <div className="flex-1 grid grid-cols-[1fr_340px] gap-6 min-h-0">
-            <div ref={listRef} className={`overflow-y-auto pr-3 -mr-3 space-y-6 ${busy ? "pointer-events-none opacity-50" : ""}`}>
-              {groups.map((g) => (
-                <section key={g}>
-                  <h2 className="section-label mb-2">{t(`motor.group.${g}`)}</h2>
-                  <div className="rounded-xl border border-line divide-y divide-line/60">
-                    {tweaks.filter((t) => t.group === g).map((t) => (
-                      <div key={t.id} className="px-3">
-                        <EnergyCheckbox label={opName(t, lang)} desc={opDesc(t, lang)}
-                          risk={t.risk === "advanced" ? "advanced" : "safe"}
-                          checked={!!sel[t.id]}
-                          onChange={(v) => setSel((s) => ({ ...s, [t.id]: v }))} />
-                      </div>
-                    ))}
-                  </div>
-                </section>
-              ))}
-            </div>
-
-            <div className="flex flex-col min-h-0">
-              <span className="section-label mb-2.5">{t("motor.verification")}</span>
-              <div ref={logRef} className="flex-1 overflow-y-auto rounded-xl bg-surface border border-line p-4 font-mono text-[13px] leading-relaxed text-text-dim whitespace-pre-wrap">
-                {trLog(log.join("\n"), lang)}
-              </div>
-            </div>
+        <div className="flex-1 grid grid-cols-[1fr_320px] gap-6 min-h-0">
+          <div ref={listRef} className={`overflow-y-auto pr-3 -mr-3 space-y-6 pb-2 ${busy ? "pointer-events-none opacity-50" : ""}`}>
+            {groups.map((g) => (
+              <section key={g}>
+                <SectionTitle>{t(`motor.group.${g}`)}</SectionTitle>
+                <List>
+                  {tweaks.filter((tw) => tw.group === g).map((tw) => (
+                    <EnergyCheckbox key={tw.id} label={opName(tw, lang)} desc={opDesc(tw, lang)}
+                      risk={tw.risk === "advanced" ? "advanced" : "safe"}
+                      checked={!!sel[tw.id]}
+                      onChange={(v) => setSel((s) => ({ ...s, [tw.id]: v }))} />
+                  ))}
+                </List>
+              </section>
+            ))}
           </div>
-
-          <div className="mt-6 pt-5 border-t border-line">
-            {busy && <IndeterminateBar className="mb-4" />}
-            <div className="flex items-center justify-between">
-              <div className="flex gap-2">
-                <button disabled={busy} onClick={() => setSel(Object.fromEntries(tweaks.map((tw) => [tw.id, true])))} className="btn btn-ghost">{t("common.selectAll")}</button>
-                <button disabled={busy} onClick={() => setSel({})} className="btn btn-ghost">{t("common.deselect")}</button>
-              </div>
-              <button disabled={busy || selected.length === 0} onClick={apply} className="btn btn-primary px-6">
-                {busy ? t("gpu.applying") : `${t("motor.applyVerified")} (${selected.length})`}
-              </button>
-            </div>
-          </div>
-        </>
+          <LogPanel ref={logRef} label={t("motor.verification")}>{trLog(log.join("\n"), lang)}</LogPanel>
+        </div>
       ) : (
-        <>
-          <div className="flex items-center justify-between mb-3">
-            <span className="text-[13px] text-text-mute">{t("motor.activeCount").replace("{active}", String(activeCount)).replace("{total}", String(ledger.length))}</span>
-            <button disabled={busy || activeCount === 0} onClick={undoAll} className="btn btn-ghost">{t("motor.undoAll")}</button>
-          </div>
-          <div ref={listRef} className="flex-1 overflow-y-auto pr-2 -mr-2">
-            {history.length === 0 ? (
-              <div className="text-text-mute text-sm">{t("motor.noHistory")}</div>
-            ) : (
-              <div className="rounded-xl border border-line divide-y divide-line/60">
-                {history.map((e) => (
-                  <div key={e.id} className={`flex items-center gap-3 px-4 py-3 ${e.undone ? "opacity-45" : ""}`}>
-                    <span title={e.verified ? t("motor.tipVerified") : t("motor.tipNotVerified")}
-                      className="w-2 h-2 rounded-full shrink-0"
-                      style={{ background: e.verified ? "#00e676" : "#ff5470" }} />
-                    <div className="flex-1 min-w-0">
-                      <div className="text-[13px] text-text truncate">{ledgerName(e, lang)}</div>
-                      <div className="text-[12px] text-text-mute font-mono truncate">
-                        {showVal(e.prior)} → {e.value} · {fmtTime(e.ts)}
-                      </div>
-                    </div>
-                    {e.undone ? (
-                      <span className="text-[12px] text-text-mute shrink-0">{t("motor.undone")}</span>
-                    ) : (
-                      <button disabled={busy} onClick={() => undo(e)} className="btn btn-ghost shrink-0">{t("motor.undoBtn")}</button>
-                    )}
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
-        </>
+        <div ref={listRef} className="flex-1 overflow-y-auto pr-2 -mr-2 pb-2">
+          {history.length === 0 ? (
+            <Empty>{t("motor.noHistory")}</Empty>
+          ) : (
+            <List>
+              {history.map((e) => (
+                <Row key={e.id} muted={e.undone}
+                  title={ledgerName(e, lang)}
+                  desc={<span className="font-mono">{showVal(e.prior)} → {e.value} · {fmtTime(e.ts)}</span>}
+                  right={<>
+                    {e.undone
+                      ? <Badge>{t("motor.undone")}</Badge>
+                      : <Badge tone={e.verified ? "ok" : "danger"}>{e.verified ? t("motor.tipVerified") : t("motor.tipNotVerified")}</Badge>}
+                    {!e.undone && <button disabled={busy} onClick={() => undo(e)} className="btn btn-ghost h-8 px-3 text-[12.5px]">{t("motor.undoBtn")}</button>}
+                  </>} />
+              ))}
+            </List>
+          )}
+        </div>
       )}
-    </div>
+    </Page>
   );
 }

@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { runPowershell } from "../lib/api";
 import { notify } from "../lib/notify";
 import EnergyCheckbox from "../components/EnergyCheckbox";
-import { HudTitle } from "../components/NeonCard";
+import { Page, List, LogPanel } from "../components/ui";
 import { IndeterminateBar } from "../components/Feedback";
 import Modal from "../components/Modal";
 import { useI18n } from "../lib/i18n";
@@ -123,47 +123,41 @@ export default function Limpieza() {
   };
 
   return (
-    <div className="h-full flex flex-col px-8 py-7">
-      <HudTitle tkey="page.clean" />
+    <Page tkey="page.clean" actions={<>
+      <button disabled={busy || selected.length === 0} onClick={analyze} className="btn btn-ghost">
+        {analyzing ? t("clean.analyzing") : t("clean.analyze")}
+      </button>
+      <button disabled={busy || selected.length === 0} onClick={() => setConfirm(true)} className="btn btn-primary px-5">
+        {running ? t("clean.cleaning") : t("clean.cleanNow")}
+      </button>
+    </>}>
+      {busy && <div className="-mt-3 mb-5 shrink-0"><IndeterminateBar /></div>}
 
-      <div className="flex-1 grid grid-cols-[1fr_340px] gap-6 min-h-0">
-        <div className={`overflow-y-auto pr-3 -mr-3 transition-opacity ${busy ? "pointer-events-none opacity-50" : ""}`}>
-          <div className="rounded-xl border border-line divide-y divide-line/60">
-            {ITEMS.map((it) => (
-              <div key={it.id} className="px-3">
-                <EnergyCheckbox label={t(`clean.item.${it.id}`)}
-                  badge={sizes[it.id] !== undefined ? fmtMB(sizes[it.id]) : undefined}
-                  checked={!!sel[it.id]}
-                  onChange={(v) => setSel((s) => ({ ...s, [it.id]: v }))} />
+      <div className="flex-1 grid grid-cols-[1fr_320px] gap-6 min-h-0">
+        <div className={`overflow-y-auto pr-3 -mr-3 pb-2 transition-opacity ${busy ? "pointer-events-none opacity-50" : ""}`}>
+          {/* Resumen: lo que más importa, el espacio a liberar */}
+          <div className="rounded-xl border border-line bg-surface px-5 py-4 mb-5 flex items-center justify-between gap-4">
+            <div>
+              <div className="text-[12px] text-text-mute">{t("clean.toFreeTitle")}</div>
+              <div className="text-[26px] font-semibold tracking-[-0.02em] tabular-nums mt-0.5" style={{ color: totalEstimated > 0 ? "var(--color-accent)" : "#6c6c75" }}>
+                {totalEstimated > 0 ? `~${fmtMB(totalEstimated)}` : "—"}
               </div>
+            </div>
+            <div className="text-right text-[12.5px] text-text-mute max-w-[260px]">
+              <div className="text-text-dim">{selected.length} {t("clean.selected")}</div>
+              {totalEstimated === 0 && <div className="mt-0.5">{t("clean.analyzeHint")}</div>}
+            </div>
+          </div>
+          <List>
+            {ITEMS.map((it) => (
+              <EnergyCheckbox key={it.id} label={t(`clean.item.${it.id}`)}
+                badge={sizes[it.id] !== undefined ? fmtMB(sizes[it.id]) : undefined}
+                checked={!!sel[it.id]}
+                onChange={(v) => setSel((s) => ({ ...s, [it.id]: v }))} />
             ))}
-          </div>
+          </List>
         </div>
-
-        <div className="flex flex-col min-h-0">
-          <span className="section-label mb-2.5">{t("common.progress")}</span>
-          <div ref={logRef} className="flex-1 overflow-y-auto rounded-xl bg-surface border border-line p-4 font-mono text-[13px] leading-relaxed text-text-dim whitespace-pre-wrap">
-            {trLog(log.join("\n"), lang)}
-          </div>
-        </div>
-      </div>
-
-      <div className="mt-6 pt-5 border-t border-line">
-        {busy && <IndeterminateBar className="mb-4" />}
-        <div className="flex items-center justify-between">
-          <span className="text-[13px] text-text-mute">
-            {selected.length} {t("clean.selected")}
-            {totalEstimated > 0 && <span className="text-accent"> · ~{fmtMB(totalEstimated)} {t("clean.toFree")}</span>}
-          </span>
-          <div className="flex gap-2">
-            <button disabled={busy || selected.length === 0} onClick={analyze} className="btn btn-ghost">
-              {analyzing ? t("clean.analyzing") : t("clean.analyze")}
-            </button>
-            <button disabled={busy || selected.length === 0} onClick={() => setConfirm(true)} className="btn btn-primary px-6">
-              {running ? t("clean.cleaning") : t("clean.cleanNow")}
-            </button>
-          </div>
-        </div>
+        <LogPanel ref={logRef} label={t("common.progress")}>{trLog(log.join("\n"), lang)}</LogPanel>
       </div>
 
       <Modal open={confirm} title={t("clean.confirmTitle")} onClose={() => setConfirm(false)}
@@ -171,6 +165,6 @@ export default function Limpieza() {
         {`${t("clean.confirmBody1")} ${selected.length} ${t("clean.confirmBody2")}${totalEstimated > 0 ? ` (~${fmtMB(totalEstimated)})` : ""}.\n${t("clean.confirmBody3")}`}
       </Modal>
       <Modal open={!!done} title={t("clean.doneTitle")} onClose={() => setDone(null)}>{trLog(done || "", lang)}</Modal>
-    </div>
+    </Page>
   );
 }

@@ -1,9 +1,8 @@
 import { useEffect, useState } from "react";
 import { invoke } from "@tauri-apps/api/core";
-import { motion } from "framer-motion";
 import { useGameMode } from "../lib/gameMode";
 import { detectGames, type DetectedGame } from "../lib/detect";
-import NeonCard, { HudTitle } from "../components/NeonCard";
+import { Page, Switch, SectionTitle, List, Row, Badge, LogPanel } from "../components/ui";
 import { useI18n } from "../lib/i18n";
 import { trLog } from "../lib/logI18n";
 
@@ -38,62 +37,30 @@ export default function GameMode() {
   const addAll = () => { newOnes.forEach((f) => addGame(f.exe)); };
 
   return (
-    <div className="h-full flex flex-col px-8 py-7">
-      <HudTitle tkey="page.gamemode" />
-
-      {/* Toggle principal + estado + modo pro */}
-      <NeonCard className="mb-4">
-        <div className="flex items-center justify-between">
-          <div>
-            <div className="text-[15px] font-semibold text-text">Auto Game-Mode</div>
-            <div className="text-[13.5px] mt-1" style={{ color: playing ? "#00e676" : "#8a8a8f" }}>
-              {!enabled ? t("gm.off")
-                : playing ? `🎮 ${t("gm.playingPre")} ${playing} — ${t("gm.gamerActive")}`
-                : t("gm.watching")}
-            </div>
+    <Page tkey="page.gamemode">
+      {/* Estado + interruptor principal */}
+      <div className={`rounded-xl border p-5 mb-5 flex items-center gap-4 shrink-0 transition-colors ${playing ? "border-accent/40 bg-accent/[0.05]" : "border-line bg-surface"}`}>
+        <span className={`w-2.5 h-2.5 rounded-full shrink-0 ${!enabled ? "bg-line-2" : playing ? "bg-accent" : "bg-accent/60 animate-pulse"}`} />
+        <div className="min-w-0 flex-1">
+          <div className="text-[15px] font-semibold text-text">Auto Game-Mode</div>
+          <div className="text-[13px] mt-0.5" style={{ color: playing ? "var(--color-accent)" : "#a1a1a9" }}>
+            {!enabled ? t("gm.off")
+              : playing ? `🎮 ${t("gm.playingPre")} ${playing} — ${t("gm.gamerActive")}`
+              : t("gm.watching").replace(/^●\s*/, "")}
           </div>
-          <button onClick={() => setEnabled(!enabled)}
-            className={`relative w-14 h-7 rounded-full transition-colors shrink-0 ${enabled ? "bg-accent" : "bg-line-2"}`}>
-            <motion.span layout transition={{ type: "spring", stiffness: 500, damping: 32 }}
-              className="absolute top-[3px] w-[22px] h-[22px] rounded-full bg-black"
-              style={{ left: enabled ? 30 : 3 }} />
-          </button>
         </div>
-        <div className="flex items-center justify-between gap-5 mt-5 pt-4 border-t border-line/60">
-          <div className="max-w-[470px]">
-            <div className="text-[14px] font-semibold text-text">{t("gm.proTitle")}</div>
-            <p className="text-[12.5px] text-text-mute mt-1.5 leading-relaxed">{t("gm.proHint")}</p>
-          </div>
-          <button onClick={() => setPro(!pro)}
-            className={`relative w-11 h-6 rounded-full transition-colors shrink-0 ${pro ? "bg-accent" : "bg-line-2"}`}>
-            <motion.span layout transition={{ type: "spring", stiffness: 500, damping: 32 }}
-              className="absolute top-[3px] w-[18px] h-[18px] rounded-full bg-black"
-              style={{ left: pro ? 22 : 3 }} />
-          </button>
-        </div>
-        <div className="flex items-center justify-between gap-5 mt-5 pt-4 border-t border-line/60">
-          <div className="max-w-[470px]">
-            <div className="text-[14px] font-semibold text-text">{t("gm.autostartTitle")}</div>
-            <p className="text-[12.5px] text-text-mute mt-1.5 leading-relaxed">{t("gm.trayHint")}</p>
-            {autoErr && <p className="text-[12px] text-[#ff5470] mt-1">{t("gm.autostartErr")}</p>}
-          </div>
-          <button onClick={toggleAutostart} disabled={autoBusy}
-            className={`relative w-11 h-6 rounded-full transition-colors shrink-0 disabled:opacity-50 ${autostart ? "bg-accent" : "bg-line-2"}`}>
-            <motion.span layout transition={{ type: "spring", stiffness: 500, damping: 32 }}
-              className="absolute top-[3px] w-[18px] h-[18px] rounded-full bg-black"
-              style={{ left: autostart ? 22 : 3 }} />
-          </button>
-        </div>
-      </NeonCard>
+        <Switch on={enabled} onChange={setEnabled} label="Auto Game-Mode" />
+      </div>
 
       <div className="flex-1 grid grid-cols-[1fr_320px] gap-6 min-h-0">
-        {/* Lista de juegos */}
+        {/* Juegos vigilados */}
         <div className="flex flex-col min-h-0">
-          <div className="flex items-center gap-2 mb-2.5">
+          <SectionTitle right={<span className="tabular-nums">{games.length}</span>}>{t("gm.gamesTitle")}</SectionTitle>
+          <div className="flex items-center gap-2 mb-3 shrink-0">
             <input value={input} onChange={(e) => setInput(e.target.value)}
               onKeyDown={(e) => e.key === "Enter" && submit()}
               placeholder={t("gm.addPlaceholder")}
-              className="flex-1 h-9 px-3 rounded-lg bg-surface border border-line focus:border-accent outline-none text-[13px] text-text placeholder:text-text-mute transition" />
+              className="flex-1 h-9 px-3 rounded-lg bg-surface border border-line focus:border-line-2 outline-none text-[13px] text-text placeholder:text-text-mute font-mono transition" />
             <button onClick={submit} className="btn btn-ghost">{t("gm.add")}</button>
             <button onClick={scan} disabled={scanning} className="btn btn-primary">
               {scanning ? t("gm.scanning") : t("gm.detect")}
@@ -102,23 +69,21 @@ export default function GameMode() {
 
           {/* Resultado de la detección */}
           {found && (
-            <div className="mb-2.5 rounded-xl border border-accent/30 bg-accent/5 p-3">
+            <div className="mb-3 rounded-xl border border-accent/25 bg-accent/[0.04] p-3.5 shrink-0">
               {found.length === 0 ? (
                 <p className="text-[13px] text-text-dim">{t("gm.foundNone")}</p>
               ) : (
                 <>
-                  <div className="flex items-center justify-between mb-1.5">
+                  <div className="flex items-center justify-between mb-2">
                     <span className="text-[13px] text-text">
                       {t("gm.foundPre")} <b>{found.length}</b> {t("gm.gamesWord")} {newOnes.length > 0 ? `(${newOnes.length} ${t("gm.newWord")})` : t("gm.allThere")}
                     </span>
-                    {newOnes.length > 0 && (
-                      <button onClick={addAll} className="text-[12.5px] text-accent hover:underline">{t("gm.addAll")}</button>
-                    )}
+                    {newOnes.length > 0 && <button onClick={addAll} className="btn btn-ghost h-7 px-2.5 text-[12px]">{t("gm.addAll")}</button>}
                   </div>
-                  <div className="max-h-28 overflow-y-auto space-y-0.5">
+                  <div className="max-h-28 overflow-y-auto space-y-1">
                     {found.map((f) => (
                       <div key={f.exe} className="flex items-center gap-2 text-[12.5px]">
-                        <span className="text-text-mute w-10 shrink-0">{f.source}</span>
+                        <Badge>{f.source}</Badge>
                         <span className="font-mono text-text-dim truncate flex-1">{f.exe}</span>
                         {games.includes(f.exe)
                           ? <span className="text-text-mute shrink-0">{t("gm.already")}</span>
@@ -131,26 +96,45 @@ export default function GameMode() {
             </div>
           )}
 
-          <div className="flex-1 overflow-y-auto rounded-xl border border-line divide-y divide-line/60">
-            {games.map((g) => (
-              <div key={g} className="flex items-center gap-3 px-4 py-2.5">
-                <span className="flex-1 min-w-0 text-[13px] text-text-dim font-mono truncate">{g}</span>
-                <button onClick={() => removeGame(g)}
-                  className="text-[13px] text-text-mute hover:text-[#ff5470] transition shrink-0">{t("gm.remove")}</button>
-              </div>
-            ))}
-            {games.length === 0 && <div className="px-4 py-3 text-text-mute text-sm">{t("gm.noGames")}</div>}
+          <div className="flex-1 min-h-0 overflow-y-auto pb-1">
+            {games.length === 0 ? (
+              <div className="rounded-xl border border-dashed border-line-2 px-4 py-8 text-center text-[13px] text-text-mute">{t("gm.noGames")}</div>
+            ) : (
+              <List>
+                {games.map((g) => (
+                  <Row key={g} title={<span className="font-mono text-text-dim">{g}</span>}
+                    right={<button onClick={() => removeGame(g)} className="text-[12.5px] text-text-mute hover:text-[#ff6b84] transition-colors opacity-0 group-hover:opacity-100">{t("gm.remove")}</button>} />
+                ))}
+              </List>
+            )}
           </div>
         </div>
 
-        {/* Registro */}
-        <div className="flex flex-col min-h-0">
-          <span className="section-label mb-2.5">{t("gm.activity")}</span>
-          <div className="flex-1 overflow-y-auto rounded-xl bg-surface border border-line p-4 font-mono text-[13px] leading-relaxed text-text-dim whitespace-pre-wrap">
-            {trLog(log.join("\n"), lang)}
+        {/* Opciones + actividad */}
+        <div className="flex flex-col min-h-0 gap-5">
+          <div className="shrink-0">
+            <SectionTitle>{t("gm.options")}</SectionTitle>
+            <List>
+              <div className="px-4 py-3.5 flex items-start gap-3">
+                <div className="min-w-0 flex-1">
+                  <div className="text-[13.5px] text-text">{t("gm.proTitle")}</div>
+                  <p className="text-[12px] text-text-mute mt-1 leading-relaxed">{t("gm.proHint")}</p>
+                </div>
+                <Switch size="sm" on={pro} onChange={setPro} label={t("gm.proTitle")} />
+              </div>
+              <div className="px-4 py-3.5 flex items-start gap-3">
+                <div className="min-w-0 flex-1">
+                  <div className="text-[13.5px] text-text">{t("gm.autostartTitle")}</div>
+                  <p className="text-[12px] text-text-mute mt-1 leading-relaxed">{t("gm.trayHint")}</p>
+                  {autoErr && <p className="text-[12px] text-[#ff6b84] mt-1">{t("gm.autostartErr")}</p>}
+                </div>
+                <Switch size="sm" on={autostart} onChange={() => toggleAutostart()} disabled={autoBusy} label={t("gm.autostartTitle")} />
+              </div>
+            </List>
           </div>
+          <LogPanel className="flex-1" label={t("gm.activity")}>{trLog(log.join("\n"), lang)}</LogPanel>
         </div>
       </div>
-    </div>
+    </Page>
   );
 }

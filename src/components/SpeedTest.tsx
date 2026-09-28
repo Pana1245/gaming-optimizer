@@ -147,7 +147,7 @@ function Chart({ down, up }: { down: number[]; up: number[] }) {
 function Metric({ label, value, unit, color, active }: { label: string; value: string; unit: string; color?: string; active?: boolean }) {
   return (
     <div className={`rounded-xl border px-4 py-3 transition-colors ${active ? "border-white/15 bg-white/[0.04]" : "border-line bg-white/[0.015]"}`}>
-      <div className="text-[11px] uppercase tracking-wider flex items-center gap-1.5" style={{ color: color ?? "#5a5a60" }}>{label}</div>
+      <div className="text-[12px] flex items-center gap-1.5" style={{ color: color ?? "#6c6c75" }}>{label}</div>
       <div className="font-mono font-semibold text-[24px] leading-tight mt-1 tabular-nums text-text">
         {value}<span className="text-[12px] font-normal text-text-mute"> {unit}</span>
       </div>

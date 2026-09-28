@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
-import Sidebar, { type NavItem } from "./components/Sidebar";
+import Sidebar, { type NavItem, type NavGroup } from "./components/Sidebar";
 import Splash from "./components/Splash";
 import CommandPalette from "./components/CommandPalette";
 import { useI18n } from "./lib/i18n";
@@ -10,7 +10,6 @@ import { notify } from "./lib/notify";
 import UpdateBanner from "./components/UpdateBanner";
 import TitleBar from "./components/TitleBar";
 import { ensureNotify } from "./lib/notify";
-import StatusBar from "./components/StatusBar";
 import Optimizaciones from "./pages/Optimizaciones";
 import Motor from "./pages/Motor";
 import GameMode from "./pages/GameMode";
@@ -33,33 +32,42 @@ import {
   IconRocket, IconShieldCheck, IconGamepad, IconBroom, IconPower, IconApps, IconTrash, IconReset, IconWrench, IconChart, IconBook, IconGauge, IconLayers, IconGlobe, IconGpu, IconTools, IconLifeRing, IconPulse,
 } from "./components/icons";
 
-const MAIN: NavItem[] = [
-  { id: "panel", label: "nav.panel", icon: <IconGauge /> },
-  { id: "health", label: "nav.health", icon: <IconPulse /> },
-  { id: "profiles", label: "nav.profiles", icon: <IconLayers /> },
-  { id: "opt", label: "nav.opt", icon: <IconRocket /> },
-  { id: "gpu", label: "nav.gpu", icon: <IconGpu /> },
-  { id: "engine", label: "nav.engine", icon: <IconShieldCheck /> },
-  { id: "gamemode", label: "nav.gamemode", icon: <IconGamepad /> },
-  { id: "network", label: "nav.network", icon: <IconGlobe /> },
-  { id: "clean", label: "nav.clean", icon: <IconBroom /> },
-  { id: "startup", label: "nav.startup", icon: <IconPower /> },
-  { id: "apps", label: "nav.apps", icon: <IconApps /> },
-  { id: "uninstall", label: "nav.uninstall", icon: <IconTrash /> },
-  { id: "restore", label: "nav.restore", icon: <IconReset /> },
-  { id: "repair", label: "nav.repair", icon: <IconWrench /> },
-  { id: "reactivate", label: "nav.reactivate", icon: <IconLifeRing /> },
-  { id: "tools", label: "nav.tools", icon: <IconTools /> },
+// Menú agrupado: arriba lo general; después rendimiento, limpieza/apps y control/reparación.
+const GROUPS: NavGroup[] = [
+  { items: [
+    { id: "panel", label: "nav.panel", icon: <IconGauge /> },
+    { id: "health", label: "nav.health", icon: <IconPulse /> },
+    { id: "system", label: "nav.system", icon: <IconChart /> },
+  ] },
+  { label: "nav.group.perf", items: [
+    { id: "profiles", label: "nav.profiles", icon: <IconLayers /> },
+    { id: "opt", label: "nav.opt", icon: <IconRocket /> },
+    { id: "gpu", label: "nav.gpu", icon: <IconGpu /> },
+    { id: "gamemode", label: "nav.gamemode", icon: <IconGamepad /> },
+    { id: "network", label: "nav.network", icon: <IconGlobe /> },
+  ] },
+  { label: "nav.group.clean", items: [
+    { id: "clean", label: "nav.clean", icon: <IconBroom /> },
+    { id: "startup", label: "nav.startup", icon: <IconPower /> },
+    { id: "apps", label: "nav.apps", icon: <IconApps /> },
+    { id: "uninstall", label: "nav.uninstall", icon: <IconTrash /> },
+  ] },
+  { label: "nav.group.control", items: [
+    { id: "engine", label: "nav.engine", icon: <IconShieldCheck /> },
+    { id: "restore", label: "nav.restore", icon: <IconReset /> },
+    { id: "repair", label: "nav.repair", icon: <IconWrench /> },
+    { id: "reactivate", label: "nav.reactivate", icon: <IconLifeRing /> },
+    { id: "tools", label: "nav.tools", icon: <IconTools /> },
+  ] },
 ];
 const FOOTER: NavItem[] = [
   { id: "guide", label: "nav.guide", icon: <IconBook /> },
-  { id: "system", label: "nav.system", icon: <IconChart /> },
 ];
 
 function renderPage(page: string, go: (p: string) => void) {
   switch (page) {
     case "health": return <Chequeo onNavigate={go} />;
-    case "panel": return <Panel />;
+    case "panel": return <Panel onNavigate={go} />;
     case "profiles": return <Perfiles />;
     case "network": return <Red />;
     case "gpu": return <Graficos />;
@@ -103,26 +111,26 @@ export default function App() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const cmdItems = [...MAIN, ...FOOTER].map((n) => ({ id: n.id, label: t(n.label), icon: n.icon }));
+  const cmdItems = [...GROUPS.flatMap((g) => g.items), ...FOOTER].map((n) => ({ id: n.id, label: t(n.label), icon: n.icon }));
 
   return (
-    <div className="flex flex-col h-full bg-black">
+    <div className="flex h-full bg-bg">
       <AnimatePresence>
         {loading && <Splash key="splash" onDone={() => setLoading(false)} />}
       </AnimatePresence>
       <CommandPalette items={cmdItems} onSelect={setPage} />
-      <TitleBar />
       <UpdateBanner />
-      <div className="flex flex-1 min-h-0">
-        <Sidebar items={MAIN} footer={FOOTER} active={page} onSelect={setPage} />
-        <main className="flex-1 min-w-0 relative overflow-hidden content-bg">
+      <Sidebar groups={GROUPS} footer={FOOTER} active={page} onSelect={setPage} />
+      <div className="flex-1 min-w-0 flex flex-col content-bg">
+        <TitleBar />
+        <main className="flex-1 min-h-0 relative overflow-hidden">
           <AnimatePresence mode="wait">
             <motion.div
               key={page}
-              initial={{ opacity: 0, y: 14, scale: 0.985, filter: "blur(4px)" }}
-              animate={{ opacity: 1, y: 0, scale: 1, filter: "blur(0px)" }}
-              exit={{ opacity: 0, y: -10, scale: 0.99, filter: "blur(2px)" }}
-              transition={{ duration: 0.28, ease: [0.22, 0.7, 0.2, 1] }}
+              initial={{ opacity: 0, y: 6 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.16, ease: "easeOut" }}
               className="h-full relative z-10"
             >
               {renderPage(page, setPage)}
@@ -130,7 +138,6 @@ export default function App() {
           </AnimatePresence>
         </main>
       </div>
-      <StatusBar />
     </div>
   );
 }

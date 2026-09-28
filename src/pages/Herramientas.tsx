@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import NeonCard, { HudTitle } from "../components/NeonCard";
+import { Page, Badge, SectionTitle, List, Row, type Tone } from "../components/ui";
 import Modal from "../components/Modal";
 import { runPowershell } from "../lib/api";
 import { useI18n } from "../lib/i18n";
@@ -87,65 +87,54 @@ export default function Herramientas() {
 
   const wuInfo = wu ? { text: t(`tools.wu.${wu.state}`), color: WU_COLOR[wu.state] ?? WU_COLOR.active } : null;
 
+  const wuTone: Tone = !wu ? "neutral" : wu.state === "active" ? "ok" : wu.state === "paused" ? "warn" : "danger";
+
   return (
-    <div className="h-full flex flex-col px-8 py-7 overflow-y-auto">
-      <HudTitle tkey="page.tools" />
-
-      {/* Windows Update */}
-      <NeonCard className="mb-4">
-        <div className="flex items-center justify-between mb-3">
+    <Page tkey="page.tools" scroll>
+      <div className="max-w-[820px] space-y-4 pb-2">
+        {/* Windows Update */}
+        <div className="rounded-xl border border-line bg-surface p-5">
           <div className="flex items-center gap-2.5">
-            <span className="section-label">Windows Update</span>
-            {wuInfo && (
-              <span className="text-[12.5px] flex items-center gap-1.5" style={{ color: wuInfo.color }}>
-                <span className="w-1.5 h-1.5 rounded-full" style={{ background: wuInfo.color }} />
-                {wuInfo.text}{wu?.until ? ` · ${t("tools.wu.until")} ${wu.until}` : ""}
-              </span>
-            )}
+            <span className="text-[15px] font-semibold text-text">Windows Update</span>
+            {wuInfo && <Badge tone={wuTone}>{wuInfo.text}{wu?.until ? ` · ${t("tools.wu.until")} ${wu.until}` : ""}</Badge>}
+          </div>
+          <p className="text-[12.5px] text-text-mute mt-1.5">{t("tools.wu.hint")}</p>
+          <div className="flex gap-2 mt-4">
+            <button onClick={() => wuAction(WU_PAUSE)} disabled={wuBusy} className="btn btn-ghost">{t("tools.wu.pause")}</button>
+            <button onClick={() => wuAction(WU_DISABLE)} disabled={wuBusy} className="btn btn-ghost">{t("tools.wu.disable")}</button>
+            <button onClick={() => wuAction(WU_ENABLE)} disabled={wuBusy} className="btn btn-primary">{t("tools.wu.enable")}</button>
           </div>
         </div>
-        <div className="flex gap-2.5">
-          <button onClick={() => wuAction(WU_PAUSE)} disabled={wuBusy} className="btn btn-ghost">{t("tools.wu.pause")}</button>
-          <button onClick={() => wuAction(WU_DISABLE)} disabled={wuBusy} className="btn btn-ghost">{t("tools.wu.disable")}</button>
-          <button onClick={() => wuAction(WU_ENABLE)} disabled={wuBusy} className="btn btn-primary">{t("tools.wu.enable")}</button>
-        </div>
-        <p className="text-[11.5px] text-text-mute mt-3">
-          {t("tools.wu.hint")}
-        </p>
-      </NeonCard>
 
-      {/* Desbloquear archivo */}
-      <NeonCard>
-        <span className="section-label">{t("tools.unlock.title")}</span>
-        <p className="text-[12px] text-text-mute mt-1 mb-3">
-          {t("tools.unlock.hint")}
-        </p>
-        <div className="flex items-center gap-2 mb-3">
-          <input value={path} onChange={(e) => setPath(e.target.value)}
-            onKeyDown={(e) => e.key === "Enter" && scan()}
-            placeholder={t("tools.lockPh")}
-            className="flex-1 h-9 px-3 rounded-lg bg-surface border border-line focus:border-accent outline-none text-[13px] text-text placeholder:text-text-mute font-mono transition" />
-          <button onClick={scan} disabled={scanning} className="btn btn-primary">{scanning ? t("tools.unlock.scanning") : t("tools.unlock.scan")}</button>
-        </div>
+        {/* ¿Qué está usando este archivo? */}
+        <div className="rounded-xl border border-line bg-surface p-5">
+          <div className="text-[15px] font-semibold text-text">{t("tools.unlock.title")}</div>
+          <p className="text-[12.5px] text-text-mute mt-1.5">{t("tools.unlock.hint")}</p>
+          <div className="flex items-center gap-2 mt-4">
+            <input value={path} onChange={(e) => setPath(e.target.value)}
+              onKeyDown={(e) => e.key === "Enter" && scan()}
+              placeholder={t("tools.lockPh")}
+              className="flex-1 h-9 px-3 rounded-lg bg-[#0b0b0d] border border-line focus:border-line-2 outline-none text-[13px] text-text placeholder:text-text-mute font-mono transition" />
+            <button onClick={scan} disabled={scanning} className="btn btn-primary">{scanning ? t("tools.unlock.scanning") : t("tools.unlock.scan")}</button>
+          </div>
 
-        {lockMsg && (
-          <p className="text-[13px]" style={{ color: lockMsg.startsWith("✓") ? "#00e676" : "#ff8a65" }}>{trLog(lockMsg, lang)}</p>
-        )}
+          {lockMsg && (
+            <p className="text-[12.5px] mt-3" style={{ color: lockMsg.startsWith("✓") ? "#3ddc84" : "#ff8a65" }}>{trLog(lockMsg, lang)}</p>
+          )}
 
-        {lockers && lockers.length > 0 && (
-          <div className="rounded-xl border border-line divide-y divide-line/60 overflow-hidden">
-            <div className="px-4 py-2 text-[12px] text-text-mute bg-surface">
-              {lockers.length} {t("tools.unlock.usingCount")}
+          {lockers && lockers.length > 0 && (
+            <div className="mt-4">
+              <SectionTitle>{lockers.length} {t("tools.unlock.usingCount")}</SectionTitle>
+              <List>
+                {lockers.map((l) => (
+                  <Row key={l.pid} title={<span className="font-mono">{l.name}</span>} desc={`PID ${l.pid}`}
+                    right={<button onClick={() => setConfirmKill(l)} className="btn btn-ghost h-8 px-3 text-[12.5px] !text-[#ff6b84] !border-[#ff547033] hover:!bg-[#ff5470]/[0.08]">{t("tools.unlock.kill")}</button>} />
+                ))}
+              </List>
             </div>
-            {lockers.map((l) => (
-              <div key={l.pid} className="flex items-center gap-3 px-4 py-2.5">
-                <span className="flex-1 text-[13px] text-text-dim font-mono">{l.name} <span className="text-text-mute">· PID {l.pid}</span></span>
-                <button onClick={() => setConfirmKill(l)} className="text-[13px] text-[#ff5470] hover:underline shrink-0">{t("tools.unlock.kill")}</button>
-              </div>
-            ))}
-          </div>
-        )}
-      </NeonCard>
+          )}
+        </div>
+      </div>
 
       <Modal open={!!confirmKill} title={t("tools.kill.title")}
         onClose={() => setConfirmKill(null)}
@@ -155,6 +144,6 @@ export default function Herramientas() {
           ? `${confirmKill.name} · PID ${confirmKill.pid}\n\n${t("tools.kill.warn")}`
           : ""}
       </Modal>
-    </div>
+    </Page>
   );
 }

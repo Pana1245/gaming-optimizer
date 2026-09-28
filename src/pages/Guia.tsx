@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
-import { HudTitle } from "../components/NeonCard";
+import { Page } from "../components/ui";
 import { useI18n } from "../lib/i18n";
 
 type L = { es: string; en: string; pt: string };
@@ -16,22 +16,22 @@ const GUIDE: Item[] = [
         "Corre como administrador (te pide permiso UAC al abrir) — lo necesita para tocar el sistema.",
         "Antes de aplicar optimizaciones crea un backup del registro + un punto de restauración automático.",
         "Funciona en Windows 10 y 11; los tweaks que son solo de W11 aparecen con la etiqueta [W11].",
-        "Cada tweak tiene un punto de color: 🟢 seguro · 🟡 avanzado (modifica ajustes más sensibles).",
-        "Atajos: Ctrl+K abre el buscador de secciones. En la barra inferior elegís el color de acento y el idioma (ES/EN/PT).",
+        "Los tweaks que tocan ajustes más sensibles llevan la etiqueta “Avanzado”. Pasá el mouse por ⓘ para ver qué hace cada uno.",
+        "Atajos: Ctrl+K (o “Buscar sección” arriba) salta a cualquier sección. En Ajustes, abajo del menú, elegís el color de acento, el idioma (ES/EN/PT) y buscás actualizaciones.",
       ],
       en: [
         "It runs as administrator (it asks for UAC permission on launch) — it needs that to change system settings.",
         "Before applying optimizations it creates a registry backup + an automatic restore point.",
         "Works on Windows 10 and 11; tweaks that are Windows 11-only show the [W11] tag.",
-        "Each tweak has a colored dot: 🟢 safe · 🟡 advanced (changes more sensitive settings).",
-        "Shortcuts: Ctrl+K opens the section search. In the bottom bar you pick the accent color and the language (ES/EN/PT).",
+        "Tweaks that change more sensitive settings carry the “Advanced” tag. Hover the ⓘ to see what each one does.",
+        "Shortcuts: Ctrl+K (or “Search section” at the top) jumps to any section. In Settings, at the bottom of the menu, you pick the accent color, the language (ES/EN/PT) and check for updates.",
       ],
       pt: [
         "Roda como administrador (pede permissão do UAC ao abrir) — precisa disso para mexer no sistema.",
         "Antes de aplicar otimizações, cria um backup do registro + um ponto de restauração automático.",
         "Funciona no Windows 10 e 11; os tweaks exclusivos do W11 aparecem com a etiqueta [W11].",
-        "Cada tweak tem um ponto colorido: 🟢 seguro · 🟡 avançado (mexe em configurações mais sensíveis).",
-        "Atalhos: Ctrl+K abre a busca de seções. Na barra inferior você escolhe a cor de destaque e o idioma (ES/EN/PT).",
+        "Os tweaks que mexem em configurações mais sensíveis têm a etiqueta “Avançado”. Passe o mouse no ⓘ para ver o que cada um faz.",
+        "Atalhos: Ctrl+K (ou “Buscar seção” no topo) leva a qualquer seção. Em Configurações, no fim do menu, você escolhe a cor de destaque, o idioma (ES/EN/PT) e busca atualizações.",
       ],
     },
   },
@@ -43,22 +43,22 @@ const GUIDE: Item[] = [
       es: [
         "El puntaje se calcula LEYENDO el registro real: cuántos tweaks clave (Gaming + Privacidad) están aplicados.",
         "Temperaturas reales de CPU y GPU, leídas de los sensores del hardware.",
-        "Gráfico en vivo de uso de CPU y RAM, más el uso del SSD.",
-        "RAM Booster: libera la memoria standby (archivos cacheados) — útil antes de abrir un juego pesado.",
+        "Uso en vivo de CPU, RAM y disco, y accesos rápidos: liberar RAM, test de velocidad, Auto Game-Mode y Perfiles.",
+        "Liberar RAM: libera la memoria standby (archivos cacheados) — útil antes de abrir un juego pesado.",
         "También muestra el estado del Auto Game-Mode.",
       ],
       en: [
         "The score is calculated by READING the actual registry: how many key tweaks (Gaming + Privacy) are applied.",
         "Real CPU and GPU temperatures, read from the hardware sensors.",
-        "Live graph of CPU and RAM usage, plus SSD usage.",
-        "RAM Booster: frees standby memory (cached files) — useful before launching a heavy game.",
+        "Live CPU, RAM and disk usage, plus quick actions: free RAM, speed test, Auto Game-Mode and Profiles.",
+        "Free RAM: frees standby memory (cached files) — useful before launching a heavy game.",
         "It also shows the Auto Game-Mode status.",
       ],
       pt: [
         "A pontuação é calculada LENDO o registro real: quantos tweaks principais (Gaming + Privacidade) estão aplicados.",
         "Temperaturas reais de CPU e GPU, lidas dos sensores do hardware.",
-        "Gráfico ao vivo do uso de CPU e RAM, mais o uso do SSD.",
-        "RAM Booster: libera a memória em espera (arquivos em cache) — útil antes de abrir um jogo pesado.",
+        "Uso ao vivo de CPU, RAM e disco, e atalhos: liberar RAM, teste de velocidade, Auto Game-Mode e Perfis.",
+        "Liberar RAM: libera a memória em espera (arquivos em cache) — útil antes de abrir um jogo pesado.",
         "Também mostra o estado do Auto Game-Mode.",
       ],
     },
@@ -462,19 +462,19 @@ const GUIDE: Item[] = [
         "Gráficas en vivo de CPU y RAM.",
         "Información del equipo: Windows, procesador, núcleos, placas de video y memoria.",
         "Estado real de VBS / Integridad de memoria (activas o no), leído de Windows.",
-        "El mini-monitor de la barra lateral (CPU/RAM/SSD) está siempre a la vista.",
+        "En el Panel también ves CPU, RAM y disco en vivo, más las temperaturas.",
       ],
       en: [
         "Live CPU and RAM graphs.",
         "System info: Windows, processor, cores, graphics cards and memory.",
         "Actual VBS / Memory Integrity status (on or off), read from Windows.",
-        "The mini-monitor in the sidebar (CPU/RAM/SSD) is always in view.",
+        "The Dashboard also shows live CPU, RAM and disk, plus temperatures.",
       ],
       pt: [
         "Gráficos ao vivo de CPU e RAM.",
         "Informações do computador: Windows, processador, núcleos, placas de vídeo e memória.",
         "Estado real de VBS / Integridade de memória (ativas ou não), lido do Windows.",
-        "O mini-monitor da barra lateral (CPU/RAM/SSD) fica sempre à vista.",
+        "No Painel você também vê CPU, RAM e disco ao vivo, mais as temperaturas.",
       ],
     },
   },
@@ -491,8 +491,7 @@ export default function Guia() {
     });
 
   return (
-    <div className="h-full flex flex-col px-8 py-7">
-      <HudTitle tkey="page.guide" />
+    <Page tkey="page.guide">
       <div className="flex-1 overflow-y-auto pr-2 -mr-2 space-y-2.5 max-w-3xl">
         {GUIDE.map((g) => {
           const isOpen = open.has(g.id);
@@ -530,6 +529,6 @@ export default function Guia() {
           );
         })}
       </div>
-    </div>
+    </Page>
   );
 }

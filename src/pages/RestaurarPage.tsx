@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
-import { motion } from "framer-motion";
 import { runPowershell } from "../lib/api";
-import NeonCard, { HudTitle } from "../components/NeonCard";
+import { Page, ActionCard, SectionTitle, List, Row, LogPanel } from "../components/ui";
+import { IconReset, IconShieldCheck, IconLifeRing } from "../components/icons";
 import { Spinner, IndeterminateBar } from "../components/Feedback";
 import { useI18n } from "../lib/i18n";
 import { trLog } from "../lib/logI18n";
@@ -40,26 +40,6 @@ if($failed -gt 0){ Write-Output ("Restauración incompleta: " + $failed + " arch
 else { Write-Output "Registro restaurado. Reinicia el PC para aplicar." }`,
 };
 
-// Fuera del componente: definida adentro se recreaba en cada render y remontaba las tarjetas.
-const Card = ({ title, desc, btn, onClick, primary, busy }: {
-  title: string; desc: string; btn: string; onClick: () => void; primary?: boolean; busy: boolean;
-}) => (
-  <motion.div variants={{ hidden: { opacity: 0, y: 12 }, show: { opacity: 1, y: 0, transition: { duration: 0.3, ease: "easeOut" } } }}>
-    <NeonCard>
-      <div className="flex items-center justify-between gap-4">
-        <div>
-          <div className="text-[14px] font-medium text-text">{title}</div>
-          <div className="text-[13px] text-text-dim mt-0.5">{desc}</div>
-        </div>
-        <motion.button whileTap={{ scale: 0.96 }} disabled={busy} onClick={onClick}
-          className={`shrink-0 px-4 h-9 rounded-lg text-[13px] font-medium transition disabled:opacity-40
-            ${primary ? "bg-accent text-black hover:bg-[#1aff8a] font-semibold" : "text-text-dim hover:text-text border border-line hover:border-line-2"}`}>
-          {btn}
-        </motion.button>
-      </div>
-    </NeonCard>
-  </motion.div>
-);
 
 export default function RestaurarPage() {
   const { t, lang } = useI18n();
@@ -94,49 +74,32 @@ export default function RestaurarPage() {
 
 
   return (
-    <div className="h-full flex flex-col px-8 py-7">
-      <HudTitle tkey="page.restore" />
+    <Page tkey="page.restore">
+      {busy && <div className="-mt-3 mb-5 shrink-0"><IndeterminateBar /></div>}
+      <div className="flex-1 grid grid-cols-[1fr_320px] gap-6 min-h-0">
+        <div className="space-y-3 overflow-y-auto pr-3 -mr-3 pb-2">
+          <ActionCard icon={<IconReset />} title={t("restore.restoreLast")} desc={t("restore.restoreLastDesc")}
+            action={<button disabled={busy} onClick={() => action("restore", t("restore.restoreLast"))} className="btn btn-primary">{t("common.restore")}</button>} />
+          <ActionCard icon={<IconShieldCheck />} title={t("restore.createPoint")} desc={t("restore.createPointDesc")}
+            action={<button disabled={busy} onClick={() => action("checkpoint", t("restore.createPoint"))} className="btn btn-ghost">{t("restore.createBtn")}</button>} />
+          <ActionCard icon={<IconLifeRing />} title={t("restore.winRestore")} desc={t("restore.winRestoreDesc")}
+            action={<button disabled={busy} onClick={openRstrui} className="btn btn-ghost">{t("restore.openBtn")}</button>} />
 
-      <div className="flex-1 grid grid-cols-[1fr_340px] gap-6 min-h-0">
-        <motion.div className="space-y-3 overflow-y-auto pr-3 -mr-3"
-          initial="hidden" animate="show" variants={{ show: { transition: { staggerChildren: 0.06 } } }}>
-          <Card busy={busy} title={t("restore.restoreLast")} primary
-            desc={t("restore.restoreLastDesc")}
-            btn={t("common.restore")} onClick={() => action("restore", t("restore.restoreLast"))} />
-          <Card busy={busy} title={t("restore.createPoint")}
-            desc={t("restore.createPointDesc")}
-            btn={t("restore.createBtn")} onClick={() => action("checkpoint", t("restore.createPoint"))} />
-          <Card busy={busy} title={t("restore.winRestore")}
-            desc={t("restore.winRestoreDesc")}
-            btn={t("restore.openBtn")} onClick={openRstrui} />
-
-          <motion.div variants={{ hidden: { opacity: 0, y: 12 }, show: { opacity: 1, y: 0, transition: { duration: 0.3, ease: "easeOut" } } }}>
-            <NeonCard>
-              <span className="section-label">{t("restore.available")}</span>
-              {backups.length ? (
-                <div className="mt-3 space-y-1.5 font-mono text-[13px] text-text-dim">
-                  {backups.map((b) => (
-                    <div key={b} className="flex items-center gap-2">
-                      <span className="w-1 h-1 rounded-full bg-accent" />{b}
-                    </div>
-                  ))}
-                </div>
-              ) : <div className="text-text-mute text-[13px] mt-2">{t("restore.noBackups")}</div>}
-            </NeonCard>
-          </motion.div>
-        </motion.div>
-
-        <div className="flex flex-col min-h-0">
-          <div className="flex items-center gap-2 mb-2.5 h-4">
-            <span className="section-label">{t("repair.output")}</span>
-            {busy && <Spinner size={12} />}
-          </div>
-          {busy && <IndeterminateBar className="mb-2" />}
-          <div ref={logRef} className="flex-1 overflow-y-auto rounded-xl bg-surface border border-line p-4 font-mono text-[13px] leading-relaxed text-text-dim whitespace-pre-wrap">
-            {trLog(log.join("\n"), lang)}
+          <div className="pt-3">
+            <SectionTitle right={backups.length ? <span className="tabular-nums">{backups.length}</span> : undefined}>{t("restore.available")}</SectionTitle>
+            {backups.length ? (
+              <List>
+                {backups.map((b) => <Row key={b} title={<span className="font-mono text-[13px]">{b}</span>} />)}
+              </List>
+            ) : (
+              <div className="rounded-xl border border-dashed border-line-2 px-4 py-6 text-center text-[13px] text-text-mute">{t("restore.noBackups")}</div>
+            )}
           </div>
         </div>
+        <LogPanel ref={logRef} label={<span className="flex items-center gap-2">{t("repair.output")}{busy && <Spinner size={12} />}</span>}>
+          {trLog(log.join("\n"), lang)}
+        </LogPanel>
       </div>
-    </div>
+    </Page>
   );
 }

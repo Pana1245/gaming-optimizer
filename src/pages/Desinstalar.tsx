@@ -1,8 +1,7 @@
 import { useMemo, useState } from "react";
-import { motion } from "framer-motion";
 import { runPowershell } from "../lib/api";
 import { useScrollMemory } from "../lib/useScrollMemory";
-import { HudTitle } from "../components/NeonCard";
+import { Page, List, Row, Empty } from "../components/ui";
 import Modal from "../components/Modal";
 import { Spinner, IndeterminateBar } from "../components/Feedback";
 import { useI18n } from "../lib/i18n";
@@ -257,58 +256,44 @@ export default function Desinstalar() {
   };
 
   return (
-    <div className="h-full flex flex-col px-8 py-7">
-      <HudTitle tkey="page.uninstall" />
-
-      <div className="flex items-center gap-2 mb-3">
-        <input value={query} onChange={(e) => setQuery(e.target.value)} placeholder={t("unins.search")}
-          className="flex-1 h-9 px-3 rounded-lg bg-surface border border-line focus:border-accent outline-none text-[13px] text-text placeholder:text-text-mute transition" />
-        <button disabled={working || loading} onClick={reload}
-          className="btn btn-ghost">{t("common.refresh")}</button>
+    <Page tkey="page.uninstall" actions={<button disabled={working || loading} onClick={reload} className="btn btn-ghost">{t("common.refresh")}</button>}>
+      <div className="flex items-center gap-3 mb-4 shrink-0">
+        <div className="relative flex-1">
+          <svg className="absolute left-3 top-1/2 -translate-y-1/2 text-text-mute" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><circle cx="11" cy="11" r="7" /><path d="m20 20-3.5-3.5" /></svg>
+          <input value={query} onChange={(e) => setQuery(e.target.value)} placeholder={t("unins.search")}
+            className="w-full h-9 pl-9 pr-3 rounded-lg bg-surface border border-line focus:border-line-2 outline-none text-[13px] text-text placeholder:text-text-mute transition" />
+        </div>
+        {!loading && <span className="text-[12.5px] text-text-mute tabular-nums shrink-0">{filtered.length} {t("unins.count")}</span>}
       </div>
 
-      {working && <IndeterminateBar className="mb-3" />}
+      {working && <div className="-mt-1 mb-3 shrink-0"><IndeterminateBar /></div>}
 
-      <div ref={scrollRef} className="flex-1 overflow-y-auto pr-2 -mr-2">
+      <div ref={scrollRef} className="flex-1 overflow-y-auto pr-2 -mr-2 pb-2">
         {loading ? (
-          <div className="text-text-mute text-sm">{t("unins.loading")}</div>
+          <Empty loading>{t("unins.loading")}</Empty>
+        ) : filtered.length === 0 ? (
+          <Empty>{t("unins.noResults")}</Empty>
         ) : (
-          <div className="rounded-xl border border-line divide-y divide-line/60">
+          <List>
             {filtered.map((a) => (
-              <div key={a.type + a.name} className="flex items-center gap-3 px-4 py-2.5 group">
-                {icons[a.key] ? (
-                  <img src={icons[a.key]} alt="" className="w-6 h-6 rounded-md shrink-0 object-contain" />
-                ) : (
-                  <span className={`w-6 h-6 shrink-0 flex items-center justify-center text-[9px] rounded-md ${a.type === "uwp" ? "text-[#7eb6ff] border border-[#7eb6ff44]" : "text-text-mute border border-line"}`}>
-                    {a.type}
-                  </span>
-                )}
-                <div className="flex-1 min-w-0">
-                  <div className="text-[13px] text-text truncate">{a.name}</div>
-                  <div className="text-[12px] text-text-mute truncate">
-                    {[a.pub, fmtSize(a.size), fmtDate(a.date)].filter(Boolean).join(" · ")}
-                  </div>
-                </div>
-                <div className={`flex items-center gap-1.5 shrink-0 transition ${busy === a.name ? "opacity-100" : "opacity-60 group-hover:opacity-100"}`}>
+              <Row key={a.type + a.name}
+                icon={icons[a.key]
+                  ? <img src={icons[a.key]} alt="" className="w-7 h-7 rounded-md object-contain" />
+                  : <span className="w-7 h-7 grid place-items-center text-[9px] uppercase rounded-md border border-line bg-white/[0.03] text-text-mute">{a.type}</span>}
+                title={a.name}
+                desc={[a.pub, fmtSize(a.size), fmtDate(a.date)].filter(Boolean).join(" · ")}
+                right={<div className={`flex items-center gap-1.5 transition-opacity ${busy === a.name ? "opacity-100" : "opacity-0 group-hover:opacity-100"}`}>
                   {busy === a.name && <Spinner />}
-                  <motion.button whileTap={{ scale: 0.95 }} onClick={() => uninstall(a)} disabled={working}
-                    className="px-3 h-8 rounded-lg text-[13px] text-text-dim hover:text-text border border-line hover:border-line-2 transition disabled:opacity-30">
-                    {t("unins.remove")}
-                  </motion.button>
-                  <motion.button whileTap={{ scale: 0.95 }} onClick={() => force(a)} disabled={working}
-                    className="px-3 h-8 rounded-lg text-[13px] text-[#ff7a90] hover:text-[#ff5470] border border-[#ff547033] hover:border-[#ff547066] transition disabled:opacity-30">
-                    {t("unins.force")}
-                  </motion.button>
-                </div>
-              </div>
+                  <button onClick={() => uninstall(a)} disabled={working} className="btn btn-ghost h-8 px-3 text-[12.5px]">{t("unins.remove")}</button>
+                  <button onClick={() => force(a)} disabled={working} className="btn btn-ghost h-8 px-3 text-[12.5px] !text-[#ff6b84] !border-[#ff547033] hover:!bg-[#ff5470]/[0.08]">{t("unins.force")}</button>
+                </div>} />
             ))}
-            {filtered.length === 0 && <div className="px-4 py-3 text-text-mute text-sm">{t("unins.noResults")}</div>}
-          </div>
+          </List>
         )}
       </div>
 
       {(status || working) && (
-        <div className="mt-4 pt-4 border-t border-line text-[13px] font-mono text-text-dim flex items-center gap-2">
+        <div className="mt-4 pt-3 border-t border-line text-[12.5px] font-mono text-text-dim flex items-center gap-2 shrink-0">
           {working && <Spinner />}
           <span className="truncate">{trLog(status, lang)}</span>
         </div>
@@ -328,7 +313,7 @@ export default function Desinstalar() {
             {scan?.items.map((it, i) => (
               <label key={i} className="flex items-start gap-2.5 px-3 py-2 cursor-pointer hover:bg-white/[0.025]">
                 <input type="checkbox" checked={it.checked} onChange={() => toggleItem(i)}
-                  className="mt-1 shrink-0" style={{ accentColor: "#00e676" }} />
+                  className="mt-1 shrink-0" style={{ accentColor: "var(--color-accent)" }} />
                 <span className="min-w-0">
                   <span className="text-[11px] text-text-mute">{t("unins.lo." + it.label)}</span>
                   <span className="block text-[12px] text-text-dim font-mono break-all leading-snug">{it.path}</span>
@@ -338,6 +323,6 @@ export default function Desinstalar() {
           </div>
         </div>
       </Modal>
-    </div>
+    </Page>
   );
 }

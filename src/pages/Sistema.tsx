@@ -4,8 +4,10 @@ import {
   AreaChart, Area, ResponsiveContainer, YAxis, Tooltip,
 } from "recharts";
 import { getStats, getSystemInfo, runPowershell, type SysInfo } from "../lib/api";
-import NeonCard, { HudTitle } from "../components/NeonCard";
+import NeonCard from "../components/NeonCard";
+import { Page } from "../components/ui";
 import { useI18n } from "../lib/i18n";
+import { useAccent, ACCENTS } from "../lib/theme";
 
 interface Pt { t: number; v: number; }
 
@@ -65,6 +67,8 @@ function Graph({ data, color, label, value }: { data: Pt[]; color: string; label
 
 export default function Sistema() {
   const { t } = useI18n();
+  // Mismos colores que el Panel: CPU naranja, RAM con el acento elegido.
+  const { name: accent } = useAccent();
   const [cpu, setCpu] = useState<Pt[]>([]);
   const [ram, setRam] = useState<Pt[]>([]);
   const [cpuV, setCpuV] = useState(0);
@@ -94,14 +98,13 @@ export default function Sistema() {
   }, []);
 
   return (
-    <div className="h-full flex flex-col px-8 py-7 overflow-y-auto">
-      <HudTitle tkey="page.system" />
+    <Page tkey="page.system" scroll>
 
       <motion.div initial="hidden" animate="show"
         variants={{ show: { transition: { staggerChildren: 0.08 } } }}>
         <div className="flex gap-4 mb-4">
-          <Graph data={cpu} color="#00e676" label="CPU" value={cpuV} />
-          <Graph data={ram} color="#3b9eff" label="RAM" value={ramV} />
+          <Graph data={cpu} color="#ff8a65" label="CPU" value={cpuV} />
+          <Graph data={ram} color={ACCENTS[accent].accent} label="RAM" value={ramV} />
         </div>
 
         <motion.div variants={itemV}>
@@ -126,7 +129,7 @@ export default function Sistema() {
           </NeonCard>
         </motion.div>
       </motion.div>
-    </div>
+    </Page>
   );
 }
 

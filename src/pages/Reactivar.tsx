@@ -1,7 +1,6 @@
 import { useState } from "react";
-import { motion } from "framer-motion";
 import { runPowershell } from "../lib/api";
-import NeonCard, { HudTitle } from "../components/NeonCard";
+import { Page, ActionCard } from "../components/ui";
 import { useI18n } from "../lib/i18n";
 import { trLog } from "../lib/logI18n";
 
@@ -192,47 +191,19 @@ export default function Reactivar() {
   };
 
   return (
-    <div className="h-full flex flex-col px-8 py-7 overflow-y-auto">
-      <HudTitle tkey="page.reactivate" />
-
-      <motion.div
-        className="space-y-3 max-w-[760px]"
-        initial="hidden"
-        animate="show"
-        variants={{ show: { transition: { staggerChildren: 0.06 } } }}
-      >
+    <Page tkey="page.reactivate" scroll>
+      <div className="space-y-3 max-w-[820px] pb-2">
         {FIXES.map((f) => {
           const running = busy === f.id;
           const msg = result[f.id];
           const okMsg = msg?.startsWith("✓");
           return (
-            <motion.div key={f.id} variants={{ hidden: { opacity: 0, y: 12 }, show: { opacity: 1, y: 0, transition: { duration: 0.3, ease: "easeOut" } } }}>
-              <NeonCard>
-                <div className="flex items-center gap-4">
-                  <span className="w-10 h-10 text-[30px] leading-none shrink-0 flex items-center justify-center">{f.emoji}</span>
-                  <div className="min-w-0 flex-1">
-                    <div className="text-[15px] font-semibold text-text">{f.title[lang]}</div>
-                    <div className="text-[13px] text-text-dim mt-0.5 leading-snug">{f.desc[lang]}</div>
-                  </div>
-                  <motion.button
-                    whileTap={{ scale: 0.96 }}
-                    onClick={() => run(f)}
-                    disabled={!!busy}
-                    className="shrink-0 px-5 h-10 rounded-lg text-[13px] font-semibold text-[#05140c] bg-accent hover:brightness-110 transition disabled:opacity-40 disabled:hover:brightness-100"
-                  >
-                    {running ? t("react.working") : f.btn[lang]}
-                  </motion.button>
-                </div>
-                {msg && (
-                  <div className="text-[13px] mt-3 pt-3 border-t border-white/[0.06]" style={{ color: okMsg ? "#00e676" : "#ff8a65" }}>
-                    {trLog(msg, lang)}
-                  </div>
-                )}
-              </NeonCard>
-            </motion.div>
+            <ActionCard key={f.id} icon={f.emoji} title={f.title[lang]} desc={f.desc[lang]}
+              action={<button onClick={() => run(f)} disabled={!!busy} className="btn btn-ghost">{running ? t("react.working") : f.btn[lang]}</button>}
+              footer={msg ? <span style={{ color: okMsg ? "#3ddc84" : "#ff8a65" }}>{trLog(msg, lang)}</span> : undefined} />
           );
         })}
-      </motion.div>
-    </div>
+      </div>
+    </Page>
   );
 }

@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
-import NeonCard, { HudTitle } from "../components/NeonCard";
+import NeonCard from "../components/NeonCard";
+import { Page, Tabs } from "../components/ui";
 import { runPowershell } from "../lib/api";
 import { useI18n, pick } from "../lib/i18n";
 import { trLog } from "../lib/logI18n";
@@ -183,7 +184,7 @@ function ConnTest() {
       {err && <p className="text-[12.5px] mt-3" style={{ color: "#ff5470" }}>{t("net.ct.fail")}</p>}
       {res && !busy && (
         <div className="mt-3.5 space-y-1.5">
-          <div className="grid grid-cols-[88px_repeat(4,1fr)] gap-2 text-[11px] uppercase tracking-wider text-text-mute">
+          <div className="grid grid-cols-[88px_repeat(4,1fr)] gap-2 text-[12px] text-text-mute">
             <span />
             <span>{t("net.ct.ping")}</span><span>{t("net.ct.jitter")}</span><span>{t("net.ct.loss")}</span><span>{t("net.ct.max")}</span>
           </div>
@@ -297,16 +298,10 @@ export default function Red() {
   const fastest = ranked.find((d) => typeof results[d.primary] === "number")?.id;
 
   return (
-    <div className="h-full flex flex-col px-8 py-7 overflow-hidden">
-      <HudTitle tkey="page.network" />
+    <Page tkey="page.network">
 
-      <div className="flex gap-1 mb-4 p-1 rounded-lg border border-line bg-surface w-fit shrink-0">
-        {(["speed", "conn", "dns"] as const).map((tb) => (
-          <button key={tb} onClick={() => setTab(tb)}
-            className={`px-3 h-7 rounded-md text-[13.5px] transition ${tab === tb ? "bg-white/[0.06] text-text" : "text-text-dim hover:text-text"}`}>
-            {t(`net.tab.${tb}`)}
-          </button>
-        ))}
+      <div className="mb-5 shrink-0">
+        <Tabs value={tab} onChange={setTab} items={(["speed", "conn", "dns"] as const).map((tb) => ({ id: tb, label: t(`net.tab.${tb}`) }))} />
       </div>
 
       {tab === "speed" && <div className="flex-1 min-h-0 overflow-y-auto -mr-2 pr-2"><SpeedTest /></div>}
@@ -379,6 +374,6 @@ export default function Red() {
 
       {msg && <p className="text-[13px] mt-2 shrink-0" style={{ color: msg.startsWith("✓") ? "#00e676" : "#ff5470" }}>{trLog(msg, lang)}</p>}
       </>)}
-    </div>
+    </Page>
   );
 }

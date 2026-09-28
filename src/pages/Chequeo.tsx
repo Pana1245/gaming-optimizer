@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { motion } from "framer-motion";
-import { HudTitle } from "../components/NeonCard";
+import { Page, Badge } from "../components/ui";
+import { IconPulse } from "../components/icons";
 import { runPowershell } from "../lib/api";
 import { useI18n } from "../lib/i18n";
 import { CATEGORIES } from "../catalog";
@@ -322,31 +323,38 @@ export default function Chequeo({ onNavigate }: { onNavigate: (page: string) => 
   };
 
   return (
-    <div className="h-full flex flex-col px-8 py-7">
-      <HudTitle tkey="page.health" />
+    <Page tkey="page.health" actions={(scan || busy) &&
+      <button onClick={run} disabled={busy} className="btn btn-primary px-5">
+        {busy ? t("hc.scanning") : scan ? t("hc.again") : t("hc.run")}
+      </button>
+    }>
 
-      <div className="flex items-center justify-between gap-4 mb-4 shrink-0">
-        <div className="text-[13px] text-text-mute">
-          {scan ? (
-            <span className="flex items-center gap-3">
-              {count("bad") + count("warn") === 0
-                ? <span className="text-accent">{t("hc.allGood")}</span>
-                : <>
-                    <span style={{ color: STATUS.bad.color }}>{count("bad")} {t("hc.nBad")}</span>
-                    <span style={{ color: STATUS.warn.color }}>{count("warn")} {t("hc.nWarn")}</span>
-                  </>}
-              <span style={{ color: STATUS.ok.color }}>{count("ok")} {t("hc.nOk")}</span>
-            </span>
-          ) : t("hc.intro")}
-        </div>
-        <button onClick={run} disabled={busy} className="btn btn-primary shrink-0">
-          {busy ? t("hc.scanning") : scan ? t("hc.again") : t("hc.run")}
-        </button>
+      <div className="flex items-center gap-2 mb-4 shrink-0 min-h-[22px] text-[13px] text-text-mute">
+        {scan ? (
+          count("bad") + count("warn") === 0
+            ? <Badge tone="ok">{t("hc.allGood")}</Badge>
+            : <>
+                {count("bad") > 0 && <Badge tone="danger">{count("bad")} {t("hc.nBad")}</Badge>}
+                {count("warn") > 0 && <Badge tone="warn">{count("warn")} {t("hc.nWarn")}</Badge>}
+                <Badge tone="ok">{count("ok")} {t("hc.nOk")}</Badge>
+              </>
+        ) : null}
       </div>
 
       {err && <p className="text-[13px] text-[#ff5470] mb-3">{t("hc.err")}</p>}
 
       <div className="flex-1 min-h-0 overflow-y-auto -mr-2 pr-2">
+        {!busy && !scan && !err && (
+          <div className="h-full min-h-[380px] flex flex-col items-center justify-center text-center">
+            <span className="w-14 h-14 rounded-2xl grid place-items-center bg-accent/[0.08] border border-accent/20 text-accent mb-5 [&_svg]:w-7 [&_svg]:h-7"><IconPulse /></span>
+            <div className="text-[17px] font-semibold text-text">{t("hc.emptyTitle")}</div>
+            <p className="text-[13px] text-text-mute mt-1.5 max-w-[440px] leading-relaxed">{t("hc.intro")}</p>
+            <div className="flex flex-wrap justify-center gap-1.5 mt-5 max-w-[520px]">
+              {["hc.chip.monitor", "hc.chip.ram", "hc.chip.disks", "hc.chip.driver", "hc.chip.power", "hc.chip.gm", "hc.chip.pf", "hc.chip.startup"].map((k) => <Badge key={k}>{t(k)}</Badge>)}
+            </div>
+            <button onClick={run} className="btn btn-primary px-6 mt-7">{t("hc.run")}</button>
+          </div>
+        )}
         {busy && !scan && (
           <div className="flex flex-col items-center justify-center h-64 gap-3 text-text-mute text-[13px]">
             <motion.div className="w-12 h-12 rounded-full border-2 border-accent/30 border-t-accent"
@@ -384,6 +392,6 @@ export default function Chequeo({ onNavigate }: { onNavigate: (page: string) => 
           })}
         </div>
       </div>
-    </div>
+    </Page>
   );
 }

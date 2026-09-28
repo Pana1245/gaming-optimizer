@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import NeonCard, { HudTitle } from "../components/NeonCard";
+import { Page, Badge, SectionTitle, List, LogPanel } from "../components/ui";
 import EnergyCheckbox from "../components/EnergyCheckbox";
 import { getSystemInfo, runPowershell } from "../lib/api";
 import { applyOp, loadLedger, saveLedger } from "../lib/engine";
@@ -8,12 +8,31 @@ import { notify } from "../lib/notify";
 import { useI18n } from "../lib/i18n";
 import { trLog } from "../lib/logI18n";
 
-function Metric({ label, value, unit, color }: { label: string; value: number; unit: string; color: string }) {
+function Metric({ label, value, unit, color }: { label: string; value: number; unit: string; color?: string }) {
   return (
-    <div className="flex-1 rounded-lg bg-surface border border-line px-3 py-2">
-      <div className="text-[11px] uppercase tracking-wider text-text-mute">{label}</div>
-      <div className="text-[19px] font-bold leading-tight mt-0.5" style={{ color }}>
-        {value}<span className="text-[11px] font-normal text-text-mute ml-0.5">{unit}</span>
+    <div className="rounded-lg bg-white/[0.025] border border-line px-3.5 py-2.5">
+      <div className="text-[12px] text-text-mute">{label}</div>
+      <div className="text-[20px] font-semibold tracking-[-0.02em] tabular-nums mt-0.5" style={{ color: color ?? "#ededef" }}>
+        {value}<span className="text-[11.5px] font-normal text-text-mute ml-1">{unit}</span>
+      </div>
+    </div>
+  );
+}
+
+/** Ajuste propio de la marca (NVIDIA / AMD): aplicar o restaurar el driver. */
+function VendorCard({ title, desc, color, busy, onApply, onRestore }: {
+  title: string; desc: string; color: string; busy: boolean; onApply: () => void; onRestore: () => void;
+}) {
+  const { t } = useI18n();
+  return (
+    <div className="rounded-xl border border-line bg-surface p-5 flex flex-col">
+      <div className="flex items-center gap-2 text-[14px] font-medium text-text">
+        <span className="w-2 h-2 rounded-full" style={{ background: color }} />{title}
+      </div>
+      <p className="text-[12.5px] text-text-mute mt-1.5 leading-relaxed flex-1">{desc}</p>
+      <div className="flex gap-2 mt-4">
+        <button onClick={onApply} disabled={busy} className="btn btn-primary">{busy ? "…" : t("common.apply")}</button>
+        <button onClick={onRestore} disabled={busy} className="btn btn-ghost">{t("common.restore")}</button>
       </div>
     </div>
   );
@@ -96,115 +115,72 @@ export default function Graficos() {
   };
 
   return (
-    <div className="h-full flex flex-col px-8 py-7 overflow-y-auto">
-      <HudTitle tkey="page.gpu" />
-
-      {/* GPU detectada + monitor NVIDIA */}
-      <NeonCard className="mb-4">
-        <div className="flex items-center gap-3 mb-1">
-          <span className="section-label">{t("gpu.detected")}</span>
-        </div>
-        {gpus === null && <div className="text-[15px] font-semibold text-text">{t("gpu.detecting")}</div>}
-        {gpus !== null && list.length === 0 && <div className="text-[15px] font-semibold text-text">{t("gpu.none")}</div>}
-        <div className="space-y-1.5">
-          {list.map((g) => {
-            const vendor = isNvidia(g.name) ? { c: "#76b900", n: "NVIDIA" } : isAmd(g.name) ? { c: "#ed1c24", n: "AMD" } : { c: "#3b9eff", n: "" };
-            return (
-              <div key={g.name} className="flex items-center gap-2 flex-wrap">
-                <span className="text-[15px] font-semibold text-text">{g.name}</span>
-                {vendor.n && <span className="text-[10.5px] font-semibold px-1.5 py-0.5 rounded" style={{ color: vendor.c, border: `1px solid ${vendor.c}55` }}>{vendor.n}</span>}
-                <span className="text-[10.5px] px-1.5 py-0.5 rounded border border-line text-text-mute">
-                  {isIntegrated(g.name) ? t("gpu.integrated") : t("gpu.dedicated")}
-                </span>
-                {g.vram_gb >= 1 && <span className="text-[11.5px] text-text-mute tabular-nums">{g.vram_gb} GB VRAM</span>}
-              </div>
-            );
-          })}
-        </div>
-        {nvidia && nv && (
-          <div className="flex gap-2.5 mt-3">
-            <Metric label={t("gpu.m.temp")} value={nv.temp} unit="°C" color={nv.temp < 70 ? "#00e676" : nv.temp < 84 ? "#ffd24a" : "#ff5470"} />
-            <Metric label={t("gpu.m.usage")} value={nv.util} unit="%" color="#3b9eff" />
-            <Metric label={t("gpu.m.clock")} value={nv.clock} unit="MHz" color="#c084fc" />
-            <Metric label={t("gpu.m.power")} value={Math.round(nv.power)} unit="W" color="#ff8a65" />
-            <Metric label="VRAM" value={Math.round(nv.memUsed / 1024 * 10) / 10} unit={`/ ${Math.round(nv.memTotal / 1024)} GB`} color="#00e676" />
+    <Page tkey="page.gpu" scroll>
+      <div className="space-y-4 pb-2">
+        {/* Placa(s) detectada(s) + monitor NVIDIA */}
+        <div className="rounded-xl border border-line bg-surface p-5">
+          <div className="text-[12px] text-text-mute mb-2">{t("gpu.detected")}</div>
+          {gpus === null && <div className="text-[15px] font-semibold text-text">{t("gpu.detecting")}</div>}
+          {gpus !== null && list.length === 0 && <div className="text-[15px] font-semibold text-text">{t("gpu.none")}</div>}
+          <div className="space-y-2">
+            {list.map((g) => {
+              const vendor = isNvidia(g.name) ? { c: "#76b900", n: "NVIDIA" } : isAmd(g.name) ? { c: "#ed1c24", n: "AMD" } : null;
+              return (
+                <div key={g.name} className="flex items-center gap-2 flex-wrap">
+                  <span className="text-[17px] font-semibold text-text tracking-[-0.01em]">{g.name}</span>
+                  {vendor && <span className="inline-flex items-center h-[19px] px-1.5 rounded-[5px] text-[10.5px] font-semibold" style={{ color: vendor.c, background: `${vendor.c}14`, border: `1px solid ${vendor.c}40` }}>{vendor.n}</span>}
+                  <Badge>{isIntegrated(g.name) ? t("gpu.integrated") : t("gpu.dedicated")}</Badge>
+                  {g.vram_gb >= 1 && <span className="text-[12px] text-text-mute tabular-nums">{g.vram_gb} GB VRAM</span>}
+                </div>
+              );
+            })}
           </div>
-        )}
-        {nvidia && !nv && <p className="text-[12.5px] text-text-mute mt-2">{t("gpu.readingNv")}</p>}
-        {amd && <p className="text-[12.5px] text-text-mute mt-2">{t("gpu.amdNote")}</p>}
-        {!nvidia && !amd && list.length > 0 && <p className="text-[12.5px] text-text-mute mt-2">{t("gpu.otherNote")}</p>}
-      </NeonCard>
-
-      {/* Optimizaciones universales */}
-      <NeonCard className="mb-4">
-        <div className="flex items-center justify-between mb-2">
-          <span className="section-label">{t("gpu.universal")}</span>
-          <button onClick={applyUniversal} disabled={busy} className="btn btn-primary">
-            {busy ? t("gpu.applying") : t("gpu.applySelected")}
-          </button>
+          {nvidia && nv && (
+            <div className="grid grid-cols-5 gap-2.5 mt-4">
+              <Metric label={t("gpu.m.temp")} value={nv.temp} unit="°C" color={nv.temp < 70 ? undefined : nv.temp < 84 ? "#ffd24a" : "#ff5470"} />
+              <Metric label={t("gpu.m.usage")} value={nv.util} unit="%" />
+              <Metric label={t("gpu.m.clock")} value={nv.clock} unit="MHz" />
+              <Metric label={t("gpu.m.power")} value={Math.round(nv.power)} unit="W" />
+              <Metric label="VRAM" value={Math.round(nv.memUsed / 1024 * 10) / 10} unit={`/ ${Math.round(nv.memTotal / 1024)} GB`} />
+            </div>
+          )}
+          {nvidia && !nv && <p className="text-[12.5px] text-text-mute mt-3">{t("gpu.readingNv")}</p>}
+          {amd && <p className="text-[12.5px] text-text-mute mt-3">{t("gpu.amdNote")}</p>}
+          {!nvidia && !amd && list.length > 0 && <p className="text-[12.5px] text-text-mute mt-3">{t("gpu.otherNote")}</p>}
         </div>
-        <p className="text-[12px] text-text-mute mb-2">{t("gpu.movedHint")}</p>
-        <div className="space-y-0.5">
-          {GPU_OPS.map((o) => (
-            <EnergyCheckbox key={o.id} checked={!!sel[o.id]} onChange={(v) => setSel((s) => ({ ...s, [o.id]: v }))}
-              label={lang === "es" ? o.name : t(`gpu.op.${o.id}.name`)} desc={lang === "es" ? o.desc : t(`gpu.op.${o.id}.desc`)} risk={o.risk === "advanced" ? "advanced" : "safe"}
-              badge={o.risk === "advanced" ? t("gpu.advanced") : undefined} />
-          ))}
-        </div>
-      </NeonCard>
 
-      {/* NVIDIA específico */}
-      {nvidia && (
-        <NeonCard className="mb-4">
-          <div className="flex items-start justify-between gap-4">
+        <div className={`grid gap-4 items-start ${nvidia || amd ? "grid-cols-[1.4fr_1fr]" : "grid-cols-1"}`}>
+          {/* Ajustes universales */}
+          <div>
+            <SectionTitle right={<button onClick={applyUniversal} disabled={busy} className="text-[12.5px] font-medium text-accent hover:underline disabled:opacity-50">{busy ? t("gpu.applying") : t("gpu.applySelected")}</button>}>
+              {t("gpu.universal")}
+            </SectionTitle>
+            <List>
+              {GPU_OPS.map((o) => (
+                <EnergyCheckbox key={o.id} checked={!!sel[o.id]} onChange={(v) => setSel((s) => ({ ...s, [o.id]: v }))}
+                  label={lang === "es" ? o.name : t(`gpu.op.${o.id}.name`)} desc={lang === "es" ? o.desc : t(`gpu.op.${o.id}.desc`)}
+                  risk={o.risk === "advanced" ? "advanced" : "safe"} />
+              ))}
+            </List>
+            <p className="text-[12px] text-text-mute mt-2">{t("gpu.movedHint")}</p>
+          </div>
+
+          {/* Ajuste propio de la marca */}
+          {(nvidia || amd) && (
             <div>
-              <div className="text-[14px] font-semibold text-text flex items-center gap-2">
-                <span style={{ color: "#76b900" }}>▲</span> {t("gpu.nvMax")}
+              <SectionTitle>{t("gpu.vendorTitle")}</SectionTitle>
+              <div className="space-y-4">
+              {nvidia && <VendorCard title={t("gpu.nvMax")} desc={t("gpu.nvDesc")} color="#76b900" busy={vendorBusy}
+                onApply={() => runVendor(NV_MAXPERF(lang === "en"), t("gpu.nvApply"))} onRestore={() => runVendor(NV_RESTORE(lang === "en"), t("gpu.nvRestore"))} />}
+              {amd && <VendorCard title={t("gpu.amdMax")} desc={t("gpu.amdDesc")} color="#ed1c24" busy={vendorBusy}
+                onApply={() => runVendor(AMD_MAXPERF(lang === "en"), t("gpu.amdApply"))} onRestore={() => runVendor(AMD_RESTORE(lang === "en"), t("gpu.amdRestore"))} />}
               </div>
-              <p className="text-[12.5px] text-text-mute mt-1 max-w-[440px]">
-                {t("gpu.nvDesc")}
-              </p>
             </div>
-            <div className="flex flex-col gap-2 shrink-0">
-              <button onClick={() => runVendor(NV_MAXPERF(lang === "en"), t("gpu.nvApply"))} disabled={vendorBusy} className="btn btn-primary">
-                {vendorBusy ? "…" : t("common.apply")}
-              </button>
-              <button onClick={() => runVendor(NV_RESTORE(lang === "en"), t("gpu.nvRestore"))} disabled={vendorBusy} className="btn btn-ghost">
-                {t("common.restore")}
-              </button>
-            </div>
-          </div>
-        </NeonCard>
-      )}
+          )}
+        </div>
 
-      {/* AMD específico */}
-      {amd && (
-        <NeonCard className="mb-4">
-          <div className="flex items-start justify-between gap-4">
-            <div>
-              <div className="text-[14px] font-semibold text-text flex items-center gap-2">
-                <span style={{ color: "#ed1c24" }}>●</span> {t("gpu.amdMax")}
-              </div>
-              <p className="text-[12.5px] text-text-mute mt-1 max-w-[440px]">
-                {t("gpu.amdDesc")}
-              </p>
-            </div>
-            <div className="flex flex-col gap-2 shrink-0">
-              <button onClick={() => runVendor(AMD_MAXPERF(lang === "en"), t("gpu.amdApply"))} disabled={vendorBusy} className="btn btn-primary">
-                {vendorBusy ? "…" : t("common.apply")}
-              </button>
-              <button onClick={() => runVendor(AMD_RESTORE(lang === "en"), t("gpu.amdRestore"))} disabled={vendorBusy} className="btn btn-ghost">
-                {t("common.restore")}
-              </button>
-            </div>
-          </div>
-        </NeonCard>
-      )}
-
-      {/* registro */}
-      <div ref={logRef} className="flex-1 min-h-[88px] overflow-y-auto rounded-xl bg-[#08080a] border border-line p-3.5 font-mono text-[12.5px] leading-relaxed text-text-dim whitespace-pre-wrap">
-        {trLog(log.join("\n"), lang)}
+        <LogPanel ref={logRef} label={t("common.log")} className="h-[150px]">{trLog(log.join("\n"), lang)}</LogPanel>
       </div>
-    </div>
+    </Page>
   );
 }

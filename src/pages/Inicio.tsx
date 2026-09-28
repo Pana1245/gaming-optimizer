@@ -1,8 +1,7 @@
 import { useEffect, useState } from "react";
-import { motion } from "framer-motion";
 import { runPowershell } from "../lib/api";
 import { useScrollMemory } from "../lib/useScrollMemory";
-import { HudTitle } from "../components/NeonCard";
+import { Page, List, Row, Badge, Switch, Empty } from "../components/ui";
 import { StatusLine } from "../components/Feedback";
 import { useI18n } from "../lib/i18n";
 import { trLog } from "../lib/logI18n";
@@ -72,44 +71,35 @@ export default function Inicio() {
   const enabledCount = items.filter((i) => i.enabled).length;
 
   return (
-    <div className="h-full flex flex-col px-8 py-7">
-      <HudTitle tkey="page.startup" />
-
-      <p className="text-[12px] text-text-mute mb-3 -mt-1">{t("startup.scope")}</p>
-
-      <div className="flex items-center justify-between mb-3">
-        <span className="text-[13px] text-text-mute">{enabledCount} {t("startup.active")} · {items.length} {t("startup.total")}</span>
-        <button onClick={load} className="btn btn-ghost">{t("common.refresh")}</button>
+    <Page tkey="page.startup" actions={<button onClick={load} className="btn btn-ghost">{t("common.refresh")}</button>}>
+      <div className="flex items-center justify-between gap-4 mb-3 -mt-1 shrink-0">
+        <span className="text-[12.5px] text-text-dim">
+          <span className="text-text font-medium tabular-nums">{enabledCount}</span> {t("startup.active")} · {items.length} {t("startup.total")}
+        </span>
+        <span className="text-[12px] text-text-mute truncate">{t("startup.scope")}</span>
       </div>
 
-      <div ref={scrollRef} className="flex-1 overflow-y-auto pr-2 -mr-2">
+      <div ref={scrollRef} className="flex-1 overflow-y-auto pr-2 -mr-2 pb-2">
         {loading ? (
-          <div className="text-text-mute text-sm">{t("startup.loading")}</div>
+          <Empty loading>{t("startup.loading")}</Empty>
         ) : items.length === 0 ? (
-          <div className="text-text-mute text-sm">{t("startup.none")}</div>
+          <Empty>{t("startup.none")}</Empty>
         ) : (
-          <div className="rounded-xl border border-line divide-y divide-line/60">
+          <List>
             {items.map((e) => (
-              <div key={e.scope + e.name} className="flex items-center gap-3 px-4 py-3">
-                <div className="flex-1 min-w-0">
-                  <div className={`text-[13px] ${e.enabled ? "text-text" : "text-text-mute"}`}>{e.name}</div>
-                  <div className="text-[12px] text-text-mute truncate font-mono">{e.cmd}</div>
-                </div>
-                <span className="text-[11px] text-text-mute border border-line rounded px-1.5 py-0.5">{e.scope}</span>
-                <button
-                  onClick={() => toggle(e)} disabled={busy === e.name}
-                  className={`relative w-10 h-[22px] rounded-full transition-colors shrink-0 ${e.enabled ? "bg-accent" : "bg-line-2"}`}>
-                  <motion.span layout transition={{ type: "spring", stiffness: 500, damping: 32 }}
-                    className="absolute top-[2px] w-[18px] h-[18px] rounded-full bg-black"
-                    style={{ left: e.enabled ? 20 : 2 }} />
-                </button>
-              </div>
+              <Row key={e.scope + e.name} muted={!e.enabled}
+                title={e.name}
+                desc={<span className="font-mono">{e.cmd}</span>}
+                right={<>
+                  <Badge>{e.scope}</Badge>
+                  <Switch on={e.enabled} onChange={() => toggle(e)} disabled={busy === e.name} label={e.name} />
+                </>} />
             ))}
-          </div>
+          </List>
         )}
       </div>
 
       <StatusLine working={!!busy} text={trLog(status, lang)} />
-    </div>
+    </Page>
   );
 }

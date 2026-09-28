@@ -1,5 +1,5 @@
-import { motion } from "framer-motion";
 import Tooltip from "./Tooltip";
+import { Check, Badge } from "./ui";
 import { useI18n } from "../lib/i18n";
 
 interface Props {
@@ -11,66 +11,33 @@ interface Props {
   desc?: string;
 }
 
+/** Fila con casilla (Optimizaciones, Motor, Gráficos, Limpieza): nombre, etiquetas
+ *  (W11 / Avanzado) y un ⓘ con la explicación del tweak. */
 export default function EnergyCheckbox({ checked, onChange, label, badge, risk, desc }: Props) {
   const { t } = useI18n();
   return (
     <div
-      className="flex items-center gap-3 py-2.5 px-2 -mx-2 rounded-md cursor-pointer hover:bg-white/[0.025] transition-colors"
+      className="group flex items-center gap-3 py-2.5 px-4 cursor-pointer hover:bg-white/[0.025] transition-colors"
       onClick={() => onChange(!checked)}
     >
-      <motion.div
-        animate={{
-          backgroundColor: checked ? "#00e676" : "rgba(0,0,0,0)",
-          borderColor: checked ? "#00e676" : "#262629",
-          scale: checked ? [1, 1.18, 1] : 1,
-          boxShadow: checked ? "0 0 8px rgba(0,230,118,0.6)" : "0 0 0 rgba(0,0,0,0)",
-        }}
-        transition={{ duration: 0.25, ease: "easeOut" }}
-        className="relative w-[18px] h-[18px] rounded-[5px] border shrink-0 flex items-center justify-center"
-      >
-        <svg viewBox="0 0 16 16" className="w-3 h-3">
-          <motion.path
-            d="M3.5 8.5 L6.5 11.5 L12.5 4.5"
-            fill="none" stroke="#000" strokeWidth="2.2"
-            strokeLinecap="round" strokeLinejoin="round"
-            initial={false}
-            animate={{ pathLength: checked ? 1 : 0, opacity: checked ? 1 : 0 }}
-            transition={{ duration: 0.2, ease: "easeOut" }}
-          />
-        </svg>
-      </motion.div>
-      {risk && (
-        <span
-          className="w-1.5 h-1.5 rounded-full shrink-0"
-          style={{ background: risk === "advanced" ? "#ffb74d" : "#00e676" }}
-        />
-      )}
-      {desc ? (
+      <Check on={checked} />
+      <span className={`text-[13.5px] truncate transition-colors ${checked ? "text-text" : "text-text-dim"}`}>{label}</span>
+      {desc && (
         <Tooltip
-          className="flex-1 min-w-0"
           content={
             <>
               {desc}
-              {risk === "advanced" && (
-                <span className="block mt-1 text-[#ffb74d]">{t("common.advancedWarn")}</span>
-              )}
+              {risk === "advanced" && <span className="block mt-1 text-[#ffb74d]">{t("common.advancedWarn")}</span>}
             </>
           }
         >
-          <span className={`text-[13.5px] truncate transition-colors ${checked ? "text-text" : "text-text-dim"}`}>
-            {label}
-          </span>
+          <span className="w-4 h-4 rounded-full border border-line-2 grid place-items-center text-[9.5px] font-semibold text-text-mute opacity-0 group-hover:opacity-100 transition-opacity">i</span>
         </Tooltip>
-      ) : (
-        <span className={`text-[13.5px] flex-1 transition-colors ${checked ? "text-text" : "text-text-dim"}`}>
-          {label}
-        </span>
       )}
-      {badge && (
-        <span className="text-[11px] font-medium text-text-mute border border-line-2 rounded px-1.5 py-0.5">
-          {badge}
-        </span>
-      )}
+      <span className="ml-auto flex items-center gap-1.5 shrink-0">
+        {badge && <Badge>{badge}</Badge>}
+        {risk === "advanced" && <Badge tone="warn">{t("common.advancedBadge")}</Badge>}
+      </span>
     </div>
   );
 }

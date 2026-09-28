@@ -1,5 +1,4 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { motion } from "framer-motion";
 import { CATEGORIES } from "../catalog";
 import { EXTRA_TWEAKS, EXTRA_CATEGORIES } from "../extraCatalog";
 import { TWEAK_DESC } from "../tweakDesc";
@@ -9,7 +8,7 @@ import { runPowershell, getSystemInfo } from "../lib/api";
 import { notify } from "../lib/notify";
 import { useScrollMemory } from "../lib/useScrollMemory";
 import EnergyCheckbox from "../components/EnergyCheckbox";
-import { HudTitle } from "../components/NeonCard";
+import { Page, SectionTitle, List, LogPanel, Progress } from "../components/ui";
 import Modal from "../components/Modal";
 import { useI18n, pick } from "../lib/i18n";
 import { trLog } from "../lib/logI18n";
@@ -202,91 +201,56 @@ export default function Optimizaciones() {
   const count = selectedList().length;
 
   return (
-    <div className="h-full flex flex-col px-8 py-7">
-      <HudTitle tkey="page.opt" />
+    <Page tkey="page.opt" actions={<>
+      <button disabled={running} onClick={modoGamer} className="btn btn-ghost">{t("opt.gamerPreset")}</button>
+      <button disabled={running} onClick={() => setAll(true)} className="btn btn-ghost">{t("opt.selectAll")}</button>
+      <button disabled={running} onClick={() => setAll(false)} className="btn btn-ghost">{t("opt.deselect")}</button>
+      <button disabled={running} onClick={() => (count === 0 ? setDone(t("opt.noneSelected")) : setConfirm(true))} className="btn btn-primary px-5">
+        {running ? t("opt.optimizing") : `${t("opt.applyBtn")}${count ? ` (${count})` : ""}`}
+      </button>
+    </>}>
+      {running && <div className="-mt-3 mb-5 shrink-0"><Progress value={progress} /></div>}
 
-      <div className="flex-1 grid grid-cols-[1fr_340px] gap-6 min-h-0">
-        {/* Lista */}
-        <motion.div
-          ref={scrollRef}
-          className={`overflow-y-auto pr-3 -mr-3 space-y-7 transition-opacity ${running ? "pointer-events-none opacity-50" : ""}`}
-          initial="hidden" animate="show"
-          variants={{ show: { transition: { staggerChildren: 0.05 } } }}
-        >
+      <div className="flex-1 grid grid-cols-[1fr_320px] gap-6 min-h-0">
+        {/* Lista por categorías */}
+        <div ref={scrollRef} className={`overflow-y-auto pr-3 -mr-3 space-y-6 pb-2 transition-opacity ${running ? "pointer-events-none opacity-50" : ""}`}>
           {cats.map((c) => {
             const selCount = c.tweaks.filter((_, i) => sel[`${c.id}:${i}`]).length;
+            const allOn = c.tweaks.every((tw, i) => tw.optIn || sel[`${c.id}:${i}`]);
+            const toggleCat = () => setSel((s) => {
+              const n = { ...s };
+              c.tweaks.forEach((tw, i) => (n[`${c.id}:${i}`] = !allOn && !tw.optIn));
+              return n;
+            });
             return (
-              <motion.section
-                key={c.id}
-                variants={{
-                  hidden: { opacity: 0, y: 12 },
-                  show: { opacity: 1, y: 0, transition: { duration: 0.3, ease: "easeOut" } },
-                }}
-              >
-                <div className="flex items-center gap-2.5 mb-2.5">
-                  <span className="w-1.5 h-1.5 rounded-full" style={{ background: c.color }} />
-                  <h2 className="section-label">{pick(lang, c.name, CATEGORY_EN[c.id], CATEGORY_PT[c.id])}</h2>
-                  <span className="text-[12px] text-text-mute">{selCount}/{c.tweaks.length}</span>
-                </div>
-                {c.id === "winutil" && (
-                  <p className="text-[12px] text-text-mute -mt-1.5 mb-2">{t("opt.winutilNote")}</p>
-                )}
-                <div className="rounded-xl border border-line divide-y divide-line/60">
-                  {c.tweaks.map((t, i) => (
-                    <div key={i} className="px-3">
-                      <EnergyCheckbox
-                        label={tn(t.name)}
-                        badge={t.os ? `W${t.os}` : undefined}
-                        risk={t.risk === "advanced" || ADVANCED.has(t.name) ? "advanced" : "safe"}
-                        desc={td(t.name)}
-                        checked={!!sel[`${c.id}:${i}`]}
-                        onChange={(v) => setSel((s) => ({ ...s, [`${c.id}:${i}`]: v }))}
-                      />
-                    </div>
+              <section key={c.id}>
+                <SectionTitle dot={c.color} right={<>
+                  <span className="tabular-nums">{selCount}/{c.tweaks.length}</span>
+                  <button onClick={toggleCat} className="text-text-mute hover:text-accent transition-colors">{allOn ? t("apps.catRemove") : t("apps.catAll")}</button>
+                </>}>
+                  {pick(lang, c.name, CATEGORY_EN[c.id], CATEGORY_PT[c.id])}
+                </SectionTitle>
+                {c.id === "winutil" && <p className="text-[12px] text-text-mute -mt-1 mb-2">{t("opt.winutilNote")}</p>}
+                <List>
+                  {c.tweaks.map((tw, i) => (
+                    <EnergyCheckbox
+                      key={i}
+                      label={tn(tw.name)}
+                      badge={tw.os ? `W${tw.os}` : undefined}
+                      risk={tw.risk === "advanced" || ADVANCED.has(tw.name) ? "advanced" : "safe"}
+                      desc={td(tw.name)}
+                      checked={!!sel[`${c.id}:${i}`]}
+                      onChange={(v) => setSel((s) => ({ ...s, [`${c.id}:${i}`]: v }))}
+                    />
                   ))}
-                </div>
-              </motion.section>
+                </List>
+              </section>
             );
           })}
-        </motion.div>
-
-        {/* Log */}
-        <div className="flex flex-col min-h-0">
-          <span className="section-label mb-2.5">{t("common.progress")}</span>
-          <div
-            ref={logRef}
-            className="flex-1 overflow-y-auto rounded-xl bg-surface border border-line p-4 font-mono text-[13px] leading-relaxed text-text-dim whitespace-pre-wrap"
-          >
-            {trLog(log.join("\n"), lang)}
-          </div>
         </div>
-      </div>
 
-      {/* Acciones */}
-      <div className="mt-6 pt-5 border-t border-line">
-        {running && (
-          <div className="h-[3px] rounded-full bg-line overflow-hidden mb-4">
-            <motion.div
-              className="h-full bg-accent"
-              animate={{ width: `${progress * 100}%` }}
-              transition={{ ease: "easeOut", duration: 0.3 }}
-            />
-          </div>
-        )}
-        <div className="flex items-center justify-between">
-          <div className="flex gap-2">
-            <button disabled={running} onClick={() => setAll(true)} className="btn btn-ghost">{t("opt.selectAll")}</button>
-            <button disabled={running} onClick={() => setAll(false)} className="btn btn-ghost">{t("opt.deselect")}</button>
-            <button disabled={running} onClick={modoGamer} className="btn btn-ghost">{t("opt.gamerPreset")}</button>
-          </div>
-          <button
-            disabled={running}
-            onClick={() => (count === 0 ? setDone(t("opt.noneSelected")) : setConfirm(true))}
-            className="btn btn-primary px-6"
-          >
-            {running ? t("opt.optimizing") : `${t("opt.applyBtn")}${count ? ` (${count})` : ""}`}
-          </button>
-        </div>
+        {/* Registro */}
+        <LogPanel ref={logRef} label={t("common.progress")}>{trLog(log.join("\n"), lang)}</LogPanel>
       </div>
 
       <Modal open={confirm} title={t("opt.confirmTitle")} onClose={() => setConfirm(false)}
@@ -298,6 +262,6 @@ export default function Optimizaciones() {
         confirmText={t("opt.reboot")} closeText={t("opt.rebootLater")}>
         {trLog(done || "", lang)}
       </Modal>
-    </div>
+    </Page>
   );
 }

@@ -1,7 +1,7 @@
-import { useRef, useState } from "react";
-import { motion } from "framer-motion";
+import { useRef, useState, type ReactNode } from "react";
 import { runStream } from "../lib/api";
-import NeonCard, { HudTitle } from "../components/NeonCard";
+import { Page, ActionCard, LogPanel } from "../components/ui";
+import { IconShieldCheck, IconLayers, IconGlobe, IconReset, IconApps } from "../components/icons";
 import { Spinner, IndeterminateBar } from "../components/Feedback";
 import { useI18n } from "../lib/i18n";
 import { trLog } from "../lib/logI18n";
@@ -18,6 +18,10 @@ const ACTIONS = [
   { id: "iconcache", title: "Reconstruir caché de iconos", desc: "Arregla iconos en blanco o corruptos.",
     btn: "Reconstruir", script: String.raw`Stop-Process -Name explorer -Force -EA SilentlyContinue; Remove-Item "$env:LocalAppData\IconCache.db" -Force -EA SilentlyContinue; Remove-Item "$env:LocalAppData\Microsoft\Windows\Explorer\iconcache_*" -Force -EA SilentlyContinue; Start-Process explorer; Write-Output "Caché de iconos reconstruida"` },
 ];
+
+const REPAIR_ICONS: Record<string, ReactNode> = {
+  sfc: <IconShieldCheck />, dism: <IconLayers />, net: <IconGlobe />, explorer: <IconReset />, iconcache: <IconApps />,
+};
 
 export default function Reparar() {
   const { t, lang } = useI18n();
@@ -60,41 +64,21 @@ export default function Reparar() {
   };
 
   return (
-    <div className="h-full flex flex-col px-8 py-7">
-      <HudTitle tkey="page.repair" />
-
-      <div className="flex-1 grid grid-cols-[1fr_340px] gap-6 min-h-0">
-        <motion.div className="space-y-3 overflow-y-auto pr-3 -mr-3"
-          initial="hidden" animate="show" variants={{ show: { transition: { staggerChildren: 0.06 } } }}>
+    <Page tkey="page.repair">
+      {busy && <div className="-mt-3 mb-5 shrink-0"><IndeterminateBar /></div>}
+      <div className="flex-1 grid grid-cols-[1fr_320px] gap-6 min-h-0">
+        <div className="space-y-3 overflow-y-auto pr-3 -mr-3 pb-2">
           {ACTIONS.map((a) => (
-            <motion.div key={a.id} variants={{ hidden: { opacity: 0, y: 12 }, show: { opacity: 1, y: 0, transition: { duration: 0.3, ease: "easeOut" } } }}>
-              <NeonCard>
-                <div className="flex items-center justify-between gap-4">
-                  <div className="min-w-0">
-                    <div className="text-[14px] font-medium text-text">{t(`repair.${a.id}.title`)}</div>
-                    <div className="text-[13px] text-text-dim mt-0.5">{t(`repair.${a.id}.desc`)}</div>
-                  </div>
-                  <motion.button whileTap={{ scale: 0.96 }} onClick={() => run(a)} disabled={!!busy}
-                    className="shrink-0 px-4 h-9 rounded-lg text-[13px] font-medium text-text-dim hover:text-text border border-line hover:border-line-2 transition disabled:opacity-40">
-                    {busy === a.id ? t("repair.running") : t(`repair.${a.id}.btn`)}
-                  </motion.button>
-                </div>
-              </NeonCard>
-            </motion.div>
+            <ActionCard key={a.id} icon={REPAIR_ICONS[a.id]} title={t(`repair.${a.id}.title`)} desc={t(`repair.${a.id}.desc`)}
+              action={<button onClick={() => run(a)} disabled={!!busy} className="btn btn-ghost">
+                {busy === a.id ? t("repair.running") : t(`repair.${a.id}.btn`)}
+              </button>} />
           ))}
-        </motion.div>
-
-        <div className="flex flex-col min-h-0">
-          <div className="flex items-center gap-2 mb-2.5 h-4">
-            <span className="section-label">{t("repair.output")}</span>
-            {busy && <Spinner size={12} />}
-          </div>
-          {busy && <IndeterminateBar className="mb-2" />}
-          <div ref={logRef} className="flex-1 overflow-y-auto rounded-xl bg-surface border border-line p-4 font-mono text-[13px] leading-relaxed text-text-dim whitespace-pre-wrap">
-            {trLog(log.join("\n"), lang)}
-          </div>
         </div>
+        <LogPanel ref={logRef} label={<span className="flex items-center gap-2">{t("repair.output")}{busy && <Spinner size={12} />}</span>}>
+          {trLog(log.join("\n"), lang)}
+        </LogPanel>
       </div>
-    </div>
+    </Page>
   );
 }

@@ -19,8 +19,11 @@ export default function CommandPalette({ items, onSelect }: { items: CmdItem[]; 
       if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "k") { e.preventDefault(); setOpen((o) => !o); }
       else if (e.key === "Escape") setOpen(false);
     };
+    // También se abre desde el botón "Buscar" de la barra superior.
+    const onOpen = () => setOpen(true);
     window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
+    window.addEventListener("open-palette", onOpen);
+    return () => { window.removeEventListener("keydown", onKey); window.removeEventListener("open-palette", onOpen); };
   }, []);
 
   useEffect(() => {
