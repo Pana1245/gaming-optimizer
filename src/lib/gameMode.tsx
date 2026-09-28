@@ -57,6 +57,9 @@ export const DEFAULT_GAMES = [
   "eldenring.exe", "cyberpunk2077.exe", "rocketleague.exe",
 ];
 
+type LogMsg = (t: (k: string) => string) => string;
+interface LogEntry { ts: number | null; msg: LogMsg }
+
 const loadGames = (): string[] => {
   try { const s = localStorage.getItem("gm_games"); if (s) return JSON.parse(s); } catch {}
   return DEFAULT_GAMES;
@@ -90,7 +93,9 @@ export function GameModeProvider({ children }: { children: ReactNode }) {
   const tRef = useRef(t);
   tRef.current = t;
   const tr = (k: string) => tRef.current(k);
-  const [log, setLog] = useState<string[]>(() => [t("gml.ready")]);
+  // La actividad se guarda como "mensaje por traducir" (no como texto ya traducido):
+  // así, si cambiás de idioma, todo el registro se muestra en el idioma nuevo.
+  const [entries, setEntries] = useState<LogEntry[]>(() => [{ ts: null, msg: (tt) => tt("gml.ready") }]);
   const playingRef = useRef<string | null>(null);
   playingRef.current = playing;
   const proRef = useRef(pro);
@@ -101,8 +106,8 @@ export function GameModeProvider({ children }: { children: ReactNode }) {
   // apps de fondo quedaban modificadas para siempre).
   const appliedProRef = useRef(false);
 
-  const addLog = (s: string) =>
-    setLog((l) => [...l.slice(-60), `[${new Date().toLocaleTimeString()}] ${s}`]);
+  const addLog = (msg: LogMsg) => setEntries((l) => [...l.slice(-60), { ts: Date.now(), msg }]);
+  const log = entries.map((e) => (e.ts ? `[${new Date(e.ts).toLocaleTimeString()}] ` : "") + e.msg(t));
 
   const setPro = (v: boolean) => { localStorage.setItem("gm_pro", v ? "1" : "0"); setProState(v); };
 
@@ -123,7 +128,7 @@ export function GameModeProvider({ children }: { children: ReactNode }) {
       const g = e.payload;
       enqueue(async () => {
         setPlaying(g);
-        addLog(tr("gml.detected").replace("{g}", g));
+        addLog((tt) => tt("gml.detected").replace("{g}", g));
         notify(tr("gml.onTitle"), tr("gml.onBody").replace("{g}", g));
         await runPowershell(GAMER_ON);
         if (proRef.current) {
@@ -134,13 +139,13 @@ export function GameModeProvider({ children }: { children: ReactNode }) {
           appliedProRef.current = true;
           const ram = await clearStandbyRam(localStorage.getItem("lang") || "es");
           const bgN = bg.output.match(/BG=(\d+)/)?.[1] ?? "0";
-          addLog(tr("gml.pro").replace("{n}", bgN).replace("{ram}", tr(ram.ok ? "gml.ramFreed" : "gml.ramSame")));
+          addLog((tt) => tt("gml.pro").replace("{n}", bgN).replace("{ram}", tt(ram.ok ? "gml.ramFreed" : "gml.ramSame")));
         }
       });
     }).then((u) => uns.push(u));
     listen("game-off", () => {
       enqueue(async () => {
-        addLog(tr("gml.closed"));
+        addLog((tt) => tt("gml.closed"));
         notify(tr("gml.offTitle"), tr("gml.offBody"));
         await runPowershell(GAMER_OFF);
         if (appliedProRef.current) { await runPowershell(BG_RESTORE); appliedProRef.current = false; }
@@ -163,7 +168,8 @@ export function GameModeProvider({ children }: { children: ReactNode }) {
     if (enabled) {
       ensureNotify();
       startGameWatch(games);
-      if (changed) addLog(tr("gml.watching").replace("{n}", String(games.length)) + (pro ? tr("gml.proSuffix") : ""));
+      const n = String(games.length), withPro = pro;
+      if (changed) addLog((tt) => tt("gml.watching").replace("{n}", n) + (withPro ? tt("gml.proSuffix") : ""));
     } else {
       stopGameWatch();
       if (playingRef.current) {
@@ -173,7 +179,7 @@ export function GameModeProvider({ children }: { children: ReactNode }) {
           setPlaying(null);
         });
       }
-      if (changed) addLog(tr("gml.off"));
+      if (changed) addLog((tt) => tt("gml.off"));
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [enabled, games]);
