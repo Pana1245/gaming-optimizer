@@ -10,6 +10,7 @@ import { notify } from "./lib/notify";
 import UpdateBanner from "./components/UpdateBanner";
 import TitleBar from "./components/TitleBar";
 import { ensureNotify } from "./lib/notify";
+import { dedupePowerPlansOnce } from "./lib/powerDedupe";
 import Optimizaciones from "./pages/Optimizaciones";
 import Motor from "./pages/Motor";
 import GameMode from "./pages/GameMode";
@@ -93,6 +94,8 @@ export default function App() {
   const [loading, setLoading] = useState(true);
   const { t, lang } = useI18n();
   useEffect(() => { ensureNotify(); }, []);
+  // Limpieza única de planes de energía duplicados que dejaban versiones viejas.
+  useEffect(() => { dedupePowerPlansOnce(); }, []);
   // Menú de la bandeja en el idioma de la interfaz.
   useEffect(() => {
     invoke("tray_labels", { open: t("tray.open"), quit: t("tray.quit"), tooltip: t("tray.tooltip") }).catch(() => {});
