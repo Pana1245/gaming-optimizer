@@ -92,6 +92,37 @@ const GUIDE: Item[] = [
     },
   },
   {
+    id: "drivers", icon: "🧩",
+    title: { es: "Drivers", en: "Drivers", pt: "Drivers" },
+    desc: { es: "Revisa tus drivers básicos contra la página oficial del fabricante.", en: "Checks your core drivers against the manufacturer's official site.", pt: "Verifica seus drivers básicos no site oficial do fabricante." },
+    points: {
+      es: [
+        "Detecta tu placa madre y tus drivers de video, red, audio, chipset, almacenamiento, Bluetooth y la BIOS.",
+        "Placas ASUS: compara con la lista oficial de drivers de tu modelo exacto y te dice cuáles están desactualizados.",
+        "NVIDIA: compara con el último driver Game Ready oficial.",
+        "MSI, Gigabyte, ASRock y notebooks: sus sitios no permiten comparar automáticamente, así que te avisa por antigüedad y te lleva a la página de tu modelo.",
+        "También avisa si Windows tiene dispositivos sin driver.",
+        "No descarga ni instala nada: cada botón abre la página oficial en tu navegador.",
+      ],
+      en: [
+        "Detects your motherboard and your graphics, network, audio, chipset, storage, Bluetooth and BIOS drivers.",
+        "ASUS boards: compares with the official driver list for your exact model and tells you which are outdated.",
+        "NVIDIA: compares with the latest official Game Ready driver.",
+        "MSI, Gigabyte, ASRock and laptops: their sites don't allow automatic checks, so it flags drivers by age and takes you to your model's page.",
+        "It also warns you about devices Windows has no driver for.",
+        "It doesn't download or install anything: every button opens the official page in your browser.",
+      ],
+      pt: [
+        "Detecta sua placa-mãe e seus drivers de vídeo, rede, áudio, chipset, armazenamento, Bluetooth e a BIOS.",
+        "Placas ASUS: compara com a lista oficial de drivers do seu modelo exato e diz quais estão desatualizados.",
+        "NVIDIA: compara com o último driver Game Ready oficial.",
+        "MSI, Gigabyte, ASRock e notebooks: os sites deles não permitem comparar automaticamente, então avisa pela idade e leva você à página do seu modelo.",
+        "Também avisa se o Windows tem dispositivos sem driver.",
+        "Não baixa nem instala nada: cada botão abre o site oficial no seu navegador.",
+      ],
+    },
+  },
+  {
     id: "profiles", icon: "📚",
     title: { es: "Perfiles", en: "Profiles", pt: "Perfis" },
     desc: { es: "Configuraciones completas con un solo clic.", en: "Complete setups with a single click.", pt: "Configurações completas com um só clique." },

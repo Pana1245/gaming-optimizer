@@ -24,13 +24,14 @@ import Sistema from "./pages/Sistema";
 import Guia from "./pages/Guia";
 import Panel from "./pages/Panel";
 import Chequeo from "./pages/Chequeo";
+import Drivers from "./pages/Drivers";
 import Perfiles from "./pages/Perfiles";
 import Red from "./pages/Red";
 import Graficos from "./pages/Graficos";
 import Herramientas from "./pages/Herramientas";
 import Reactivar from "./pages/Reactivar";
 import {
-  IconRocket, IconShieldCheck, IconGamepad, IconBroom, IconPower, IconApps, IconTrash, IconReset, IconWrench, IconChart, IconBook, IconGauge, IconLayers, IconGlobe, IconGpu, IconTools, IconLifeRing, IconPulse,
+  IconRocket, IconShieldCheck, IconGamepad, IconBroom, IconPower, IconApps, IconTrash, IconReset, IconWrench, IconChart, IconBook, IconGauge, IconLayers, IconGlobe, IconGpu, IconTools, IconLifeRing, IconPulse, IconChip,
 } from "./components/icons";
 
 // Menú agrupado: arriba lo general; después rendimiento, limpieza/apps y control/reparación.
@@ -38,6 +39,7 @@ const GROUPS: NavGroup[] = [
   { items: [
     { id: "panel", label: "nav.panel", icon: <IconGauge /> },
     { id: "health", label: "nav.health", icon: <IconPulse /> },
+    { id: "drivers", label: "nav.drivers", icon: <IconChip /> },
     { id: "system", label: "nav.system", icon: <IconChart /> },
   ] },
   { label: "nav.group.perf", items: [
@@ -68,6 +70,7 @@ const FOOTER: NavItem[] = [
 function renderPage(page: string, go: (p: string) => void) {
   switch (page) {
     case "health": return <Chequeo onNavigate={go} />;
+    case "drivers": return <Drivers />;
     case "panel": return <Panel onNavigate={go} />;
     case "profiles": return <Perfiles />;
     case "network": return <Red />;

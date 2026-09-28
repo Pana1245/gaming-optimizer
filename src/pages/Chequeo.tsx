@@ -284,7 +284,7 @@ export default function Chequeo({ onNavigate }: { onNavigate: (page: string) => 
       if (g.days < 0) continue;
       const v = { name: g.name, version: g.version, months: Math.floor(g.days / 30) };
       items.push(g.days > 180
-        ? { id: `gpu-${g.name}`, status: "warn", title: fill(t("hc.gpu.old.t"), v), detail: fill(t("hc.gpu.old.d"), v) }
+        ? { id: `gpu-${g.name}`, status: "warn", title: fill(t("hc.gpu.old.t"), v), detail: fill(t("hc.gpu.old.d"), v), nav: "drivers" }
         : { id: `gpu-${g.name}`, status: "ok", title: t("hc.gpu.ok.t"), detail: fill(t("hc.gpu.ok.d"), v) });
     }
     // Plan de energía

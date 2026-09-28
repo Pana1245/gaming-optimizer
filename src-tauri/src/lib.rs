@@ -1,3 +1,4 @@
+mod drivers;
 mod speedtest;
 mod tray;
 
@@ -755,7 +756,8 @@ pub fn run() {
             ledger_read, ledger_write, start_game_watch, stop_game_watch,
             clear_standby_ram, reg_apply, reg_undo,
             speedtest::speed_test, speedtest::speed_cancel,
-            tray::tray_labels, tray::autostart_get, tray::autostart_set
+            tray::tray_labels, tray::autostart_get, tray::autostart_set,
+            drivers::drivers_fetch, drivers::open_url
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
