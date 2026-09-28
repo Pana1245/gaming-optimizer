@@ -343,7 +343,7 @@ export async function analyze(scan: Scan): Promise<Result> {
 
   const board = scan.laptop ? `${scan.system.maker} ${scan.system.model}` : `${scan.board.maker} ${scan.board.model}`;
   return {
-    vendor, boardName: board.replace(/ASUSTeK COMPUTER INC\.?/i, "ASUS").replace(/Micro-Star International Co\., Ltd\.?/i, "MSI").replace(/\s+/g, " ").trim(),
+    vendor, boardName: board.replace(/ASUSTeK COMPUTER INC\.?/i, "ASUS").replace(/Micro-Star International Co\., Ltd\.?/i, "MSI").replace(/Gigabyte Technology Co\., Ltd\.?/i, "Gigabyte").replace(/ASRock\s+ASRock/i, "ASRock").replace(/\s+/g, " ").trim(),
     boardLink, searchLink: vendor === "asus" ? undefined : links.search, compared: !!asus, items,
     osLabel: win11 ? "Windows 11" : "Windows 10",
   };

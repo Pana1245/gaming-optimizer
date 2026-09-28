@@ -597,7 +597,7 @@ export const PT: Record<string, string> = {
   "drv.srcAge": "A {src} não permite comparar automaticamente: avisamos pela idade",
   "drv.boardPage": "Suporte da {src}",
   "drv.notYourModel": "Não é seu modelo? Procure aqui",
-  "drv.nMissing": "faltando",
+  "drv.nMissing": "sem driver",
   "drv.nUpdate": "para atualizar",
   "drv.nCheck": "para revisar",
   "drv.nOk": "em ordem",

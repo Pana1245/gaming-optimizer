@@ -647,7 +647,7 @@ const STR: Record<string, { es: string; en: string }> = {
   "drv.srcAge": { es: "{src} no permite comparar automáticamente: te avisamos por antigüedad", en: "{src} doesn't allow automatic checks: we flag drivers by age" },
   "drv.boardPage": { es: "Soporte de {src}", en: "{src} support" },
   "drv.notYourModel": { es: "¿No es tu modelo? Buscalo acá", en: "Not your model? Search here" },
-  "drv.nMissing": { es: "faltan", en: "missing" },
+  "drv.nMissing": { es: "sin driver", en: "missing a driver" },
   "drv.nUpdate": { es: "para actualizar", en: "to update" },
   "drv.nCheck": { es: "para revisar", en: "to check" },
   "drv.nOk": { es: "en orden", en: "fine" },
