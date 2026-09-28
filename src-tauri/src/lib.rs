@@ -1,4 +1,5 @@
 mod speedtest;
+mod tray;
 
 use std::io::Read;
 use std::process::{Command, Stdio};
@@ -7,7 +8,7 @@ use std::sync::{Arc, Mutex};
 use base64::{engine::general_purpose, Engine as _};
 use serde::Serialize;
 use sysinfo::System;
-use tauri::Emitter;
+use tauri::{Emitter, Manager};
 
 #[cfg(windows)]
 use std::os::windows::process::CommandExt;
@@ -449,12 +450,15 @@ fn relaunch_as_admin() -> bool {
     use windows::Win32::UI::WindowsAndMessaging::SW_SHOWNORMAL;
     let Ok(exe) = std::env::current_exe() else { return false; };
     let exe_h = HSTRING::from(exe.as_os_str());
+    // Reenviar los argumentos (ej. --minimized) para no perderlos al elevar.
+    let args: Vec<String> = std::env::args().skip(1).map(|a| format!("\"{}\"", a.replace('"', ""))).collect();
+    let args_h = HSTRING::from(args.join(" "));
     unsafe {
         let r = ShellExecuteW(
             None,
             w!("runas"),
             PCWSTR(exe_h.as_ptr()),
-            PCWSTR::null(),
+            if args.is_empty() { PCWSTR::null() } else { PCWSTR(args_h.as_ptr()) },
             PCWSTR::null(),
             SW_SHOWNORMAL,
         );
@@ -705,6 +709,8 @@ pub fn run() {
     }
 
     tauri::Builder::default()
+        // Una sola instancia: si se abre de nuevo, se trae al frente la que ya corre.
+        .plugin(tauri_plugin_single_instance::init(|app, _args, _cwd| tray::show_main(app)))
         .plugin(tauri_plugin_updater::Builder::new().build())
         .plugin(tauri_plugin_process::init())
         .plugin(tauri_plugin_notification::init())
@@ -713,6 +719,12 @@ pub fn run() {
             game_watch: Mutex::new(Arc::new(AtomicBool::new(false))),
         })
         .setup(|app| {
+            tray::setup(app)?;
+            // La ventana arranca oculta (tauri.conf: visible=false): se muestra salvo
+            // que la haya lanzado la tarea de inicio con Windows (--minimized).
+            if !std::env::args().any(|a| a == tray::MINIMIZED_ARG) {
+                tray::show_main(app.handle());
+            }
             if cfg!(debug_assertions) {
                 app.handle().plugin(
                     tauri_plugin_log::Builder::default()
@@ -722,11 +734,28 @@ pub fn run() {
             }
             Ok(())
         })
+        // Con Auto Game-Mode vigilando, cerrar la ventana la esconde en la bandeja
+        // (sigue detectando juegos). "Salir" en el menú de la bandeja cierra del todo.
+        .on_window_event(|window, event| {
+            if let tauri::WindowEvent::CloseRequested { api, .. } = event {
+                let watching = window
+                    .app_handle()
+                    .try_state::<AppState>()
+                    .map(|s| s.game_watch.lock().map(|g| g.load(Ordering::SeqCst)).unwrap_or(false))
+                    .unwrap_or(false);
+                if watching {
+                    api.prevent_close();
+                    let _ = window.hide();
+                    let _ = window.emit("hidden-to-tray", ());
+                }
+            }
+        })
         .invoke_handler(tauri::generate_handler![
             run_powershell, run_powershell_stream, stats, system_info,
             ledger_read, ledger_write, start_game_watch, stop_game_watch,
             clear_standby_ram, reg_apply, reg_undo,
-            speedtest::speed_test, speedtest::speed_cancel
+            speedtest::speed_test, speedtest::speed_cancel,
+            tray::tray_labels, tray::autostart_get, tray::autostart_set
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

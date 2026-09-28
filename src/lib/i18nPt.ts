@@ -542,4 +542,12 @@ export const PT: Record<string, string> = {
   "hc.dk.r.readErr": "{n} erros de leitura não corrigidos",
   "hc.dk.r.wear": "{n}% da vida útil usada",
   "hc.dk.r.hot": "{n} °C (quente)",
+  "tray.open": "Abrir Gaming Optimizer",
+  "tray.quit": "Sair",
+  "tray.tooltip": "Gaming Optimizer",
+  "tray.hiddenTitle": "Gaming Optimizer continua ativo",
+  "tray.hiddenBody": "Ficou na bandeja (perto do relógio) monitorando seus jogos. Para fechar de vez: clique direito no ícone → Sair.",
+  "gm.autostartTitle": "Iniciar com o Windows 🖥️",
+  "gm.trayHint": "Inicia minimizado na bandeja (sem pedir permissão toda vez). Com o Auto Game-Mode ativo, fechar a janela a deixa na bandeja monitorando seus jogos; para fechar de vez: clique direito no ícone → Sair.",
+  "gm.autostartErr": "Não foi possível alterar (o app precisa rodar como administrador).",
 };

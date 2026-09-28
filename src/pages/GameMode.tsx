@@ -1,4 +1,5 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { invoke } from "@tauri-apps/api/core";
 import { motion } from "framer-motion";
 import { useGameMode } from "../lib/gameMode";
 import { detectGames, type DetectedGame } from "../lib/detect";
@@ -12,6 +13,17 @@ export default function GameMode() {
   const [input, setInput] = useState("");
   const [scanning, setScanning] = useState(false);
   const [found, setFound] = useState<DetectedGame[] | null>(null);
+  // Iniciar con Windows (tarea programada elevada, arranca minimizado en la bandeja).
+  const [autostart, setAutostart] = useState(false);
+  const [autoBusy, setAutoBusy] = useState(false);
+  const [autoErr, setAutoErr] = useState(false);
+  useEffect(() => { invoke<boolean>("autostart_get").then(setAutostart).catch(() => {}); }, []);
+  const toggleAutostart = async () => {
+    setAutoBusy(true); setAutoErr(false);
+    try { setAutostart(await invoke<boolean>("autostart_set", { enable: !autostart })); }
+    catch { setAutoErr(true); }
+    setAutoBusy(false);
+  };
 
   const submit = () => { addGame(input); setInput(""); };
 
@@ -57,6 +69,19 @@ export default function GameMode() {
             <motion.span layout transition={{ type: "spring", stiffness: 500, damping: 32 }}
               className="absolute top-[3px] w-[18px] h-[18px] rounded-full bg-black"
               style={{ left: pro ? 22 : 3 }} />
+          </button>
+        </div>
+        <div className="flex items-center justify-between gap-5 mt-5 pt-4 border-t border-line/60">
+          <div className="max-w-[470px]">
+            <div className="text-[14px] font-semibold text-text">{t("gm.autostartTitle")}</div>
+            <p className="text-[12.5px] text-text-mute mt-1.5 leading-relaxed">{t("gm.trayHint")}</p>
+            {autoErr && <p className="text-[12px] text-[#ff5470] mt-1">{t("gm.autostartErr")}</p>}
+          </div>
+          <button onClick={toggleAutostart} disabled={autoBusy}
+            className={`relative w-11 h-6 rounded-full transition-colors shrink-0 disabled:opacity-50 ${autostart ? "bg-accent" : "bg-line-2"}`}>
+            <motion.span layout transition={{ type: "spring", stiffness: 500, damping: 32 }}
+              className="absolute top-[3px] w-[18px] h-[18px] rounded-full bg-black"
+              style={{ left: autostart ? 22 : 3 }} />
           </button>
         </div>
       </NeonCard>

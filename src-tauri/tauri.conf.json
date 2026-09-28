@@ -21,6 +21,7 @@
         "fullscreen": false,
         "center": true,
         "decorations": false,
+        "visible": false,
         "theme": "Dark"
       }
     ],
@@ -43,6 +44,7 @@
     "windows": {
       "nsis": {
         "installerIcon": "icons/icon.ico",
+        "installerHooks": "installer/hooks.nsh",
         "headerImage": "installer/header.bmp",
         "sidebarImage": "installer/sidebar.bmp"
       }
