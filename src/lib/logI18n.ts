@@ -23,7 +23,6 @@ const EXACT: Record<string, string> = {
   "Barra de tareas a la izquierda": "Taskbar aligned left",
   "Barra de tareas simplificada (buscador conservado)": "Taskbar simplified (search kept)",
   "Bing en Inicio desactivado": "Bing in Start disabled",
-  "Bloatware eliminado (Sycnex DebloatAll)": "Bloatware removed (Sycnex DebloatAll)",
   "Boton Chat/Teams eliminado de la barra de tareas": "Chat/Teams button removed from the taskbar",
   "Caché de iconos reconstruida": "Icon cache rebuilt",
   "Consumer features desactivado": "Consumer features disabled",
@@ -107,6 +106,15 @@ const EXACT: Record<string, string> = {
   "No encontre adaptador AMD/Radeon en el registro.": "No AMD/Radeon adapter found in the registry.",
   "No hay un backup válido de NVIDIA; no se modificó nada.": "No valid NVIDIA backup to restore; nothing was changed.",
   "No hay un backup válido de AMD; no se modificó nada.": "No valid AMD backup to restore; nothing was changed.",
+  "Eliminando apps de Microsoft que casi nadie usa...": "Removing Microsoft apps almost nobody uses...",
+  "Eliminando apps de terceros preinstaladas...": "Removing preinstalled third-party apps...",
+  "Eliminando bloatware (lista completa)...": "Removing bloatware (full list)...",
+  "Microsoft Edge desinstalado.": "Microsoft Edge uninstalled.",
+  "Microsoft Edge ya no está instalado.": "Microsoft Edge is no longer installed.",
+  "Edge NO se desinstaló: no hay otro navegador instalado (instalá Chrome, Firefox u otro primero).": "Edge was NOT uninstalled: there's no other browser installed (install Chrome, Firefox or another one first).",
+  "WebView2 se mantiene (lo usan otras apps). Para volver a tener Edge: Reactivar → Microsoft Edge.": "WebView2 is kept (other apps use it). To get Edge back: Re-enable → Microsoft Edge.",
+  "Microsoft Edge ya está instalado.": "Microsoft Edge is already installed.",
+  "Microsoft Edge reinstalado.": "Microsoft Edge reinstalled.",
 };
 
 const EXACT_PT: Record<string, string> = {
@@ -127,7 +135,6 @@ const EXACT_PT: Record<string, string> = {
   "Barra de tareas a la izquierda": "Barra de tarefas à esquerda",
   "Barra de tareas simplificada (buscador conservado)": "Barra de tarefas simplificada (pesquisa mantida)",
   "Bing en Inicio desactivado": "Bing no Iniciar desativado",
-  "Bloatware eliminado (Sycnex DebloatAll)": "Bloatware removido (Sycnex DebloatAll)",
   "Boton Chat/Teams eliminado de la barra de tareas": "Botão Chat/Teams removido da barra de tarefas",
   "Caché de iconos reconstruida": "Cache de ícones reconstruído",
   "Consumer features desactivado": "Consumer features desativado",
@@ -211,6 +218,15 @@ const EXACT_PT: Record<string, string> = {
   "No encontre adaptador AMD/Radeon en el registro.": "Nenhum adaptador AMD/Radeon encontrado no registro.",
   "No hay un backup válido de NVIDIA; no se modificó nada.": "Não há um backup válido da NVIDIA; nada foi alterado.",
   "No hay un backup válido de AMD; no se modificó nada.": "Não há um backup válido da AMD; nada foi alterado.",
+  "Eliminando apps de Microsoft que casi nadie usa...": "Removendo apps da Microsoft que quase ninguém usa...",
+  "Eliminando apps de terceros preinstaladas...": "Removendo apps pré-instalados de terceiros...",
+  "Eliminando bloatware (lista completa)...": "Removendo bloatware (lista completa)...",
+  "Microsoft Edge desinstalado.": "Microsoft Edge desinstalado.",
+  "Microsoft Edge ya no está instalado.": "O Microsoft Edge não está mais instalado.",
+  "Edge NO se desinstaló: no hay otro navegador instalado (instalá Chrome, Firefox u otro primero).": "O Edge NÃO foi desinstalado: não há outro navegador instalado (instale Chrome, Firefox ou outro primeiro).",
+  "WebView2 se mantiene (lo usan otras apps). Para volver a tener Edge: Reactivar → Microsoft Edge.": "O WebView2 é mantido (outros apps usam). Para ter o Edge de volta: Reativar → Microsoft Edge.",
+  "Microsoft Edge ya está instalado.": "O Microsoft Edge já está instalado.",
+  "Microsoft Edge reinstalado.": "Microsoft Edge reinstalado.",
 };
 
 const RX: [RegExp, string, string][] = [
@@ -232,6 +248,10 @@ const RX: [RegExp, string, string][] = [
   [/^Bloatware de terceros removido: (\d+)$/, "Third-party bloatware removed: $1", "Bloatware de terceiros removido: $1"],
   [/^NVIDIA: maximo rendimiento aplicado a (\d+) adaptador\(es\)\. Reinicia para que tome efecto\.$/, "NVIDIA: maximum performance applied to $1 adapter(s). Restart to take effect.", "NVIDIA: desempenho máximo aplicado a $1 adaptador(es). Reinicie para ter efeito."],
   [/^AMD: maximo rendimiento aplicado a (\d+) adaptador\(es\)\. Reinicia para que tome efecto\.$/, "AMD: maximum performance applied to $1 adapter(s). Restart to take effect.", "AMD: desempenho máximo aplicado a $1 adaptador(es). Reinicie para ter efeito."],
+  [/^Apps eliminadas: (\d+) · no se pudieron: (\d+)$/, "Apps removed: $1 · couldn't remove: $2", "Apps removidos: $1 · não foi possível: $2"],
+  [/^! No se pudo quitar: (.+)$/, "! Couldn't remove: $1", "! Não foi possível remover: $1"],
+  [/^Otro navegador detectado: (.+)$/, "Other browser detected: $1", "Outro navegador detectado: $1"],
+  [/^Windows no permitió desinstalar Microsoft Edge en esta PC \(sigue en: (.+)\)\.$/, "Windows didn't allow uninstalling Microsoft Edge on this PC (still at: $1).", "O Windows não permitiu desinstalar o Microsoft Edge neste PC (ainda em: $1)."],
 ];
 
 // Prefijo que se conserva: sangría, [hora], y símbolos de estado (✓ ✗ ▸ ↩ ↪ ⚠ …).

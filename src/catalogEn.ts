@@ -34,7 +34,7 @@ export const TWEAK_EN: Record<string, string> = {
   "Deshabilitar Large Send Offload (LSO)": "Disable Large Send Offload (LSO)",
   "Reservar 0% de ancho de banda para QoS": "Reserve 0% bandwidth for QoS",
   // Bloatware
-  "[Sycnex] Remove ALL Bloatware (lista completa)": "[Sycnex] Remove ALL Bloatware (full list)",
+  "Eliminar bloatware (lista completa)": "Remove bloatware (full list)",
   "Eliminar apps Microsoft innecesarias": "Remove unneeded Microsoft apps",
   "Eliminar apps de terceros preinstaladas": "Remove preinstalled third-party apps",
   "Deshabilitar OneDrive": "Disable OneDrive",
@@ -94,6 +94,7 @@ export const TWEAK_EN: Record<string, string> = {
   "Mostrar segundos en el reloj de la barra": "Show seconds on the taskbar clock",
   "Hora del sistema en UTC (dual-boot con Linux)": "System time in UTC (dual-boot with Linux)",
   "Desactivar servicio HomeGroup": "Disable HomeGroup service",
+  "Desinstalar Microsoft Edge (si usás otro navegador)": "Uninstall Microsoft Edge (if you use another browser)",
 };
 
 export const TWEAK_DESC_EN: Record<string, string> = {
@@ -122,4 +123,8 @@ export const TWEAK_DESC_EN: Record<string, string> = {
   "Quitar OneDrive por completo": "Uninstalls OneDrive and deletes its folder. Advanced: only do it if you don't use it.",
   "Deshabilitar SysMain / Superfetch": "Turns off the preload service, mostly useful on PCs with an SSD.",
   "Deshabilitar Windows Search (indexado)": "Turns off search indexing, which uses disk. Advanced: search becomes slower.",
+  "Eliminar apps Microsoft innecesarias": "Removes Microsoft apps almost nobody uses (News, Weather, Solitaire, Maps, Teams, new Outlook, Copilot, Clipchamp…) for all users, and stops Windows from reinstalling them. Never touches Xbox/Game Pass, the Store or your games.",
+  "Eliminar apps de terceros preinstaladas": "Removes third-party games and apps Windows installs as “suggestions” (Candy Crush, TikTok, Facebook, Netflix, Spotify, McAfee…) and keeps them from coming back. Doesn't touch Minecraft, Roblox or WhatsApp.",
+  "Eliminar bloatware (lista completa)": "Everything from the two above plus Windows apps some people do use: Widgets, Sticky Notes, Sound Recorder, Quick Assist, Media Player, Paint 3D, Whiteboard… It's a fixed list: it never deletes apps you installed.",
+  "Desinstalar Microsoft Edge (si usás otro navegador)": "Uninstalls Edge with its official uninstaller and stops Windows from reinstalling it. It only does it if you have another browser installed (Chrome, Firefox…). It doesn't touch WebView2, which other apps use. Undo it in Re-enable → Microsoft Edge.",
 };

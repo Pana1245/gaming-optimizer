@@ -25,4 +25,8 @@ export const TWEAK_DESC: Record<string, string> = {
   "Activar Modo Oscuro (apps y sistema)": "Pone Windows y las apps en tema oscuro.",
   "Deshabilitar SysMain / Superfetch": "Apaga el servicio de precarga, útil sobre todo en equipos con SSD.",
   "Deshabilitar Windows Search (indexado)": "Apaga la indexación de búsqueda, que consume disco. Avanzado: la búsqueda se vuelve más lenta.",
+  "Eliminar apps Microsoft innecesarias": "Quita apps de Microsoft que casi nadie usa (Noticias, Clima, Solitario, Mapas, Teams, Outlook nuevo, Copilot, Clipchamp…) para todos los usuarios, y evita que Windows las reinstale. Nunca toca Xbox/Game Pass, la Store ni tus juegos.",
+  "Eliminar apps de terceros preinstaladas": "Quita juegos y apps de terceros que Windows instala como “sugerencia” (Candy Crush, TikTok, Facebook, Netflix, Spotify, McAfee…) y evita que vuelvan. No toca Minecraft, Roblox ni WhatsApp.",
+  "Eliminar bloatware (lista completa)": "Todo lo de las dos anteriores más apps de Windows que algunos sí usan: Widgets, Notas rápidas, Grabadora, Asistencia rápida, Reproductor multimedia, Paint 3D, Whiteboard… Es una lista fija: nunca borra apps que instalaste vos.",
+  "Desinstalar Microsoft Edge (si usás otro navegador)": "Desinstala Edge con su desinstalador oficial y evita que Windows lo reinstale. Solo lo hace si tenés otro navegador instalado (Chrome, Firefox…). No toca WebView2, que usan otras apps. Se revierte en Reactivar → Microsoft Edge.",
 };

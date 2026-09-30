@@ -27,8 +27,6 @@ const ADVANCED = new Set([
   "Prioridad CPU máxima para juegos",
   "Timer Resolution — 1ms (reduce micro-stutters)",
   "Core Parking OFF — todos los núcleos activos",
-  "[Sycnex] Remove ALL Bloatware (lista completa)",
-  "[Sycnex] Remove Bloatware por lista negra",
   "Reservar 0% de ancho de banda para QoS",
   "Desanclar todas las apps del menu Inicio",
 ]);

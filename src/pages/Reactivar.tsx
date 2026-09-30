@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { EDGE_REINSTALL } from "../bloat";
 import { runPowershell } from "../lib/api";
 import { Page, ActionCard } from "../components/ui";
 import { useI18n } from "../lib/i18n";
@@ -143,6 +144,23 @@ Write-Output OK`,
       pt: "✓ Plano de energia Equilibrado ativado.",
     },
     script: String.raw`powercfg /setactive SCHEME_BALANCED; Write-Output OK`,
+  },
+  {
+    id: "edge",
+    emoji: "🌐",
+    title: { es: "Microsoft Edge", en: "Microsoft Edge", pt: "Microsoft Edge" },
+    desc: {
+      es: "¿Desinstalaste Edge y lo necesitás de nuevo? Quita el bloqueo y lo vuelve a instalar desde Microsoft.",
+      en: "Uninstalled Edge and need it back? This removes the block and reinstalls it from Microsoft.",
+      pt: "Desinstalou o Edge e precisa dele de novo? Isto remove o bloqueio e o reinstala pela Microsoft.",
+    },
+    btn: { es: "Reinstalar", en: "Reinstall", pt: "Reinstalar" },
+    done: {
+      es: "✓ Microsoft Edge está instalado de nuevo.",
+      en: "✓ Microsoft Edge is installed again.",
+      pt: "✓ O Microsoft Edge está instalado de novo.",
+    },
+    script: EDGE_REINSTALL,
   },
   {
     id: "onedrive",
