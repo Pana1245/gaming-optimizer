@@ -645,4 +645,9 @@ export const PT: Record<string, string> = {
   "inst.wg.err.net": "✗ Não foi possível baixar o App Installer. Verifique sua conexão e tente de novo.",
   "inst.wg.err.hash": "✗ O download não bate com o arquivo oficial da Microsoft e foi descartado por segurança. Tente de novo.",
   "inst.wg.err.install": "✗ O Windows não permitiu instalar o App Installer automaticamente.",
+  "unins.removedOk": "{name} foi desinstalado.",
+  "unins.notRemoved": "{name} continua instalado: o desinstalador fechou sem terminar (você cancelou?). Tente “Forçar”.",
+  "unins.noUninstaller": "{name} não tem desinstalador registrado. Use “Forçar” para apagar os restos.",
+  "unins.brokenUninstaller": "O desinstalador de {name} não existe mais (instalação quebrada). Use “Forçar” para limpar os restos.",
+  "unins.uwpFail": "Não foi possível remover {name}: {err}",
 };

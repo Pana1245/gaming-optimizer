@@ -34,15 +34,50 @@ const b64utf16 = (s: string) => {
 // (Nombre_Versión_Arq_Recurso_IdEditor), que va en `key`.
 const pkgName = (a: App) => a.key.split("_")[0];
 
+// UWP: se quita para el usuario; si Windows no lo deja, para todos. Se verifica al
+// final y se devuelve el error real (antes se ocultaba y la fila se borraba igual).
+const uwpRemove = (a: App, allUsers: boolean) => String.raw`$n='${esc(pkgName(a))}'
+$err=''
+foreach($p in @(Get-AppxPackage -Name $n ${allUsers ? "-AllUsers " : ""}-EA SilentlyContinue)){
+  try { Remove-AppxPackage -Package $p.PackageFullName ${allUsers ? "-AllUsers " : ""}-ErrorAction Stop } catch {
+    $err=$_.Exception.Message
+    try { Remove-AppxPackage -Package $p.PackageFullName ${allUsers ? "" : "-AllUsers "}-ErrorAction Stop; $err='' } catch {}
+  }
+}
+${allUsers ? String.raw`Get-AppxProvisionedPackage -Online -EA SilentlyContinue | Where-Object { $_.DisplayName -eq $n } | ForEach-Object { try { Remove-AppxProvisionedPackage -Online -PackageName $_.PackageName -ErrorAction Stop | Out-Null } catch {} }` : ""}
+if(@(Get-AppxPackage -Name $n -EA SilentlyContinue).Count -eq 0){ 'UWP_OK' } else { 'UWP_FAIL:' + (($err -split [char]10)[0].Trim()) }`;
+
 const uninstallScript = (a: App) => {
-  if (a.type === "uwp")
-    return `Get-AppxPackage -Name '${esc(pkgName(a))}' -EA SilentlyContinue | Remove-AppxPackage -EA SilentlyContinue; Write-Output 'OK'`;
+  if (a.type === "uwp") return uwpRemove(a, false);
 
   // Cuerpo que ejecuta el desinstalador. La cadena viene del registro (dato no
   // confiable): se decodifica de base64 como dato puro, nunca se interpola como código.
-  const body = `$u=[System.Text.Encoding]::UTF8.GetString([System.Convert]::FromBase64String('${b64utf8(a.uninstall)}')).Trim()
-if($u -match 'msiexec'){ $u=$u -replace '/I','/X' -replace '/i','/x'; Start-Process cmd -ArgumentList '/c',"$u /quiet /norestart" -Wait -WindowStyle Hidden }
-else { Start-Process cmd -ArgumentList '/c',$u -Wait -WindowStyle Hidden }`;
+  // - MSI: msiexec /x {GUID} (antes se reemplazaba /I por /X a ciegas).
+  // - EXE: se separa ejecutable y argumentos aunque la ruta NO tenga comillas
+  //   ("C:\Program Files\App\uninst.exe /S" fallaba en cmd porque cortaba en el espacio).
+  // - Start-Process -Wait espera también a los procesos hijos (desinstaladores que se copian a %TEMP%).
+  const body = String.raw`$u=[System.Text.Encoding]::UTF8.GetString([System.Convert]::FromBase64String('${b64utf8(a.uninstall)}')).Trim()
+$u=[Environment]::ExpandEnvironmentVariables($u)
+if(-not $u){ Write-Output 'NO_UNINSTALLER'; exit 0 }
+if($u -match '(?i)msiexec' -and $u -match '\{[0-9A-Fa-f-]{36}\}'){
+  $g=$Matches[0]
+  $pr=Start-Process msiexec.exe -ArgumentList "/x $g /qn /norestart" -Wait -PassThru
+  Write-Output ('EXIT:' + $pr.ExitCode); exit 0
+}
+$exe=''; $argv=''
+if($u.StartsWith('"')){ $e=$u.IndexOf('"',1); if($e -gt 1){ $exe=$u.Substring(1,$e-1); $argv=$u.Substring($e+1).Trim() } }
+elseif($u -match '^(.+?\.exe)(\s.*)?$'){ $exe=$Matches[1]; $argv=("$($Matches[2])").Trim() }
+if($exe -and -not (Test-Path -LiteralPath $exe)){ $c=Get-Command $exe -EA SilentlyContinue; if($c){ $exe=$c.Source } }
+if($exe -and (Test-Path -LiteralPath $exe)){
+  $pr = if($argv){ Start-Process -FilePath $exe -ArgumentList $argv -Wait -PassThru } else { Start-Process -FilePath $exe -Wait -PassThru }
+  Write-Output ('EXIT:' + $pr.ExitCode)
+} elseif($exe -and $exe -notmatch '(?i)rundll32') {
+  Write-Output 'NOT_FOUND'
+} else {
+  # rundll32 u otros formatos raros: se deja que cmd lo interprete como antes.
+  Start-Process cmd -ArgumentList '/c',$u -Wait -WindowStyle Hidden
+  Write-Output 'EXIT:0'
+}`;
 
   // HKLM (machine): la entrada la escribió un instalador con admin → confiable →
   // se ejecuta con la elevación de la app (sin prompt extra).
@@ -72,8 +107,11 @@ Write-Output 'Desinstalador ejecutado (modo usuario)'`;
 interface Leftover { type: "folder" | "regkey"; label: string; path: string; }
 
 // UWP: quitar el paquete de todos los usuarios (no deja restos del registro clásico).
-const forceUwp = (a: App) =>
-  `Get-AppxPackage -Name '${esc(pkgName(a))}' -AllUsers -EA SilentlyContinue | Remove-AppxPackage -AllUsers -EA SilentlyContinue; Write-Output 'Paquete UWP eliminado'`;
+const forceUwp = (a: App) => uwpRemove(a, true);
+
+// ¿Sigue registrado? Si el desinstalador terminó bien, Windows borra su clave del registro.
+const stillInstalled = (a: App) => String.raw`$k=[Text.Encoding]::UTF8.GetString([Convert]::FromBase64String('${b64utf8(a.key)}'))
+if($k -and (Test-Path -LiteralPath ('Registry::' + $k))){ 'STILL' } else { 'GONE' }`;
 
 // ESCÁNER estilo Geek Uninstaller: busca restos ESPECÍFICOS de la app (carpeta de
 // instalación, clave de desinstalación, carpetas de datos y claves de registro
@@ -190,8 +228,22 @@ export default function Desinstalar() {
     setWorking(true); setBusy(a.name);
     setStatus(t("unins.uninstalling").replace("{name}", a.name) + (a.type === "win32" ? t("unins.ownUninstaller") : ""));
     const r = await runPowershell(uninstallScript(a));
-    setStatus(`✓ ${a.name}: ${(r.output.split("\n").pop() || t("unins.done")).trim()}`);
-    if (a.type === "uwp") removeRow(a);
+    const out = r.output;
+    const fill = (k: string) => t(k).replace("{name}", a.name);
+    if (a.type === "uwp") {
+      if (/UWP_OK/.test(out)) { setStatus(`✓ ${fill("unins.removedOk")}`); removeRow(a); }
+      else setStatus(`✗ ${fill("unins.uwpFail").replace("{err}", (out.match(/UWP_FAIL:(.*)/)?.[1] || "").trim() || "?")}`);
+    } else if (/NO_UNINSTALLER/.test(out)) {
+      setStatus(`✗ ${fill("unins.noUninstaller")}`);
+    } else if (/NOT_FOUND/.test(out)) {
+      setStatus(`✗ ${fill("unins.brokenUninstaller")}`);
+    } else {
+      setStatus(t("unins.waitUninstaller"));
+      await runPowershell(waitSettle(a));
+      const chk = await runPowershell(stillInstalled(a));
+      if (/GONE/.test(chk.output)) { setStatus(`✓ ${fill("unins.removedOk")}`); removeRow(a); }
+      else setStatus(`✗ ${fill("unins.notRemoved")}`);
+    }
     setBusy(null); setWorking(false);
   };
 
@@ -206,8 +258,8 @@ export default function Desinstalar() {
           setWorking(true); setBusy(a.name);
           setStatus(t("unins.forcing").replace("{name}", a.name));
           const r = await runPowershell(forceUwp(a));
-          setStatus(`✓ ${a.name}: ${(r.output.split("\n").pop() || t("unins.done")).trim()}`);
-          removeRow(a);
+          if (/UWP_OK/.test(r.output)) { setStatus(`✓ ${t("unins.removedOk").replace("{name}", a.name)}`); removeRow(a); }
+          else setStatus(`✗ ${t("unins.uwpFail").replace("{name}", a.name).replace("{err}", (r.output.match(/UWP_FAIL:(.*)/)?.[1] || "").trim() || "?")}`);
           setBusy(null); setWorking(false);
         },
       });
