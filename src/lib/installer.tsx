@@ -1,5 +1,6 @@
 import { createContext, useContext, useState, type ReactNode } from "react";
-import { runPowershell } from "./api";
+import { runPowershell, runStream } from "./api";
+import { WINGET_SETUP } from "./wingetSetup";
 import { notify } from "./notify";
 import { useI18n } from "./i18n";
 
@@ -72,6 +73,29 @@ export function InstallerProvider({ children }: { children: ReactNode }) {
 
   // Corre en el provider (nunca se desmonta) → la instalación NO se corta ni pierde
   // el progreso aunque el usuario cambie de sección.
+  // Instala winget mostrando el avance. El porcentaje de descarga reemplaza la última
+  // línea (en vez de sumar diez líneas por archivo).
+  const setupWinget = async (): Promise<boolean> => {
+    addLog(t("inst.wg.start"));
+    let ok = false;
+    await runStream(WINGET_SETUP, (raw) => {
+      const line = raw.trim();
+      const dl = line.match(/^@dl:(\w+):(\d+)$/);
+      if (dl) {
+        const msg = `  ${t(`inst.wg.what.${dl[1]}`)}: ${dl[2]}%`;
+        setLog((l) => (l.length && l[l.length - 1].startsWith(`  ${t(`inst.wg.what.${dl[1]}`)}:`) ? [...l.slice(0, -1), msg] : [...l, msg]));
+        return;
+      }
+      const step = line.match(/^@step:(\w+)$/);
+      if (step) return addLog(t(`inst.wg.${step[1]}`));
+      const err = line.match(/^@err:(\w+)$/);
+      if (err) return addLog(t(`inst.wg.err.${err[1]}`));
+      if (line.startsWith("@detail:")) return addLog(`  ${line.slice(8)}`);
+      if (line === "@ok") { ok = true; addLog(t("inst.wg.ok")); }
+    }).catch(() => {});
+    return ok;
+  };
+
   const install = async (apps: InstallApp[]) => {
     if (running || apps.length === 0) return;
     setRunning(true);
@@ -87,8 +111,8 @@ export function InstallerProvider({ children }: { children: ReactNode }) {
   $env:Path = [Environment]::GetEnvironmentVariable('Path','Machine') + ';' + [Environment]::GetEnvironmentVariable('Path','User')
 }
 if (Get-Command winget -ErrorAction SilentlyContinue) { "OK" } else { "NO" }`);
-    if (!/OK/.test(wingetOk.output)) {
-      addLog(t("inst.noWinget1"));
+    // No está App Installer: se instala desde el release oficial de Microsoft (verificado por SHA256).
+    if (!/OK/.test(wingetOk.output) && !(await setupWinget())) {
       addLog(t("inst.noWinget2"));
       setRunning(false);
       return;
