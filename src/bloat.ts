@@ -162,9 +162,9 @@ if (-not $installed) { Write-Output "Microsoft Edge ya no está instalado." }
 else {
   Get-Process -Name msedge -ErrorAction SilentlyContinue | Stop-Process -Force -ErrorAction SilentlyContinue
   # Permiso de desinstalación (sin esto, setup.exe se niega fuera de la UE).
-  $dev = 'HKLM:\SOFTWARE\WOW6432Node\Microsoft\EdgeUpdateDev'
-  if (!(Test-Path $dev)) { New-Item $dev -Force | Out-Null }
-  Set-ItemProperty $dev AllowUninstall '' -Type String -Force
+  # En las dos vistas del registro (64 y 32 bits): según la versión, lo lee un proceso u otro.
+  $devs = @('HKLM:\SOFTWARE\WOW6432Node\Microsoft\EdgeUpdateDev', 'HKLM:\SOFTWARE\Microsoft\EdgeUpdateDev')
+  foreach ($dev in $devs) { if (!(Test-Path $dev)) { New-Item $dev -Force | Out-Null }; Set-ItemProperty $dev AllowUninstall '' -Type String -Force }
   foreach ($d in $installed) {
     $setup = Get-ChildItem $d -Filter setup.exe -Recurse -Depth 3 -ErrorAction SilentlyContinue | Where-Object { $_.DirectoryName -like '*\Installer' } | Sort-Object LastWriteTime -Descending | Select-Object -First 1
     if (-not $setup) { continue }
@@ -173,7 +173,7 @@ else {
     Start-Process $setup.FullName -ArgumentList $argv -Wait -WindowStyle Hidden -ErrorAction SilentlyContinue
   }
   Start-Sleep -Seconds 2
-  Remove-ItemProperty $dev AllowUninstall -ErrorAction SilentlyContinue
+  foreach ($dev in $devs) { Remove-ItemProperty $dev AllowUninstall -ErrorAction SilentlyContinue }
   $left = @($appDirs | Where-Object { Test-Path (Join-Path $_ 'msedge.exe') })
   if ($left) { Write-Output "Windows no permitió desinstalar Microsoft Edge en esta PC (sigue en: $($left -join ', '))."; exit 1 }
   Write-Output "Microsoft Edge desinstalado."
@@ -192,9 +192,11 @@ foreach ($p in @(Get-AppxPackage -AllUsers -Name 'Microsoft.MicrosoftEdge*' -Err
 $pol = 'HKLM:\SOFTWARE\Policies\Microsoft\EdgeUpdate'
 if (!(Test-Path $pol)) { New-Item $pol -Force | Out-Null }
 Set-ItemProperty $pol 'Install${EDGE_STABLE}' 0 -Type DWord -Force
-$eu = 'HKLM:\SOFTWARE\Microsoft\EdgeUpdate'
-if (!(Test-Path $eu)) { New-Item $eu -Force | Out-Null }
-Set-ItemProperty $eu DoNotUpdateToEdgeWithChromium 1 -Type DWord -Force
+# EdgeUpdate es de 32 bits (lee WOW6432Node); se escribe en ambas vistas.
+foreach ($eu in 'HKLM:\SOFTWARE\Microsoft\EdgeUpdate', 'HKLM:\SOFTWARE\WOW6432Node\Microsoft\EdgeUpdate') {
+  if (!(Test-Path $eu)) { New-Item $eu -Force | Out-Null }
+  Set-ItemProperty $eu DoNotUpdateToEdgeWithChromium 1 -Type DWord -Force
+}
 
 # Accesos directos que quedan colgados.
 $lnks = @("$env:PUBLIC\Desktop\Microsoft Edge.lnk", "$env:USERPROFILE\Desktop\Microsoft Edge.lnk",
@@ -206,7 +208,7 @@ Write-Output "WebView2 se mantiene (lo usan otras apps). Para volver a tener Edg
 // Reactivar: vuelve a instalar Edge (quita el bloqueo y lo instala con winget).
 export const EDGE_REINSTALL = String.raw`$pf86 = [Environment]::GetFolderPath('ProgramFilesX86')
 Remove-ItemProperty 'HKLM:\SOFTWARE\Policies\Microsoft\EdgeUpdate' 'Install${EDGE_STABLE}' -ErrorAction SilentlyContinue
-Remove-ItemProperty 'HKLM:\SOFTWARE\Microsoft\EdgeUpdate' DoNotUpdateToEdgeWithChromium -ErrorAction SilentlyContinue
+foreach ($eu in 'HKLM:\SOFTWARE\Microsoft\EdgeUpdate', 'HKLM:\SOFTWARE\WOW6432Node\Microsoft\EdgeUpdate') { Remove-ItemProperty $eu DoNotUpdateToEdgeWithChromium -ErrorAction SilentlyContinue }
 if (Test-Path "$pf86\Microsoft\Edge\Application\msedge.exe") { Write-Output "Microsoft Edge ya está instalado."; exit 0 }
 if (-not (Get-Command winget -ErrorAction SilentlyContinue)) { Write-Output "Falta winget: instalá Edge desde https://www.microsoft.com/edge"; exit 1 }
 winget install --id Microsoft.Edge --exact --source winget --silent --accept-package-agreements --accept-source-agreements --disable-interactivity | Out-Null

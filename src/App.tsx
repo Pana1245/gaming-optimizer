@@ -9,6 +9,7 @@ import { listen } from "@tauri-apps/api/event";
 import { notify } from "./lib/notify";
 import UpdateBanner from "./components/UpdateBanner";
 import TitleBar from "./components/TitleBar";
+import AccountWarning from "./components/AccountWarning";
 import { ensureNotify } from "./lib/notify";
 import { dedupePowerPlansOnce } from "./lib/powerDedupe";
 import Optimizaciones from "./pages/Optimizaciones";
@@ -129,6 +130,7 @@ export default function App() {
       <Sidebar groups={GROUPS} footer={FOOTER} active={page} onSelect={setPage} />
       <div className="flex-1 min-w-0 flex flex-col content-bg">
         <TitleBar />
+        <AccountWarning />
         <main className="flex-1 min-h-0 relative overflow-hidden">
           <AnimatePresence mode="wait">
             <motion.div

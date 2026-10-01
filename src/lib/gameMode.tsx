@@ -14,7 +14,13 @@ $sysp='HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Multimedia\SystemProfi
 $cr=(Get-ItemProperty $sysp -Name SystemResponsiveness -EA SilentlyContinue).SystemResponsiveness
 if($null -eq $cr){ $cr=20 }
 Set-ItemProperty $p PrevResp $cr -Force
-$hp=powercfg -list | Select-String 'Ultimate|High performance|Alto rendimiento' | Select-Object -First 1
+# Por prioridad: primero Máximo rendimiento (Ultimate) en cualquier idioma, después Alto rendimiento.
+# Antes se tomaba la primera línea que coincidía: en Windows en español "Máximo rendimiento" no
+# coincidía con 'Ultimate' y siempre terminaba activando "Alto rendimiento".
+$list=powercfg -list; $hp=$null
+foreach($rx in 'Gaming Optimizer|Ultimate|M.ximo rendimiento|Desempenho M.ximo|Ultimative Leistung|Performances optimales','High performance|Alto rendimiento|Alto desempenho|H.chstleistung|Performances .lev.es'){
+  $hp=$list | Select-String $rx | Select-Object -First 1; if($hp){ break }
+}
 if($hp -and "$hp" -match '${GUID_RX}'){ powercfg /setactive $matches[1] } else { powercfg /setactive SCHEME_MAX }
 Set-ItemProperty $sysp SystemResponsiveness 0 -Type DWord -Force -EA SilentlyContinue
 Write-Output OK`;

@@ -700,6 +700,8 @@ const STR: Record<string, { es: string; en: string }> = {
   "unins.noUninstaller": { es: "{name} no tiene desinstalador registrado. Usá “Forzar” para borrar sus restos.", en: "{name} has no registered uninstaller. Use “Force” to delete its leftovers." },
   "unins.brokenUninstaller": { es: "El desinstalador de {name} ya no existe (instalación rota). Usá “Forzar” para limpiar sus restos.", en: "{name}'s uninstaller no longer exists (broken install). Use “Force” to clean up its leftovers." },
   "unins.uwpFail": { es: "No se pudo quitar {name}: {err}", en: "Couldn't remove {name}: {err}" },
+  "acct.warn": { es: "La app se abrió con otra cuenta ({app}), no con la de este escritorio ({desk}). Los ajustes de usuario (barra de tareas, tema, mouse, apps de inicio, temporales…) se van a aplicar a {app}. Para aplicarlos a tu cuenta, abrí la app desde una cuenta administradora.", en: "The app was opened with another account ({app}), not this desktop's ({desk}). User settings (taskbar, theme, mouse, startup apps, temp files…) will be applied to {app}. To apply them to your account, open the app from an administrator account." },
+  "acct.dismiss": { es: "Cerrar aviso", en: "Dismiss" },
   "motor.group.Rendimiento": { es: "Rendimiento", en: "Performance" },
   "sys.vbsOn": { es: "Activa", en: "On" },
   "sys.hvciOn": { es: "Integridad de memoria activa", en: "Memory Integrity on" },

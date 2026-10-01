@@ -9,15 +9,20 @@ import { useI18n } from "../lib/i18n";
 import { trLog } from "../lib/logI18n";
 
 const sizeOnly = (paths: string) => String.raw`$ps=@(${paths})
-$s=0; foreach($d in $ps){ if(Test-Path $d){ $s += (Get-ChildItem $d -Recurse -Force -EA SilentlyContinue | Measure-Object Length -Sum).Sum } }
+$s=0; foreach($d in $ps){ if($d -and (Test-Path -LiteralPath $d)){ $s += (Get-ChildItem -LiteralPath $d -Recurse -Force -EA SilentlyContinue | Measure-Object Length -Sum).Sum } }
 Write-Output ("SIZE=" + [math]::Round($s/1MB,1))`;
 
 // Mide ANTES y DESPUÉS y reporta la diferencia real: si un archivo está bloqueado
 // (Chrome/Edge abierto), no se borra y no se cuenta como liberado.
+// Guardas: la carpeta tiene que existir y NO ser la raíz de un disco (si una variable
+// de entorno viniera vacía, "$d\*" sería "\*" = todo el disco). Se borra el CONTENIDO
+// con -LiteralPath: con -Path, una ruta con corchetes (C:\Users\[Ana]\...) se toma
+// como comodín y no se borraba nada.
 const sizeAndClear = (paths: string) => String.raw`$ps=@(${paths})
-$before=0; foreach($d in $ps){ if(Test-Path $d){ $before += (Get-ChildItem $d -Recurse -Force -EA SilentlyContinue | Measure-Object Length -Sum).Sum } }
-foreach($d in $ps){ Remove-Item "$d\*" -Recurse -Force -EA SilentlyContinue }
-$after=0; foreach($d in $ps){ if(Test-Path $d){ $after += (Get-ChildItem $d -Recurse -Force -EA SilentlyContinue | Measure-Object Length -Sum).Sum } }
+function SafeDir($d){ $d -and $d.Length -gt 3 -and ([IO.Path]::GetPathRoot($d).TrimEnd('\') -ne $d.TrimEnd('\')) -and (Test-Path -LiteralPath $d -PathType Container) }
+$before=0; foreach($d in $ps){ if(SafeDir $d){ $before += (Get-ChildItem -LiteralPath $d -Recurse -Force -EA SilentlyContinue | Measure-Object Length -Sum).Sum } }
+foreach($d in $ps){ if(SafeDir $d){ Get-ChildItem -LiteralPath $d -Force -EA SilentlyContinue | Remove-Item -Recurse -Force -EA SilentlyContinue } }
+$after=0; foreach($d in $ps){ if(SafeDir $d){ $after += (Get-ChildItem -LiteralPath $d -Recurse -Force -EA SilentlyContinue | Measure-Object Length -Sum).Sum } }
 Write-Output ("FREED=" + [math]::Round(($before-$after)/1MB,1))`;
 
 interface Item { id: string; name: string; scan: string; clean: string; off?: boolean; }
@@ -42,9 +47,9 @@ const ITEMS: Item[] = [
   { id: "temp", name: "Archivos temporales (Windows + usuario)", scan: sizeOnly(P.temp), clean: sizeAndClear(P.temp) },
   { id: "prefetch", name: "Prefetch (Windows lo reconstruye; puede enlentecer los primeros arranques)", scan: sizeOnly(P.prefetch), clean: sizeAndClear(P.prefetch), off: true },
   { id: "wu", name: "Caché de Windows Update", scan: `${WU_SIZE}\nWrite-Output ("SIZE=" + [math]::Round($s/1MB,1))`,
-    clean: `$svc=Get-Service wuauserv -EA SilentlyContinue\n$wasRunning=$svc -and $svc.Status -eq 'Running'\n$d="$env:windir\\SoftwareDistribution\\Download"\n$before=if(Test-Path $d){(Get-ChildItem $d -Recurse -Force -EA SilentlyContinue|Measure-Object Length -Sum).Sum}else{0}\nStop-Service wuauserv -Force -EA SilentlyContinue\nRemove-Item "$d\\*" -Recurse -Force -EA SilentlyContinue\n$after=if(Test-Path $d){(Get-ChildItem $d -Recurse -Force -EA SilentlyContinue|Measure-Object Length -Sum).Sum}else{0}\nif($wasRunning){ Start-Service wuauserv -EA SilentlyContinue }\nWrite-Output ("FREED=" + [math]::Round(($before-$after)/1MB,1))` },
+    clean: `$svc=Get-Service wuauserv -EA SilentlyContinue\n$wasRunning=$svc -and $svc.Status -eq 'Running'\n$d="$env:windir\\SoftwareDistribution\\Download"\n$before=if(Test-Path $d){(Get-ChildItem $d -Recurse -Force -EA SilentlyContinue|Measure-Object Length -Sum).Sum}else{0}\nStop-Service wuauserv -Force -EA SilentlyContinue\nif(Test-Path -LiteralPath $d -PathType Container){ Get-ChildItem -LiteralPath $d -Force -EA SilentlyContinue | Remove-Item -Recurse -Force -EA SilentlyContinue }\n$after=if(Test-Path $d){(Get-ChildItem $d -Recurse -Force -EA SilentlyContinue|Measure-Object Length -Sum).Sum}else{0}\nif($wasRunning){ Start-Service wuauserv -EA SilentlyContinue }\nWrite-Output ("FREED=" + [math]::Round(($before-$after)/1MB,1))` },
   { id: "thumbs", name: "Caché de miniaturas", scan: `${THUMB_SIZE}\nWrite-Output ("SIZE=" + [math]::Round($s/1MB,1))`,
-    clean: `${THUMB_SIZE}\n$before=$s\nRemove-Item "$d\\thumbcache_*" -Force -EA SilentlyContinue\n$after=if(Test-Path $d){(Get-ChildItem $d -Filter thumbcache_* -Force -EA SilentlyContinue|Measure-Object Length -Sum).Sum}else{0}\nWrite-Output ("FREED=" + [math]::Round(($before-$after)/1MB,1))` },
+    clean: `${THUMB_SIZE}\n$before=$s\nif(Test-Path -LiteralPath $d){ Get-ChildItem -LiteralPath $d -Filter thumbcache_* -Force -EA SilentlyContinue | Remove-Item -Force -EA SilentlyContinue }\n$after=if(Test-Path $d){(Get-ChildItem $d -Filter thumbcache_* -Force -EA SilentlyContinue|Measure-Object Length -Sum).Sum}else{0}\nWrite-Output ("FREED=" + [math]::Round(($before-$after)/1MB,1))` },
   { id: "wer", name: "Reportes de error (WER)", scan: sizeOnly(P.wer), clean: sizeAndClear(P.wer) },
   { id: "deliv", name: "Delivery Optimization", scan: sizeOnly(P.deliv), clean: sizeAndClear(P.deliv) },
   { id: "browsers", name: "Caché de navegadores (Chrome/Edge)", scan: sizeOnly(P.browsers), clean: sizeAndClear(P.browsers) },

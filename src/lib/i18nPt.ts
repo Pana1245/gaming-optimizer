@@ -650,4 +650,6 @@ export const PT: Record<string, string> = {
   "unins.noUninstaller": "{name} não tem desinstalador registrado. Use “Forçar” para apagar os restos.",
   "unins.brokenUninstaller": "O desinstalador de {name} não existe mais (instalação quebrada). Use “Forçar” para limpar os restos.",
   "unins.uwpFail": "Não foi possível remover {name}: {err}",
+  "acct.warn": "O app foi aberto com outra conta ({app}), não com a desta área de trabalho ({desk}). Os ajustes de usuário (barra de tarefas, tema, mouse, apps de inicialização, temporários…) serão aplicados a {app}. Para aplicá-los à sua conta, abra o app a partir de uma conta de administrador.",
+  "acct.dismiss": "Fechar aviso",
 };
