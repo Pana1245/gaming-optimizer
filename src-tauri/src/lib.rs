@@ -473,20 +473,58 @@ fn ledger_file() -> std::path::PathBuf {
     std::path::Path::new(&base).join("GamingOptimizer").join("ledger.json")
 }
 
-/// Lee el ledger de cambios (JSON). Devuelve "[]" si no existe.
+/// Carpeta de datos con permisos seguros: dueño Administradores, SYSTEM/Administradores
+/// control total y Usuarios SOLO lectura. Si un usuario estándar creara la carpeta antes
+/// (queda como dueño), podría reemplazar el ledger o el script de Timer Resolution, que
+/// corre con privilegios máximos al iniciar sesión → escalada de privilegios.
+#[cfg(windows)]
+fn secure_data_dir(dir: &std::path::Path) {
+    let d = dir.to_string_lossy().to_string();
+    let mut c = Command::new("icacls");
+    c.args([d.as_str(), "/setowner", "*S-1-5-32-544", "/T", "/C", "/Q"]);
+    c.creation_flags(CREATE_NO_WINDOW);
+    let _ = c.status();
+    let mut c = Command::new("icacls");
+    c.args([d.as_str(), "/inheritance:r", "/grant:r", "*S-1-5-18:(OI)(CI)F", "*S-1-5-32-544:(OI)(CI)F", "*S-1-5-32-545:(OI)(CI)RX", "/T", "/C", "/Q"]);
+    c.creation_flags(CREATE_NO_WINDOW);
+    let _ = c.status();
+}
+#[cfg(not(windows))]
+fn secure_data_dir(_dir: &std::path::Path) {}
+
+fn ledger_bak() -> std::path::PathBuf { ledger_file().with_extension("json.bak") }
+
+fn valid_json(s: &str) -> bool { serde_json::from_str::<serde_json::Value>(s).is_ok() }
+
+/// Lee el ledger de cambios (JSON). Si está dañado (ej. corte de luz mientras se
+/// escribía), usa la copia de respaldo. Devuelve "[]" si no hay ninguno válido.
 #[tauri::command]
 fn ledger_read() -> String {
-    std::fs::read_to_string(ledger_file()).unwrap_or_else(|_| "[]".into())
+    for f in [ledger_file(), ledger_bak()] {
+        if let Ok(s) = std::fs::read_to_string(&f) {
+            if valid_json(&s) { return s; }
+        }
+    }
+    "[]".into()
 }
 
-/// Guarda el ledger de cambios.
+/// Guarda el ledger de forma ATÓMICA: escribe un temporal y lo reemplaza (antes se
+/// escribía directo: un corte a mitad dejaba el JSON truncado y se perdía el historial
+/// para deshacer). La versión anterior queda como .bak.
 #[tauri::command]
 fn ledger_write(content: String) -> bool {
+    if !valid_json(&content) { return false; }
     let f = ledger_file();
     if let Some(dir) = f.parent() {
         let _ = std::fs::create_dir_all(dir);
+        // Una vez por sesión, exista o no de antes (un usuario estándar pudo crearla primero).
+        static SECURED: std::sync::atomic::AtomicBool = std::sync::atomic::AtomicBool::new(false);
+        if !SECURED.swap(true, std::sync::atomic::Ordering::SeqCst) { secure_data_dir(dir); }
     }
-    std::fs::write(f, content).is_ok()
+    let tmp = f.with_extension("json.tmp");
+    if std::fs::write(&tmp, &content).is_err() { return false; }
+    if f.exists() { let _ = std::fs::copy(&f, ledger_bak()); }
+    std::fs::rename(&tmp, &f).is_ok()
 }
 
 // ---- RAM Booster: baja el uso real de RAM (working sets + cache + standby) ---
@@ -641,6 +679,42 @@ fn reg_read(subkey: &winreg::RegKey, prop: &str, kind: &str) -> String {
     }
 }
 
+#[cfg(windows)]
+fn regtype_to_u32(t: &winreg::enums::RegType) -> u32 {
+    use winreg::enums::RegType::*;
+    match t {
+        REG_NONE => 0, REG_SZ => 1, REG_EXPAND_SZ => 2, REG_BINARY => 3, REG_DWORD => 4,
+        REG_DWORD_BIG_ENDIAN => 5, REG_LINK => 6, REG_MULTI_SZ => 7, REG_RESOURCE_LIST => 8,
+        REG_FULL_RESOURCE_DESCRIPTOR => 9, REG_RESOURCE_REQUIREMENTS_LIST => 10, REG_QWORD => 11,
+    }
+}
+#[cfg(windows)]
+fn u32_to_regtype(n: u32) -> Option<winreg::enums::RegType> {
+    use winreg::enums::RegType::*;
+    Some(match n {
+        0 => REG_NONE, 1 => REG_SZ, 2 => REG_EXPAND_SZ, 3 => REG_BINARY, 4 => REG_DWORD,
+        5 => REG_DWORD_BIG_ENDIAN, 6 => REG_LINK, 7 => REG_MULTI_SZ, 8 => REG_RESOURCE_LIST,
+        9 => REG_FULL_RESOURCE_DESCRIPTOR, 10 => REG_RESOURCE_REQUIREMENTS_LIST, 11 => REG_QWORD,
+        _ => return None,
+    })
+}
+
+/// Valor previo para el ledger. Si existe pero con OTRO tipo (ej. "1" como texto donde
+/// el tweak escribe DWORD), antes se leía como "__ABSENT__" y al deshacer se BORRABA el
+/// valor original. Ahora se guarda en crudo (__RAW__:tipo:hex) y se restaura exacto.
+#[cfg(windows)]
+fn reg_prior(subkey: &winreg::RegKey, prop: &str, kind: &str) -> String {
+    let typed = reg_read(subkey, prop, kind);
+    if typed != "__ABSENT__" { return typed; }
+    match subkey.get_raw_value(prop) {
+        Ok(raw) => {
+            let hex: String = raw.bytes.iter().map(|b| format!("{b:02x}")).collect();
+            format!("__RAW__:{}:{}", regtype_to_u32(&raw.vtype), hex)
+        }
+        Err(_) => "__ABSENT__".into(),
+    }
+}
+
 /// Lee el valor previo, escribe, y relee para verificar. `kind` = "DWord" | "String".
 #[cfg(windows)]
 #[tauri::command]
@@ -652,7 +726,7 @@ fn reg_apply(key: String, prop: String, kind: String, value: String) -> RegApply
         Ok((k, _)) => k,
         Err(_) => return empty(),
     };
-    let prior = reg_read(&subkey, &prop, &kind);
+    let prior = reg_prior(&subkey, &prop, &kind);
     let ok = if kind == "DWord" {
         match parse_dword(&value) {
             Some(n) => subkey.set_value(&prop, &n).is_ok(),
@@ -674,6 +748,15 @@ fn reg_undo(key: String, prop: String, kind: String, prior: String) -> bool {
         Ok((k, _)) => k,
         Err(_) => return false,
     };
+    if let Some(rest) = prior.strip_prefix("__RAW__:") {
+        // Valor original de otro tipo: se restaura en crudo (tipo + bytes exactos).
+        let Some((t, hex)) = rest.split_once(':') else { return false; };
+        let Some(vtype) = t.parse::<u32>().ok().and_then(u32_to_regtype) else { return false; };
+        if hex.len() % 2 != 0 { return false; }
+        let bytes: Option<Vec<u8>> = (0..hex.len()).step_by(2).map(|i| u8::from_str_radix(&hex[i..i + 2], 16).ok()).collect();
+        let Some(bytes) = bytes else { return false; };
+        return subkey.set_raw_value(&prop, &winreg::RegValue { bytes, vtype }).is_ok();
+    }
     if prior == "__ABSENT__" {
         // Éxito si se borró o si ya no estaba.
         subkey.delete_value(&prop).is_ok()
@@ -761,4 +844,39 @@ pub fn run() {
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
+}
+
+#[cfg(all(test, windows))]
+mod engine_tests {
+    use super::*;
+    use winreg::enums::HKEY_CURRENT_USER;
+
+    // Valor original de OTRO tipo (texto "1" donde el tweak escribe DWORD): al deshacer
+    // tiene que volver exacto (antes se borraba).
+    #[test]
+    fn deshacer_restaura_valor_de_otro_tipo() {
+        let hk = winreg::RegKey::predef(HKEY_CURRENT_USER);
+        let path = r"Software\GoEngineTest";
+        let (k, _) = hk.create_subkey(path).unwrap();
+        k.set_value("V", &"1").unwrap();
+        let key = format!(r"HKCU:\{path}");
+        let r = reg_apply(key.clone(), "V".into(), "DWord".into(), "0".into());
+        assert!(r.ok, "apply");
+        assert!(r.prior.starts_with("__RAW__:1:"), "prior en crudo: {}", r.prior);
+        assert_eq!(k.get_value::<u32, _>("V").unwrap(), 0);
+        assert!(reg_undo(key.clone(), "V".into(), "DWord".into(), r.prior.clone()), "undo");
+        assert_eq!(k.get_value::<String, _>("V").unwrap(), "1");
+        // Valor inexistente: al deshacer se borra
+        let r2 = reg_apply(key.clone(), "W".into(), "DWord".into(), "5".into());
+        assert_eq!(r2.prior, "__ABSENT__");
+        assert!(reg_undo(key, "W".into(), "DWord".into(), r2.prior));
+        assert!(k.get_raw_value("W").is_err());
+        let _ = hk.delete_subkey_all(path);
+    }
+
+    #[test]
+    fn json_invalido_se_rechaza() {
+        assert!(valid_json("[]") && valid_json("[{\"a\":1}]"));
+        assert!(!valid_json("[{\"a\":1}, {\"b\""));
+    }
 }
