@@ -123,6 +123,7 @@ const EXACT: Record<string, string> = {
   "El servicio de Bluetooth no arrancó: reiniciá la PC y probá de nuevo.": "The Bluetooth service didn't start: restart the PC and try again.",
   "El servicio de impresión no arrancó: reiniciá la PC y probá de nuevo.": "The print service didn't start: restart the PC and try again.",
   "El servicio de búsqueda no arrancó: reiniciá la PC y probá de nuevo.": "The search service didn't start: restart the PC and try again.",
+  "Tarea de Timer Resolution quitada.": "Timer Resolution task removed.",
 };
 
 const EXACT_PT: Record<string, string> = {
@@ -243,6 +244,7 @@ const EXACT_PT: Record<string, string> = {
   "El servicio de Bluetooth no arrancó: reiniciá la PC y probá de nuevo.": "O serviço de Bluetooth não iniciou: reinicie o PC e tente de novo.",
   "El servicio de impresión no arrancó: reiniciá la PC y probá de nuevo.": "O serviço de impressão não iniciou: reinicie o PC e tente de novo.",
   "El servicio de búsqueda no arrancó: reiniciá la PC y probá de nuevo.": "O serviço de pesquisa não iniciou: reinicie o PC e tente de novo.",
+  "Tarea de Timer Resolution quitada.": "Tarefa de Timer Resolution removida.",
 };
 
 const RX: [RegExp, string, string][] = [
@@ -268,6 +270,9 @@ const RX: [RegExp, string, string][] = [
   [/^! No se pudo quitar: (.+)$/, "! Couldn't remove: $1", "! Não foi possível remover: $1"],
   [/^Otro navegador detectado: (.+)$/, "Other browser detected: $1", "Outro navegador detectado: $1"],
   [/^Windows no permitió desinstalar Microsoft Edge en esta PC \(sigue en: (.+)\)\.$/, "Windows didn't allow uninstalling Microsoft Edge on this PC (still at: $1).", "O Windows não permitiu desinstalar o Microsoft Edge neste PC (ainda em: $1)."],
+  [/^Servicios restaurados: (\d+) · tareas: (\d+)$/, "Services restored: $1 · tasks: $2", "Serviços restaurados: $1 · tarefas: $2"],
+  [/^Cambios agregados después del backup que se quitaron: (\d+)$/, "Changes added after the backup that were removed: $1", "Mudanças adicionadas depois do backup que foram removidas: $1"],
+  [/^No se pudieron habilitar: (.+)$/, "Couldn't enable: $1", "Não foi possível habilitar: $1"],
 ];
 
 // Prefijo que se conserva: sangría, [hora], y símbolos de estado (✓ ✗ ▸ ↩ ↪ ⚠ …).

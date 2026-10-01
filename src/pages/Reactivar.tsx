@@ -151,6 +151,28 @@ Write-Output OK`,
     script: String.raw`powercfg /setactive SCHEME_BALANCED; Write-Output OK`,
   },
   {
+    id: "xbox",
+    emoji: "🎮",
+    title: { es: "Xbox / Game Pass", en: "Xbox / Game Pass", pt: "Xbox / Game Pass" },
+    desc: {
+      es: "¿No te deja iniciar sesión en Game Pass, no sincronizan las partidas o no anda el control de Xbox? Vuelve a habilitar los servicios de Xbox.",
+      en: "Can't sign in to Game Pass, saves don't sync or your Xbox controller doesn't work? This re-enables the Xbox services.",
+      pt: "Não consegue entrar no Game Pass, os saves não sincronizam ou o controle Xbox não funciona? Isto reativa os serviços do Xbox.",
+    },
+    btn: { es: "Reactivar", en: "Re-enable", pt: "Reativar" },
+    done: {
+      es: "✓ Servicios de Xbox habilitados. Si un juego seguía abierto, reinicialo.",
+      en: "✓ Xbox services enabled. If a game was still open, restart it.",
+      pt: "✓ Serviços do Xbox habilitados. Se um jogo estava aberto, reinicie-o.",
+    },
+    // Manual = su valor normal: Windows los enciende cuando un juego los necesita.
+    script: String.raw`$svcs='XblAuthManager','XblGameSave','XboxNetApiSvc','XboxGipSvc'
+foreach($s in $svcs){ Set-Service $s -StartupType Manual -EA SilentlyContinue }
+$bad=@($svcs | Where-Object { $sv=Get-Service $_ -EA SilentlyContinue; $sv -and [string]$sv.StartType -eq 'Disabled' })
+if($bad){ Write-Output ('No se pudieron habilitar: ' + ($bad -join ', ')); exit 1 }
+Write-Output OK`,
+  },
+  {
     id: "edge",
     emoji: "🌐",
     title: { es: "Microsoft Edge", en: "Microsoft Edge", pt: "Microsoft Edge" },

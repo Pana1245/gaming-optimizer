@@ -155,7 +155,7 @@ export default function Limpieza() {
           </div>
           <List>
             {ITEMS.map((it) => (
-              <EnergyCheckbox key={it.id} label={t(`clean.item.${it.id}`)}
+              <EnergyCheckbox key={it.id} label={t(`clean.item.${it.id}`)} desc={t(`clean.desc.${it.id}`)}
                 badge={sizes[it.id] !== undefined ? fmtMB(sizes[it.id]) : undefined}
                 checked={!!sel[it.id]}
                 onChange={(v) => setSel((s) => ({ ...s, [it.id]: v }))} />

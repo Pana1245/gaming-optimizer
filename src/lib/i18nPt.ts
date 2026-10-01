@@ -654,4 +654,13 @@ export const PT: Record<string, string> = {
   "acct.dismiss": "Fechar aviso",
   "restore.restoreThis": "Restaurar",
   "restore.original": "Original: antes da primeira otimização",
+  "clean.desc.temp": "Arquivos temporários deixados pelo Windows e pelos programas. O que estiver em uso não é apagado.",
+  "clean.desc.prefetch": "Dados que o Windows usa para abrir os programas mais rápido. Se regeneram sozinhos, mas as primeiras aberturas podem ser mais lentas.",
+  "clean.desc.wu": "Atualizações do Windows já baixadas e instaladas. Pode liberar vários GB.",
+  "clean.desc.thumbs": "As miniaturas de fotos e vídeos do Explorer. São geradas de novo ao abrir as pastas.",
+  "clean.desc.wer": "Relatórios de erros de programas que o Windows guarda para enviar à Microsoft.",
+  "clean.desc.deliv": "Cache da Otimização de Entrega (atualizações compartilhadas com outros PCs).",
+  "clean.desc.browsers": "Cache do Chrome e do Edge. Não apaga senhas, histórico nem sessões; feche o navegador para limpar tudo.",
+  "clean.desc.shader": "Shaders salvos dos jogos. São recompilados sozinhos: os primeiros minutos de jogo podem ter alguma travada.",
+  "clean.desc.recycle": "Esvazia a Lixeira. O que você apagar aqui não poderá ser recuperado.",
 };

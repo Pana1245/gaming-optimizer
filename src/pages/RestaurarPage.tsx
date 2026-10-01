@@ -61,6 +61,33 @@ foreach($a in @(Get-ChildItem -LiteralPath $dir -Filter *.absent)){
   $k=(Get-Content -LiteralPath $a.FullName -Raw).Trim()
   if($k -and (Test-Path -LiteralPath ('Registry::' + $k))){ Remove-Item -LiteralPath ('Registry::' + $k) -Recurse -Force -EA SilentlyContinue; $removed++ }
 }
+# 4) Servicios y tareas programadas (no están en el registro exportado)
+$stf=Join-Path $dir 'state.json'
+if(Test-Path -LiteralPath $stf){
+  $st=Get-Content -LiteralPath $stf -Raw | ConvertFrom-Json
+  $sv=0; $tk=0
+  if($st.services){ foreach($p in $st.services.PSObject.Properties){
+    $sk="HKLM:\SYSTEM\CurrentControlSet\Services\$($p.Name)"
+    if(-not (Test-Path -LiteralPath $sk)){ continue }
+    Set-ItemProperty -LiteralPath $sk -Name Start -Value ([int]$p.Value.start) -Type DWord -Force -EA SilentlyContinue
+    if($null -ne $p.Value.delayed){ Set-ItemProperty -LiteralPath $sk -Name DelayedAutostart -Value ([int]$p.Value.delayed) -Type DWord -Force -EA SilentlyContinue }
+    if((Get-ItemProperty -LiteralPath $sk -Name Start -EA SilentlyContinue).Start -eq [int]$p.Value.start){ $sv++ }
+    if([int]$p.Value.start -eq 2){ Start-Service -Name $p.Name -EA SilentlyContinue }
+  } }
+  if($st.tasks){ foreach($p in $st.tasks.PSObject.Properties){
+    $tp=$p.Name; $path=(Split-Path $tp) + '\'; $tn=Split-Path $tp -Leaf
+    if($p.Value -eq 'Disabled'){ Disable-ScheduledTask -TaskPath $path -TaskName $tn -EA SilentlyContinue | Out-Null }
+    else { Enable-ScheduledTask -TaskPath $path -TaskName $tn -EA SilentlyContinue | Out-Null }
+    $tk++
+  } }
+  # La tarea de Timer Resolution la crea un tweak: si no existía, se quita (con su script).
+  if(-not $st.timerTask -and (Get-ScheduledTask -TaskName 'GamingOptimizer_TimerRes' -EA SilentlyContinue)){
+    Unregister-ScheduledTask -TaskName 'GamingOptimizer_TimerRes' -Confirm:$false -EA SilentlyContinue
+    Remove-Item -LiteralPath "$env:ProgramData\GamingOptimizer\SetTimerRes.ps1" -Force -EA SilentlyContinue
+    Write-Output "Tarea de Timer Resolution quitada."
+  }
+  Write-Output ("Servicios restaurados: " + $sv + " · tareas: " + $tk)
+}
 Write-Output ("Cambios agregados después del backup que se quitaron: " + $removed)
 if($failed -gt 0){ Write-Output ("Restauración incompleta: " + $failed + " archivo(s) fallaron. Nada se marcó como restaurado por completo.") }
 else { Write-Output "Registro restaurado. Reinicia el PC para aplicar." }`;

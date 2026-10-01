@@ -83,6 +83,22 @@ foreach($k in $keys.GetEnumerator()){
 }
 Write-Output "Backup del registro: $n ramas exportadas"
 
+# Servicios y tareas que modifican los tweaks: no viven en las ramas exportadas,
+# así que se guarda su estado para que Restaurar también los devuelva.
+$svcState=@{}
+foreach($sn in @('DiagTrack','dmwappushservice','RemoteRegistry','Sense','Spooler','SysMain','WdBoot','WdFilter','WdNisDrv','WdNisSvc','WinDefend','WSearch','wuauserv','XblAuthManager','XblGameSave','XboxGipSvc','XboxNetApiSvc','HomeGroupListener','HomeGroupProvider')){
+  $sk="HKLM:\SYSTEM\CurrentControlSet\Services\$sn"
+  $v=(Get-ItemProperty -LiteralPath $sk -Name Start -EA SilentlyContinue).Start
+  if($null -ne $v){ $svcState[$sn]=@{ start=[int]$v; delayed=(Get-ItemProperty -LiteralPath $sk -Name DelayedAutostart -EA SilentlyContinue).DelayedAutostart } }
+}
+$taskState=@{}
+foreach($tp in @('\Microsoft\Windows\Application Experience\Microsoft Compatibility Appraiser','\Microsoft\Windows\Application Experience\ProgramDataUpdater','\Microsoft\Windows\Autochk\Proxy','\Microsoft\Windows\Customer Experience Improvement Program\Consolidator','\Microsoft\Windows\Customer Experience Improvement Program\UsbCeip','\Microsoft\Windows\DiskDiagnostic\Microsoft-Windows-DiskDiagnosticDataCollector','\Microsoft\Windows\Feedback\Siuf\DmClient','\Microsoft\Windows\Windows Defender\Windows Defender Cache Maintenance','\Microsoft\Windows\Windows Defender\Windows Defender Cleanup','\Microsoft\Windows\Windows Defender\Windows Defender Scheduled Scan','\Microsoft\Windows\Windows Defender\Windows Defender Verification','\Microsoft\Windows\Windows Error Reporting\QueueReporting','\Microsoft\Windows\Xbox\XblGameSaveTask')){
+  $tt=Get-ScheduledTask -TaskPath ((Split-Path $tp) + '\') -TaskName (Split-Path $tp -Leaf) -EA SilentlyContinue
+  if($tt){ $taskState[$tp]="$($tt.State)" }
+}
+$timerTask=[bool](Get-ScheduledTask -TaskName 'GamingOptimizer_TimerRes' -EA SilentlyContinue)
+@{ services=$svcState; tasks=$taskState; timerTask=$timerTask } | ConvertTo-Json -Depth 4 | Set-Content -LiteralPath "$backDir\state.json" -Encoding UTF8
+
 Write-Output "Creando punto de restauracion..."
 $srKey = "HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion\SystemRestore"
 $prevFreq = $null
