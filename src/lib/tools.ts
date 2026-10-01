@@ -17,13 +17,18 @@ Stop-Service wuauserv -Force -EA SilentlyContinue
 if(!(Test-Path '${AU}')){ New-Item '${AU}' -Force | Out-Null }
 Set-ItemProperty '${AU}' -Name NoAutoUpdate -Value 1 -Type DWord -Force
 Set-ItemProperty '${AU}' -Name AUOptions -Value 1 -Type DWord -Force
-Write-Output 'Windows Update desactivado'`;
+# Verificación: el servicio "médico" de Windows Update puede impedir o revertir el cambio.
+$sv = Get-Service wuauserv -EA SilentlyContinue
+if($sv -and [string]$sv.StartType -ne 'Disabled'){ Write-Output 'Windows no dejó deshabilitar el servicio; las actualizaciones automáticas quedan apagadas por política.' }
+else { Write-Output 'Windows Update desactivado' }`;
 
 export const WU_ENABLE = String.raw`Set-Service wuauserv -StartupType Manual -EA SilentlyContinue
 Remove-ItemProperty '${AU}' -Name NoAutoUpdate -Force -EA SilentlyContinue
 Remove-ItemProperty '${AU}' -Name AUOptions -Force -EA SilentlyContinue
 'PauseUpdatesExpiryTime','PauseFeatureUpdatesStartTime','PauseFeatureUpdatesEndTime','PauseQualityUpdatesStartTime','PauseQualityUpdatesEndTime' | ForEach-Object { Remove-ItemProperty '${UX}' -Name $_ -Force -EA SilentlyContinue }
 Start-Service wuauserv -EA SilentlyContinue
+$sv = Get-Service wuauserv -EA SilentlyContinue
+if($sv -and [string]$sv.StartType -eq 'Disabled'){ Write-Output 'No se pudo reactivar el servicio de Windows Update.'; exit 1 }
 Write-Output 'Windows Update reactivado'`;
 
 export const WU_PAUSE = String.raw`if(!(Test-Path '${UX}')){ New-Item '${UX}' -Force | Out-Null }

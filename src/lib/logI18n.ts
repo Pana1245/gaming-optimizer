@@ -115,6 +115,14 @@ const EXACT: Record<string, string> = {
   "WebView2 se mantiene (lo usan otras apps). Para volver a tener Edge: Reactivar → Microsoft Edge.": "WebView2 is kept (other apps use it). To get Edge back: Re-enable → Microsoft Edge.",
   "Microsoft Edge ya está instalado.": "Microsoft Edge is already installed.",
   "Microsoft Edge reinstalado.": "Microsoft Edge reinstalled.",
+  "Windows Defender sigue activo: la Protección contra alteraciones lo bloquea. Apagala en Seguridad de Windows > Protección antivirus y contra amenazas > Administrar configuración, y volvé a aplicar.": "Windows Defender is still on: Tamper Protection is blocking it. Turn it off in Windows Security > Virus & threat protection > Manage settings, and apply again.",
+  "Windows Defender quedará deshabilitado al reiniciar.": "Windows Defender will be disabled after restarting.",
+  "Windows no dejó deshabilitar el servicio; las actualizaciones automáticas quedan apagadas por política.": "Windows didn't allow disabling the service; automatic updates are turned off by policy.",
+  "No se pudo reactivar el servicio de Windows Update.": "Couldn't re-enable the Windows Update service.",
+  "No se encontró ningún adaptador Bluetooth en esta PC.": "No Bluetooth adapter was found on this PC.",
+  "El servicio de Bluetooth no arrancó: reiniciá la PC y probá de nuevo.": "The Bluetooth service didn't start: restart the PC and try again.",
+  "El servicio de impresión no arrancó: reiniciá la PC y probá de nuevo.": "The print service didn't start: restart the PC and try again.",
+  "El servicio de búsqueda no arrancó: reiniciá la PC y probá de nuevo.": "The search service didn't start: restart the PC and try again.",
 };
 
 const EXACT_PT: Record<string, string> = {
@@ -227,6 +235,14 @@ const EXACT_PT: Record<string, string> = {
   "WebView2 se mantiene (lo usan otras apps). Para volver a tener Edge: Reactivar → Microsoft Edge.": "O WebView2 é mantido (outros apps usam). Para ter o Edge de volta: Reativar → Microsoft Edge.",
   "Microsoft Edge ya está instalado.": "O Microsoft Edge já está instalado.",
   "Microsoft Edge reinstalado.": "Microsoft Edge reinstalado.",
+  "Windows Defender sigue activo: la Protección contra alteraciones lo bloquea. Apagala en Seguridad de Windows > Protección antivirus y contra amenazas > Administrar configuración, y volvé a aplicar.": "O Windows Defender continua ativo: a Proteção contra Adulterações está bloqueando. Desligue em Segurança do Windows > Proteção contra vírus e ameaças > Gerenciar configurações e aplique de novo.",
+  "Windows Defender quedará deshabilitado al reiniciar.": "O Windows Defender ficará desativado ao reiniciar.",
+  "Windows no dejó deshabilitar el servicio; las actualizaciones automáticas quedan apagadas por política.": "O Windows não permitiu desativar o serviço; as atualizações automáticas ficam desligadas por política.",
+  "No se pudo reactivar el servicio de Windows Update.": "Não foi possível reativar o serviço do Windows Update.",
+  "No se encontró ningún adaptador Bluetooth en esta PC.": "Nenhum adaptador Bluetooth foi encontrado neste PC.",
+  "El servicio de Bluetooth no arrancó: reiniciá la PC y probá de nuevo.": "O serviço de Bluetooth não iniciou: reinicie o PC e tente de novo.",
+  "El servicio de impresión no arrancó: reiniciá la PC y probá de nuevo.": "O serviço de impressão não iniciou: reinicie o PC e tente de novo.",
+  "El servicio de búsqueda no arrancó: reiniciá la PC y probá de nuevo.": "O serviço de pesquisa não iniciou: reinicie o PC e tente de novo.",
 };
 
 const RX: [RegExp, string, string][] = [

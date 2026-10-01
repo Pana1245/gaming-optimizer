@@ -35,7 +35,10 @@ const FIXES: Fix[] = [
     script: String.raw`$base='HKCU:\SOFTWARE\Microsoft\Windows\CurrentVersion\CapabilityAccessManager\ConsentStore'
 foreach($p in 'radios','bluetoothSync'){ $k="$base\$p"; if(!(Test-Path $k)){ New-Item $k -Force | Out-Null }; Set-ItemProperty $k -Name Value -Value 'Allow' -Type String -Force }
 foreach($s in 'bthserv','BTAGService'){ Set-Service $s -StartupType Automatic -EA SilentlyContinue; Start-Service $s -EA SilentlyContinue }
-Get-PnpDevice -Class Bluetooth -EA SilentlyContinue | Where-Object { $_.Status -ne 'OK' } | Enable-PnpDevice -Confirm:$false -EA SilentlyContinue
+$bt = @(Get-PnpDevice -Class Bluetooth -EA SilentlyContinue)
+$bt | Where-Object { $_.Status -ne 'OK' } | Enable-PnpDevice -Confirm:$false -EA SilentlyContinue
+if($bt.Count -eq 0){ Write-Output 'No se encontró ningún adaptador Bluetooth en esta PC.'; exit 1 }
+if((Get-Service bthserv -EA SilentlyContinue).Status -ne 'Running'){ Write-Output 'El servicio de Bluetooth no arrancó: reiniciá la PC y probá de nuevo.'; exit 1 }
 Write-Output OK`,
   },
   {
@@ -55,6 +58,7 @@ Write-Output OK`,
     },
     script: String.raw`Set-Service Spooler -StartupType Automatic -EA SilentlyContinue
 Start-Service Spooler -EA SilentlyContinue
+if((Get-Service Spooler -EA SilentlyContinue).Status -ne 'Running'){ Write-Output 'El servicio de impresión no arrancó: reiniciá la PC y probá de nuevo.'; exit 1 }
 Write-Output OK`,
   },
   {
@@ -74,6 +78,7 @@ Write-Output OK`,
     },
     script: String.raw`Set-Service WSearch -StartupType Automatic -EA SilentlyContinue
 Start-Service WSearch -EA SilentlyContinue
+if((Get-Service WSearch -EA SilentlyContinue).Status -ne 'Running'){ Write-Output 'El servicio de búsqueda no arrancó: reiniciá la PC y probá de nuevo.'; exit 1 }
 Write-Output OK`,
   },
   {

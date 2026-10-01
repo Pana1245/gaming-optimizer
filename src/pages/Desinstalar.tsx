@@ -158,7 +158,9 @@ if($found.Count -eq 0){'[]'}else{$found|ConvertTo-Json -Compress -Depth 3}`;
 // profundidad): nunca borra rutas protegidas ni claves de registro raíz, aunque
 // llegaran en la lista.
 const deleteLeftovers = (items: { type: string; path: string }[]) => String.raw`$json=[Text.Encoding]::UTF8.GetString([Convert]::FromBase64String('${b64utf8(JSON.stringify(items))}'))
-$items=@($json | ConvertFrom-Json)
+# Desenrollar: en PS 5.1, @($json | ConvertFrom-Json) mete TODO el array en un solo
+# elemento y el bucle daba una sola vuelta con la lista entera (no se borraba nada).
+$items=@($json | ConvertFrom-Json | ForEach-Object { $_ })
 $prot=@($env:ProgramFiles,[Environment]::GetEnvironmentVariable('ProgramFiles(x86)'),$env:ProgramData,$env:windir,$env:APPDATA,$env:LOCALAPPDATA,$env:SystemDrive,'C:\Windows','C:\Users') | ForEach-Object { if($_){ $_.TrimEnd('\').ToLower() } }
 $protReg=@('hkcu:\software','hklm:\software','hklm:\software\wow6432node','hklm:\software\microsoft','hkcu:\software\microsoft','hklm:\system','hkcu:\system','hkcu:\control panel')
 $done=0; $stuck=0
