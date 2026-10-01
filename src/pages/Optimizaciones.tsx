@@ -52,14 +52,34 @@ $keys = [ordered]@{
   'systemprofile'     = 'HKLM\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Multimedia\SystemProfile'
   'sessionmanager'    = 'HKLM\SYSTEM\CurrentControlSet\Control\Session Manager\kernel'
   'cv-policies'       = 'HKLM\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies'
-  'policies-windows'  = 'HKLM\SOFTWARE\Policies\Microsoft\Windows'
+  'policies-ms-lm'    = 'HKLM\SOFTWARE\Policies\Microsoft'
+  'policies-ms-cu'    = 'HKCU\Software\Policies\Microsoft'
+  'cv-policies-cu'    = 'HKCU\Software\Microsoft\Windows\CurrentVersion\Policies'
+  'cv-policies-wow'   = 'HKLM\SOFTWARE\Wow6432Node\Microsoft\Windows\CurrentVersion\Policies'
   'powersettings'     = 'HKLM\SYSTEM\CurrentControlSet\Control\Power\PowerSettings'
   'tcpip-interfaces'  = 'HKLM\SYSTEM\CurrentControlSet\Services\Tcpip\Parameters\Interfaces'
+  'gamedvr'           = 'HKCU\Software\Microsoft\Windows\CurrentVersion\GameDVR'
+  'contentdelivery'   = 'HKCU\Software\Microsoft\Windows\CurrentVersion\ContentDeliveryManager'
+  'visualeffects'     = 'HKCU\Software\Microsoft\Windows\CurrentVersion\Explorer\VisualEffects'
+  'accessibility'     = 'HKCU\Control Panel\Accessibility'
+  'wifi-policy'       = 'HKLM\SOFTWARE\Microsoft\PolicyManager\default\WiFi'
+  'consentstore-lm'   = 'HKLM\SOFTWARE\Microsoft\Windows\CurrentVersion\CapabilityAccessManager\ConsentStore'
+  'defender-features' = 'HKLM\SOFTWARE\Microsoft\Windows Defender\Features'
+  'crashcontrol'      = 'HKLM\SYSTEM\CurrentControlSet\Control\CrashControl'
+  'timezone'          = 'HKLM\SYSTEM\CurrentControlSet\Control\TimeZoneInformation'
+  'lfsvc'             = 'HKLM\SYSTEM\CurrentControlSet\Services\lfsvc\Service\Configuration'
+}
+# MSI mode de la(s) placa(s) de video (clave por dispositivo)
+$i = 0
+foreach($g in @(Get-CimInstance Win32_VideoController -EA SilentlyContinue | Where-Object { $_.PNPDeviceID -like 'PCI*' })){
+  $keys["msi-gpu$i"] = "HKLM\SYSTEM\CurrentControlSet\Enum\$($g.PNPDeviceID)\Device Parameters\Interrupt Management"; $i++
 }
 $n = 0
 foreach($k in $keys.GetEnumerator()){
   reg export $($k.Value) "$backDir\$($k.Name).reg" /y > $null 2>&1
   if($LASTEXITCODE -eq 0){ $n++ }
+  # Si la clave no existía, se anota: al restaurar se borra (la creó un tweak).
+  elseif(-not (Test-Path -LiteralPath ('Registry::' + $k.Value))){ Set-Content -LiteralPath "$backDir\$($k.Name).absent" -Value $k.Value -Encoding UTF8 }
 }
 Write-Output "Backup del registro: $n ramas exportadas"
 

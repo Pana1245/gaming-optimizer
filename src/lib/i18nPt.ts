@@ -205,8 +205,8 @@ export const PT: Record<string, string> = {
   "opt.appliedShort": "{ok}/{total} otimizações aplicadas.",
   "opt.doneMain": "{ok}/{total} otimizações aplicadas.\nReinicie o PC para aplicar todas as mudanças.\n\nPara reverter: \"Restaurar\" desfaz as mudanças do registro. As mudanças de serviços/drivers/sistema são revertidas com \"Restaurar sistema do Windows\" (ponto de restauração). Apps/bloatware removidos precisam ser reinstalados manualmente.",
   "opt.doneNoNet": "\n\n⚠ Nenhum ponto de restauração foi criado: as mudanças de serviços/inicialização/apps NÃO são revertidas com Restaurar. Use Reativar ou reinstale para isso.",
-  "restore.restoreLast": "Restaurar último backup",
-  "restore.restoreLastDesc": "Reimporta o registro salvo antes da última otimização.",
+  "restore.restoreLast": "Voltar ao estado original",
+  "restore.restoreLastDesc": "Restaura o registro como estava antes da sua primeira otimização e remove o que os tweaks adicionaram.",
   "restore.createPoint": "Criar ponto de restauração",
   "restore.createPointDesc": "Cria um ponto de restauração do sistema agora mesmo.",
   "restore.createBtn": "Criar",
@@ -652,4 +652,6 @@ export const PT: Record<string, string> = {
   "unins.uwpFail": "Não foi possível remover {name}: {err}",
   "acct.warn": "O app foi aberto com outra conta ({app}), não com a desta área de trabalho ({desk}). Os ajustes de usuário (barra de tarefas, tema, mouse, apps de inicialização, temporários…) serão aplicados a {app}. Para aplicá-los à sua conta, abra o app a partir de uma conta de administrador.",
   "acct.dismiss": "Fechar aviso",
+  "restore.restoreThis": "Restaurar",
+  "restore.original": "Original: antes da primeira otimização",
 };

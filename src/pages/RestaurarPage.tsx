@@ -6,6 +6,65 @@ import { Spinner, IndeterminateBar } from "../components/Feedback";
 import { useI18n } from "../lib/i18n";
 import { trLog } from "../lib/logI18n";
 
+const b64utf8 = (s: string) => btoa(String.fromCharCode(...new TextEncoder().encode(s || "")));
+
+// Restaura un backup (por nombre de carpeta). "reg import" solo vuelve a escribir los
+// valores que había: NO borra los que agregaron los tweaks (la mayoría CREA valores,
+// ej. políticas). Por eso, después de importar:
+//  - en cada clave del backup se borran los valores que no estaban;
+//  - en ramas de POLÍTICAS se borran también las subclaves nuevas (las crean los tweaks;
+//    en ramas del sistema, como las interfaces de red, Windows crea claves solo → no se tocan);
+//  - las ramas que no existían al hacer el backup (.absent) se borran.
+const restoreScript = (name: string) => String.raw`$root="$env:SystemDrive\OptimizacionBackup"
+$name=[Text.Encoding]::UTF8.GetString([Convert]::FromBase64String('${b64utf8(name)}'))
+$dir=Join-Path $root $name
+if(-not $name -or -not (Test-Path -LiteralPath $dir)){ Write-Output "No hay backups disponibles."; return }
+Write-Output "Restaurando backup: $name"
+$regs=@(Get-ChildItem -LiteralPath $dir -Filter *.reg)
+if(-not $regs){ Write-Output "El backup no tiene archivos .reg."; return }
+$failed=0; $removed=0
+foreach($r in $regs){
+  $out = & reg import $r.FullName 2>&1
+  if($LASTEXITCODE -ne 0){ $failed++; Write-Output ("  ERROR  " + $r.Name + ": " + ($out -join ' ')); continue }
+  Write-Output ("  OK  " + $r.Name)
+  # Claves y valores que había en el backup
+  $keys=@{}; $order=@(); $cur=$null
+  foreach($line in (Get-Content -LiteralPath $r.FullName -Encoding Unicode)){
+    if($line -match '^\[(.+)\]$'){ $cur=$Matches[1]; $keys[$cur.ToLower()]=New-Object 'System.Collections.Generic.HashSet[string]' ([StringComparer]::OrdinalIgnoreCase); $order+=$cur; continue }
+    if(-not $cur){ continue }
+    if($line -match '^@='){ [void]$keys[$cur.ToLower()].Add(''); continue }
+    if($line -match '^"((?:[^"\\]|\\.)*)"='){ [void]$keys[$cur.ToLower()].Add(($Matches[1] -replace '\\(.)','$1')) }
+  }
+  if(-not $order){ continue }
+  # 1) Valores agregados después del backup. En las interfaces de red Windows guarda datos que
+  #    cambian solos (DHCP…): ahí solo se quitan los valores que agregan los tweaks de red.
+  $onlyNames = if($order[0] -match '(?i)\\Tcpip\\Parameters\\Interfaces'){ @('TcpAckFrequency','TCPNoDelay','TcpDelAckTicks') } else { $null }
+  foreach($k in $order){
+    $item=Get-Item -LiteralPath ('Registry::' + $k) -EA SilentlyContinue
+    if(-not $item){ continue }
+    foreach($vn in $item.GetValueNames()){
+      if($onlyNames -and ($onlyNames -notcontains $vn)){ continue }
+      if(-not $keys[$k.ToLower()].Contains($vn)){ Remove-ItemProperty -LiteralPath ('Registry::' + $k) -Name $vn -Force -EA SilentlyContinue; $removed++ }
+    }
+  }
+  # 2) Subclaves nuevas, solo en ramas de políticas
+  $top=$order[0]
+  if($top -match '(?i)\\Policies(\\|$)|\\PolicyManager\\'){
+    foreach($sk in @(Get-ChildItem -LiteralPath ('Registry::' + $top) -Recurse -EA SilentlyContinue)){
+      $p=$sk.Name; $parent=Split-Path $p -Parent
+      if(-not $keys.ContainsKey($p.ToLower()) -and $keys.ContainsKey($parent.ToLower())){ Remove-Item -LiteralPath ('Registry::' + $p) -Recurse -Force -EA SilentlyContinue; $removed++ }
+    }
+  }
+}
+# 3) Ramas que no existían cuando se hizo el backup
+foreach($a in @(Get-ChildItem -LiteralPath $dir -Filter *.absent)){
+  $k=(Get-Content -LiteralPath $a.FullName -Raw).Trim()
+  if($k -and (Test-Path -LiteralPath ('Registry::' + $k))){ Remove-Item -LiteralPath ('Registry::' + $k) -Recurse -Force -EA SilentlyContinue; $removed++ }
+}
+Write-Output ("Cambios agregados después del backup que se quitaron: " + $removed)
+if($failed -gt 0){ Write-Output ("Restauración incompleta: " + $failed + " archivo(s) fallaron. Nada se marcó como restaurado por completo.") }
+else { Write-Output "Registro restaurado. Reinicia el PC para aplicar." }`;
+
 const SCRIPTS = {
   list: `$root="$env:SystemDrive\\OptimizacionBackup"; if(Test-Path $root){ Get-ChildItem $root -Directory | Sort-Object Name -Descending | Select-Object -ExpandProperty Name }`,
   checkpoint: `$srKey = "HKLM:\\SOFTWARE\\Microsoft\\Windows NT\\CurrentVersion\\SystemRestore"
@@ -23,21 +82,7 @@ try {
   if($null -eq $prevFreq){ Remove-ItemProperty -Path $srKey -Name "SystemRestorePointCreationFrequency" -Force -EA SilentlyContinue }
   else { Set-ItemProperty -Path $srKey -Name "SystemRestorePointCreationFrequency" -Value $prevFreq -Type DWord -Force -EA SilentlyContinue }
 }`,
-  restore: `$root="$env:SystemDrive\\OptimizacionBackup"
-if(!(Test-Path $root)){ Write-Output "No hay backups disponibles."; return }
-$last = Get-ChildItem $root -Directory | Sort-Object Name -Descending | Select-Object -First 1
-if(!$last){ Write-Output "No hay backups disponibles."; return }
-Write-Output "Restaurando backup: $($last.Name)"
-$regs = Get-ChildItem $last.FullName -Filter *.reg
-if(!$regs){ Write-Output "El backup no tiene archivos .reg."; return }
-$failed=0
-foreach($r in $regs){
-  $out = & reg import $r.FullName 2>&1
-  if($LASTEXITCODE -eq 0){ Write-Output ("  OK  " + $r.Name) }
-  else { $failed++; Write-Output ("  ERROR  " + $r.Name + ": " + ($out -join ' ')) }
-}
-if($failed -gt 0){ Write-Output ("Restauración incompleta: " + $failed + " archivo(s) fallaron. Nada se marcó como restaurado por completo.") }
-else { Write-Output "Registro restaurado. Reinicia el PC para aplicar." }`,
+
 };
 
 
@@ -70,6 +115,18 @@ export default function RestaurarPage() {
     loadBackups();
   };
 
+  const restore = async (name: string, title: string) => {
+    if (busy || !name) return;
+    setBusy(true);
+    addLog(`▸ ${title}`);
+    const r = await runPowershell(restoreScript(name));
+    r.output.split("\n").forEach((l) => l.trim() && addLog("  " + l.trim()));
+    setBusy(false);
+    loadBackups();
+  };
+  // La lista viene de más nuevo a más viejo: el último es el ORIGINAL (antes de la primera optimización).
+  const oldest = backups[backups.length - 1];
+
   const openRstrui = () => runPowershell("Start-Process rstrui.exe");
 
 
@@ -79,7 +136,7 @@ export default function RestaurarPage() {
       <div className="flex-1 grid grid-cols-[1fr_320px] gap-6 min-h-0">
         <div className="space-y-3 overflow-y-auto pr-3 -mr-3 pb-2">
           <ActionCard icon={<IconReset />} title={t("restore.restoreLast")} desc={t("restore.restoreLastDesc")}
-            action={<button disabled={busy} onClick={() => action("restore", t("restore.restoreLast"))} className="btn btn-primary">{t("common.restore")}</button>} />
+            action={<button disabled={busy || !oldest} onClick={() => restore(oldest, t("restore.restoreLast"))} className="btn btn-primary">{t("common.restore")}</button>} />
           <ActionCard icon={<IconShieldCheck />} title={t("restore.createPoint")} desc={t("restore.createPointDesc")}
             action={<button disabled={busy} onClick={() => action("checkpoint", t("restore.createPoint"))} className="btn btn-ghost">{t("restore.createBtn")}</button>} />
           <ActionCard icon={<IconLifeRing />} title={t("restore.winRestore")} desc={t("restore.winRestoreDesc")}
@@ -89,7 +146,9 @@ export default function RestaurarPage() {
             <SectionTitle right={backups.length ? <span className="tabular-nums">{backups.length}</span> : undefined}>{t("restore.available")}</SectionTitle>
             {backups.length ? (
               <List>
-                {backups.map((b) => <Row key={b} title={<span className="font-mono text-[13px]">{b}</span>} />)}
+                {backups.map((b) => <Row key={b} title={<span className="font-mono text-[13px]">{b}</span>}
+                  desc={b === oldest ? t("restore.original") : undefined}
+                  right={<button disabled={busy} onClick={() => restore(b, `${t("restore.restoreThis")} ${b}`)} className="text-[12.5px] text-text-mute hover:text-text transition-colors">{t("restore.restoreThis")}</button>} />)}
               </List>
             ) : (
               <div className="rounded-xl border border-dashed border-line-2 px-4 py-6 text-center text-[13px] text-text-mute">{t("restore.noBackups")}</div>

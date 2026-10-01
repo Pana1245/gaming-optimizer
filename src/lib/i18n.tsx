@@ -241,8 +241,8 @@ const STR: Record<string, { es: string; en: string }> = {
   "opt.doneNoNet": { es: "\n\n⚠ No se creó punto de restauración: los cambios de servicios/arranque/apps NO se revierten con Restaurar. Usá Reactivar o reinstalá para eso.", en: "\n\n⚠ No restore point created: service/boot/app changes are NOT reverted by Restore. Use Re-enable or reinstall for those." },
 
   // ── Restaurar ──
-  "restore.restoreLast": { es: "Restaurar último backup", en: "Restore last backup" },
-  "restore.restoreLastDesc": { es: "Reimporta el registro guardado antes de la última optimización.", en: "Re-imports the registry saved before the last optimization." },
+  "restore.restoreLast": { es: "Volver al estado original", en: "Back to the original state" },
+  "restore.restoreLastDesc": { es: "Restaura el registro como estaba antes de tu primera optimización, y quita lo que agregaron los tweaks.", en: "Restores the registry as it was before your first optimization, and removes what the tweaks added." },
   "restore.createPoint": { es: "Crear punto de restauración", en: "Create restore point" },
   "restore.createPointDesc": { es: "Genera un punto de restauración del sistema ahora mismo.", en: "Creates a system restore point right now." },
   "restore.createBtn": { es: "Crear", en: "Create" },
@@ -702,6 +702,8 @@ const STR: Record<string, { es: string; en: string }> = {
   "unins.uwpFail": { es: "No se pudo quitar {name}: {err}", en: "Couldn't remove {name}: {err}" },
   "acct.warn": { es: "La app se abrió con otra cuenta ({app}), no con la de este escritorio ({desk}). Los ajustes de usuario (barra de tareas, tema, mouse, apps de inicio, temporales…) se van a aplicar a {app}. Para aplicarlos a tu cuenta, abrí la app desde una cuenta administradora.", en: "The app was opened with another account ({app}), not this desktop's ({desk}). User settings (taskbar, theme, mouse, startup apps, temp files…) will be applied to {app}. To apply them to your account, open the app from an administrator account." },
   "acct.dismiss": { es: "Cerrar aviso", en: "Dismiss" },
+  "restore.restoreThis": { es: "Restaurar", en: "Restore" },
+  "restore.original": { es: "Original: antes de la primera optimización", en: "Original: before the first optimization" },
   "motor.group.Rendimiento": { es: "Rendimiento", en: "Performance" },
   "sys.vbsOn": { es: "Activa", en: "On" },
   "sys.hvciOn": { es: "Integridad de memoria activa", en: "Memory Integrity on" },
