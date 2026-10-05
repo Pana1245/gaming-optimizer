@@ -1,5 +1,7 @@
 // Catálogo de apps (IDs de winget). Mantenido a mano — verificar IDs con `winget show --id X --exact`.
-export interface AppItem { name: string; id: string; domain: string; }
+// `match`: cómo aparece en "Programas instalados" cuando no es por su nombre (o cuando su
+// nombre es parte del de otro programa). Sin `match` se busca el nombre como palabra completa.
+export interface AppItem { name: string; id: string; domain: string; match?: RegExp; }
 export interface AppCategory { category: string; categoryEn: string; categoryPt: string; color: string; apps: AppItem[]; }
 
 export const APP_CATALOG: AppCategory[] = [
@@ -9,10 +11,10 @@ export const APP_CATALOG: AppCategory[] = [
     apps: [
       { name: "Google Chrome", id: "Google.Chrome", domain: "google.com" },
       { name: "Mozilla Firefox", id: "Mozilla.Firefox", domain: "mozilla.org" },
-      { name: "Opera", id: "Opera.Opera", domain: "opera.com" },
+      { name: "Opera", id: "Opera.Opera", domain: "opera.com", match: /^opera\b(?! gx)/i },
       { name: "Brave", id: "Brave.Brave", domain: "brave.com" },
       { name: "Vivaldi", id: "Vivaldi.Vivaldi", domain: "vivaldi.com" },
-      { name: "Microsoft Edge", id: "Microsoft.Edge", domain: "microsoft.com" },
+      { name: "Microsoft Edge", id: "Microsoft.Edge", domain: "microsoft.com", match: /^microsoft edge$/i },
     ],
   },
   {
@@ -36,7 +38,7 @@ export const APP_CATALOG: AppCategory[] = [
       { name: "foobar2000", id: "PeterPawlowski.foobar2000", domain: "foobar2000.org" },
       { name: "AIMP", id: "AIMP.AIMP", domain: "aimp.ru" },
       { name: "Audacity", id: "Audacity.Audacity", domain: "audacityteam.org" },
-      { name: "K-Lite Codecs", id: "CodecGuide.K-LiteCodecPack.Standard", domain: "codecguide.com" },
+      { name: "K-Lite Codecs", id: "CodecGuide.K-LiteCodecPack.Standard", domain: "codecguide.com", match: /k-lite codec pack/i },
       { name: "GOM Player", id: "GOMLab.GOMPlayer", domain: "gomlab.com" },
       { name: "HandBrake", id: "HandBrake.HandBrake", domain: "handbrake.fr" },
       { name: "MediaMonkey", id: "VentisMedia.MediaMonkey.2024", domain: "mediamonkey.com" },
@@ -129,7 +131,7 @@ export const APP_CATALOG: AppCategory[] = [
       { name: "ImgBurn", id: "LIGHTNINGUK.ImgBurn", domain: "imgburn.com" },
       { name: "Open-Shell", id: "Open-Shell.Open-Shell-Menu", domain: "open-shell.github.io" },
       { name: "Google Earth Pro", id: "Google.EarthPro", domain: "earth.google.com" },
-      { name: "NV Access (NVDA)", id: "NVAccess.NVDA", domain: "nvaccess.org" },
+      { name: "NV Access (NVDA)", id: "NVAccess.NVDA", domain: "nvaccess.org", match: /^nvda\b/i },
     ],
   },
   {
@@ -149,17 +151,27 @@ export const APP_CATALOG: AppCategory[] = [
     category: "Runtimes y Redistributables", categoryEn: "Runtimes & Redistributables", categoryPt: "Runtimes e Redistribuíveis",
     color: "#BDBDBD",
     apps: [
-      { name: ".NET Runtime 8 (x64)", id: "Microsoft.DotNet.DesktopRuntime.8", domain: "dotnet.microsoft.com" },
-      { name: ".NET Runtime 9 (x64)", id: "Microsoft.DotNet.DesktopRuntime.9", domain: "dotnet.microsoft.com" },
-      { name: "VC++ 2015-2022 x64", id: "Microsoft.VCRedist.2015+.x64", domain: "microsoft.com" },
-      { name: "VC++ 2015-2022 x86", id: "Microsoft.VCRedist.2015+.x86", domain: "microsoft.com" },
-      { name: "VC++ 2013 x64", id: "Microsoft.VCRedist.2013.x64", domain: "microsoft.com" },
-      { name: "VC++ 2013 x86", id: "Microsoft.VCRedist.2013.x86", domain: "microsoft.com" },
+      { name: ".NET Runtime 8 (x64)", id: "Microsoft.DotNet.DesktopRuntime.8", domain: "dotnet.microsoft.com", match: /windows desktop runtime - 8\.\d.*\(x64\)/i },
+      { name: ".NET Runtime 9 (x64)", id: "Microsoft.DotNet.DesktopRuntime.9", domain: "dotnet.microsoft.com", match: /windows desktop runtime - 9\.\d.*\(x64\)/i },
+      { name: "VC++ 2015-2022 x64", id: "Microsoft.VCRedist.2015+.x64", domain: "microsoft.com", match: /visual c\+\+ 20(15|17|19|22)(-20\d\d)? redistributable \(x64\)/i },
+      { name: "VC++ 2015-2022 x86", id: "Microsoft.VCRedist.2015+.x86", domain: "microsoft.com", match: /visual c\+\+ 20(15|17|19|22)(-20\d\d)? redistributable \(x86\)/i },
+      { name: "VC++ 2013 x64", id: "Microsoft.VCRedist.2013.x64", domain: "microsoft.com", match: /visual c\+\+ 2013 redistributable \(x64\)/i },
+      { name: "VC++ 2013 x86", id: "Microsoft.VCRedist.2013.x86", domain: "microsoft.com", match: /visual c\+\+ 2013 redistributable \(x86\)/i },
       { name: "DirectX", id: "Microsoft.DirectX", domain: "microsoft.com" },
-      { name: "Java 8  (Temurin)", id: "EclipseAdoptium.Temurin.8.JRE", domain: "adoptium.net" },
-      { name: "Java 11 (Temurin)", id: "EclipseAdoptium.Temurin.11.JRE", domain: "adoptium.net" },
-      { name: "Java 17 (Temurin)", id: "EclipseAdoptium.Temurin.17.JRE", domain: "adoptium.net" },
-      { name: "Java 21 (Temurin)", id: "EclipseAdoptium.Temurin.21.JRE", domain: "adoptium.net" },
+      { name: "Java 8  (Temurin)", id: "EclipseAdoptium.Temurin.8.JRE", domain: "adoptium.net", match: /temurin jre .*hotspot 8u/i },
+      { name: "Java 11 (Temurin)", id: "EclipseAdoptium.Temurin.11.JRE", domain: "adoptium.net", match: /temurin jre .*hotspot 11\./i },
+      { name: "Java 17 (Temurin)", id: "EclipseAdoptium.Temurin.17.JRE", domain: "adoptium.net", match: /temurin jre .*hotspot 17\./i },
+      { name: "Java 21 (Temurin)", id: "EclipseAdoptium.Temurin.21.JRE", domain: "adoptium.net", match: /temurin jre .*hotspot 21\./i },
     ],
   },
 ];
+
+// Nombre como palabra completa (antes se buscaba como texto suelto: "Git" coincidía con
+// "Dolby Digital" y "Realtek Digital Output", "Opera" con Opera GX, "Microsoft Edge" con
+// WebView2, y las apps se marcaban como instaladas sin estarlo).
+const wordRx = (name: string) => new RegExp(`(^|[^a-z0-9])${name.toLowerCase().replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}([^a-z0-9]|$)`, "i");
+/** ¿Está instalada? `names` = DisplayName del registro de desinstalación + nombres de paquetes AppX. */
+export const isAppInstalled = (a: AppItem, names: string[]) => {
+  const rx = a.match ?? wordRx(a.name);
+  return names.some((n) => rx.test(n));
+};

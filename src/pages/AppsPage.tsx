@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { APP_CATALOG } from "../apps";
+import { APP_CATALOG, isAppInstalled } from "../apps";
 import { runPowershell } from "../lib/api";
 import { useInstaller } from "../lib/installer";
 import { useScrollMemory } from "../lib/useScrollMemory";
@@ -44,12 +44,9 @@ export default function AppsPage() {
   useEffect(() => {
     runPowershell(INSTALLED_NAMES).then((r) => {
       if (!mounted.current) return;
-      const hay = r.output.toLowerCase();
+      const names = r.output.split("|").map((x) => x.trim()).filter(Boolean);
       const set = new Set<string>();
-      APP_CATALOG.forEach((c) => c.apps.forEach((a) => {
-        const n = a.name.toLowerCase();
-        if (n.length >= 3 && hay.includes(n)) set.add(a.id);
-      }));
+      APP_CATALOG.forEach((c) => c.apps.forEach((a) => { if (isAppInstalled(a, names)) set.add(a.id); }));
       setInstalled(set);
     }).catch(() => {});
   }, []);

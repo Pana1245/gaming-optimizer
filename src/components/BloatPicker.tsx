@@ -35,6 +35,15 @@ export default function BloatPicker({ selected, onChange }: { selected: string[]
     return () => { alive = false; };
   }, []);
 
+  // Con la detección lista, lo elegido que ya no está en la PC se saca (se desinstaló o se
+  // quitó en una pasada anterior): si no, el botón contaba apps que el menú no muestra.
+  useEffect(() => {
+    if (!installed) return;
+    const ok = selected.filter((id) => installed.has(id));
+    if (ok.length !== selected.length) onChange(ok);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [installed]);
+
   // Sin detección (falló o todavía no hay datos) se muestra todo.
   const filterOn = onlyInstalled && !!installed && !scanFail;
   const ready = !!installed || scanFail;

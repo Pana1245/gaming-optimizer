@@ -6,6 +6,7 @@ import { Page, List, LogPanel } from "../components/ui";
 import { IndeterminateBar } from "../components/Feedback";
 import Modal from "../components/Modal";
 import { useI18n } from "../lib/i18n";
+import { useSharedState } from "../lib/sharedState";
 import { trLog } from "../lib/logI18n";
 
 const sizeOnly = (paths: string) => String.raw`$ps=@(${paths})
@@ -62,14 +63,16 @@ const fmtMB = (mb: number) => (mb >= 1024 ? `${(mb / 1024).toFixed(1)} GB` : `${
 
 export default function Limpieza() {
   const { t, lang } = useI18n();
-  const [sel, setSel] = useState<Record<string, boolean>>(() =>
+  // Compartido (sobrevive al cambiar de sección): al volver mientras limpia se ve el avance
+  // y no se puede lanzar otra limpieza encima.
+  const [sel, setSel] = useSharedState<Record<string, boolean>>("clean.sel", () =>
     Object.fromEntries(ITEMS.map((i) => [i.id, !i.off])));
-  const [sizes, setSizes] = useState<Record<string, number>>({});
-  const [log, setLog] = useState<string[]>(() => [t("clean.logIntro")]);
+  const [sizes, setSizes] = useSharedState<Record<string, number>>("clean.sizes", () => ({}));
+  const [log, setLog] = useSharedState<string[]>("clean.log", () => [t("clean.logIntro")]);
   const [analyzing, setAnalyzing] = useState(false);
-  const [running, setRunning] = useState(false);
+  const [running, setRunning] = useSharedState("clean.running", () => false);
   const [confirm, setConfirm] = useState(false);
-  const [done, setDone] = useState<string | null>(null);
+  const [done, setDone] = useSharedState<string | null>("clean.done", () => null);
   const logRef = useRef<HTMLDivElement>(null);
   const mounted = useRef(true);
   useEffect(() => {

@@ -10,6 +10,7 @@ import { CATEGORY_PT, TWEAK_PT, TWEAK_DESC_PT } from "../catalogPt";
 import { runPowershell, getSystemInfo } from "../lib/api";
 import { notify } from "../lib/notify";
 import { useScrollMemory } from "../lib/useScrollMemory";
+import { useSharedState } from "../lib/sharedState";
 import EnergyCheckbox from "../components/EnergyCheckbox";
 import BloatPicker from "../components/BloatPicker";
 import PermsPicker from "../components/PermsPicker";
@@ -172,14 +173,22 @@ export default function Optimizaciones() {
   const tn = (name: string) => pick(lang, name, TWEAK_EN[name], TWEAK_PT[name]);
   const td = (name: string) => pick(lang, TWEAK_DESC[name], TWEAK_DESC_EN[name], TWEAK_DESC_PT[name]);
   const [winVer, setWinVer] = useState(11);
-  const [sel, setSel] = useState<Record<string, boolean>>({});
-  const [log, setLog] = useState<string[]>(["Listo."]);
-  const [progress, setProgress] = useState(0);
-  const [running, setRunning] = useState(false);
-  const [confirm, setConfirm] = useState(false);
-  const [done, setDone] = useState<string | null>(null);
-  const [canReboot, setCanReboot] = useState(false);
   const [picks, setPicks] = useState<Record<PickerKey, string[]>>(() => ({ bloat: loadPick("bloat"), perms: loadPick("perms"), svc: loadPick("svc") }));
+  // Compartido (sobrevive al cambiar de sección): la selección, el registro y el estado de
+  // la aplicación en curso. Antes, al volver mientras aplicaba, la página decía "Listo." y
+  // dejaba lanzar otra pasada encima de la que seguía corriendo.
+  const [sel, setSel] = useSharedState<Record<string, boolean>>("opt.sel", () => {
+    const p = { bloat: loadPick("bloat"), perms: loadPick("perms"), svc: loadPick("svc") };
+    const init: Record<string, boolean> = {};
+    ALL_CATEGORIES.forEach((c) => c.tweaks.forEach((t) => (init[selKey(c.id, t)] = defaultOn(t, p))));
+    return init;
+  });
+  const [log, setLog] = useSharedState<string[]>("opt.log", () => ["Listo."]);
+  const [progress, setProgress] = useSharedState("opt.progress", () => 0);
+  const [running, setRunning] = useSharedState("opt.running", () => false);
+  const [confirm, setConfirm] = useState(false);
+  const [done, setDone] = useSharedState<string | null>("opt.done", () => null);
+  const [canReboot, setCanReboot] = useSharedState("opt.canReboot", () => false);
   const [openMenu, setOpenMenu] = useState<Partial<Record<PickerKey, boolean>>>({});
   const logRef = useRef<HTMLDivElement>(null);
   const scrollRef = useScrollMemory<HTMLDivElement>("opt");
@@ -193,12 +202,7 @@ export default function Optimizaciones() {
   );
 
   useEffect(() => {
-    const init: Record<string, boolean> = {};
-    ALL_CATEGORIES.forEach((c) => c.tweaks.forEach((t) => (init[selKey(c.id, t)] = defaultOn(t, picks))));
-    setSel(init);
     getSystemInfo().then((info) => setWinVer(info.win_ver)).catch(() => {});
-    // Sólo al abrir la página (con lo elegido guardado): después cada menú marca su fila.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   useEffect(() => {
