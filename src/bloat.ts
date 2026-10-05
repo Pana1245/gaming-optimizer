@@ -39,39 +39,120 @@ const KEEP_CORE = [
   "Microsoft.4297127D64EC6", "Microsoft.XboxGameOverlay",
 ];
 
-// Lista completa (opcional, avanzada): además de las anteriores, estas apps de Windows
-// que algunos usan. Es una lista EXPLÍCITA: nunca se quita "todo menos X", porque eso
-// borraría apps que instaló el usuario (juegos, Claude, launchers…).
-const AGGRESSIVE = [
-  "MicrosoftWindows.Client.WebExperience", // Widgets
-  "Microsoft.ZuneMusic", // Reproductor multimedia (en W11 es el reproductor de música por defecto)
-  "Microsoft.MicrosoftStickyNotes", "Microsoft.WindowsSoundRecorder", "MicrosoftCorporationII.QuickAssist",
-  "Microsoft.Paint3D", "Microsoft.Whiteboard", "Microsoft.RemoteDesktop", "Microsoft.WindowsScan",
-  "Microsoft.CommsPhone", "Microsoft.ConnectivityStore", "Microsoft.MicrosoftEdgeDevToolsClient",
+// ── Catálogo de bloatware ────────────────────────────────────────────────────
+// Cada app con su nombre legible (para el menú "Elegir apps" de Optimizaciones), su
+// grupo y si es RECOMENDADO quitarla. Recomendado = casi nadie la usa. NO se
+// recomiendan las que mucha gente sí usa (Outlook, Correo, Teams, Reloj, Vincular al
+// teléfono, To Do, Family) ni las de streaming/redes que el usuario pudo instalar a
+// propósito (Spotify, Netflix, Disney+, Prime Video, TikTok, Instagram, Facebook…).
+// Los patrones son los mismos de siempre (comparación -like de PowerShell). Se sacaron
+// OneNote, Sway y Edge DevTools: KEEP_CORE ("Microsoft.Office.*", "Microsoft.MicrosoftEdge*")
+// los protegía igual, así que nunca se quitaban.
+export type BloatGroup = "ms" | "third" | "extra";
+export interface BloatApp {
+  id: string;
+  patterns: string[];
+  name: string; nameEn?: string; namePt?: string;
+  group: BloatGroup;
+  rec: boolean;
+}
+const app = (group: BloatGroup, rec: boolean, patterns: string | string[], name: string, nameEn?: string, namePt?: string): BloatApp => {
+  const pats = Array.isArray(patterns) ? patterns : [patterns];
+  return { id: pats[0], patterns: pats, name, nameEn, namePt, group, rec };
+};
+
+export const BLOAT_APPS: BloatApp[] = [
+  // Apps de Microsoft que casi nadie usa
+  app("ms", true, "Microsoft.BingNews", "Noticias (Bing)", "News (Bing)", "Notícias (Bing)"),
+  app("ms", true, "Microsoft.BingWeather", "El Tiempo (Clima)", "Weather", "Clima"),
+  app("ms", true, "Microsoft.BingFinance", "Finanzas (Bing)", "Money (Bing)", "Finanças (Bing)"),
+  app("ms", true, "Microsoft.BingSports", "Deportes (Bing)", "Sports (Bing)", "Esportes (Bing)"),
+  app("ms", true, "Microsoft.BingTravel", "Viajes (Bing)", "Travel (Bing)", "Viagens (Bing)"),
+  app("ms", true, "Microsoft.BingFoodAndDrink", "Cocina (Bing)", "Food & Drink (Bing)", "Culinária (Bing)"),
+  app("ms", true, "Microsoft.BingHealthAndFitness", "Salud (Bing)", "Health & Fitness (Bing)", "Saúde (Bing)"),
+  app("ms", true, "Microsoft.BingTranslator", "Traductor de Bing", "Bing Translator", "Tradutor do Bing"),
+  app("ms", true, "Microsoft.BingSearch", "Búsqueda de Bing", "Bing Search", "Pesquisa do Bing"),
+  app("ms", true, "Microsoft.GetHelp", "Obtener ayuda", "Get Help", "Obter Ajuda"),
+  app("ms", true, "Microsoft.Getstarted", "Consejos", "Tips", "Dicas"),
+  app("ms", true, "Microsoft.Messaging", "Mensajes", "Messaging", "Mensagens"),
+  app("ms", true, "Microsoft.Microsoft3DViewer", "Visor 3D", "3D Viewer", "Visualizador 3D"),
+  app("ms", true, "Microsoft.3DBuilder", "3D Builder"),
+  app("ms", true, "Microsoft.MicrosoftSolitaireCollection", "Microsoft Solitaire Collection"),
+  app("ms", true, "Microsoft.MicrosoftOfficeHub", "Microsoft 365 (Office)"),
+  app("ms", true, "Microsoft.NetworkSpeedTest", "Network Speed Test"),
+  app("ms", true, "Microsoft.News", "Microsoft Start (Noticias)", "Microsoft Start (News)", "Microsoft Start (Notícias)"),
+  app("ms", true, "Microsoft.OneConnect", "Planes móviles", "Mobile Plans", "Planos Móveis"),
+  app("ms", true, "Microsoft.People", "Contactos", "People", "Pessoas"),
+  app("ms", true, "Microsoft.Print3D", "Print 3D"),
+  app("ms", true, "Microsoft.SkypeApp", "Skype"),
+  app("ms", true, "Microsoft.Wallet", "Microsoft Wallet"),
+  app("ms", false, "Microsoft.WindowsAlarms", "Reloj y alarmas", "Clock & Alarms", "Relógio e Alarmes"),
+  app("ms", true, "Microsoft.WindowsFeedbackHub", "Centro de opiniones", "Feedback Hub", "Hub de Comentários"),
+  app("ms", true, "Microsoft.WindowsMaps", "Mapas", "Maps", "Mapas"),
+  app("ms", true, "Microsoft.ZuneVideo", "Películas y TV", "Movies & TV", "Filmes e TV"),
+  app("ms", false, "Microsoft.YourPhone", "Vincular al teléfono", "Phone Link", "Vincular ao Celular"),
+  app("ms", true, "Microsoft.MixedReality.Portal", "Portal de realidad mixta", "Mixed Reality Portal", "Portal de Realidade Misturada"),
+  app("ms", false, "Microsoft.Todos", "Microsoft To Do"),
+  app("ms", true, "Microsoft.PowerAutomateDesktop", "Power Automate"),
+  app("ms", true, "Microsoft.MicrosoftPowerBIForWindows", "Power BI"),
+  app("ms", true, "Microsoft.WindowsReadingList", "Lista de lectura", "Reading List", "Lista de Leitura"),
+  app("ms", true, "Microsoft.549981C3F5F10", "Cortana"),
+  app("ms", true, "Microsoft.Copilot", "Copilot"),
+  app("ms", true, "Microsoft.MicrosoftJournal", "Microsoft Journal"),
+  app("ms", false, "Microsoft.OutlookForWindows", "Outlook (nuevo)", "Outlook (new)", "Outlook (novo)"),
+  app("ms", false, "microsoft.windowscommunicationsapps", "Correo y Calendario", "Mail and Calendar", "Email e Calendário"),
+  app("ms", true, "Microsoft.Windows.DevHome", "Dev Home"),
+  app("ms", false, "MicrosoftCorporationII.MicrosoftFamily", "Microsoft Family (control parental)", "Microsoft Family Safety", "Microsoft Family (controle dos pais)"),
+  app("ms", false, ["MicrosoftTeams", "MSTeams"], "Microsoft Teams"),
+  app("ms", true, "Clipchamp.Clipchamp", "Clipchamp"),
+  // Apps de terceros que Windows instala solas como "sugerencia"
+  app("third", true, ["*CandyCrush*", "*king.com*"], "Juegos de King (Candy Crush…)", "King games (Candy Crush…)", "Jogos da King (Candy Crush…)"),
+  app("third", true, "*BubbleWitch*", "Bubble Witch Saga"),
+  app("third", true, "*RoyalRevolt*", "Royal Revolt"),
+  app("third", true, "*MarchofEmpires*", "March of Empires"),
+  app("third", true, "*HiddenCity*", "Hidden City"),
+  app("third", true, "*FarmVille*", "FarmVille"),
+  app("third", true, "*Asphalt8*", "Asphalt 8"),
+  app("third", false, "*Duolingo*", "Duolingo"),
+  app("third", true, "*EclipseManager*", "Eclipse Manager"),
+  app("third", true, "*AdobePhotoshopExpress*", "Adobe Photoshop Express"),
+  app("third", true, "*Wunderlist*", "Wunderlist"),
+  app("third", true, "*Flipboard*", "Flipboard"),
+  app("third", false, "*Twitter*", "X (Twitter)"),
+  app("third", false, "*Facebook*", "Facebook"),
+  app("third", false, "*Instagram*", "Instagram"),
+  app("third", false, "*Spotify*", "Spotify"),
+  app("third", false, "*Netflix*", "Netflix"),
+  app("third", true, "*PandoraMediaInc*", "Pandora"),
+  app("third", false, "*TikTok*", "TikTok"),
+  app("third", false, "*Disney*", "Disney+"),
+  app("third", true, "*Booking*", "Booking.com"),
+  app("third", true, "*WildTangent*", "WildTangent Games"),
+  app("third", true, "*McAfee*", "McAfee (prueba)", "McAfee (trial)", "McAfee (avaliação)"),
+  app("third", true, "*Norton*", "Norton (prueba)", "Norton (trial)", "Norton (avaliação)"),
+  app("third", false, "*LinkedInforWindows*", "LinkedIn"),
+  app("third", true, "*Amazon.com.Amazon*", "Amazon (tienda)", "Amazon (store)", "Amazon (loja)"),
+  app("third", false, "*PrimeVideo*", "Prime Video"),
+  // Otras apps de Windows: algunos sí las usan (nunca se recomiendan)
+  app("extra", false, "MicrosoftWindows.Client.WebExperience", "Widgets"),
+  app("extra", false, "Microsoft.ZuneMusic", "Reproductor multimedia", "Media Player", "Reprodutor Multimídia"),
+  app("extra", false, "Microsoft.MicrosoftStickyNotes", "Notas rápidas", "Sticky Notes", "Notas Autoadesivas"),
+  app("extra", false, "Microsoft.WindowsSoundRecorder", "Grabadora de sonido", "Sound Recorder", "Gravador de Som"),
+  app("extra", false, "MicrosoftCorporationII.QuickAssist", "Asistencia rápida", "Quick Assist", "Assistência Rápida"),
+  app("extra", false, "Microsoft.Paint3D", "Paint 3D"),
+  app("extra", false, "Microsoft.Whiteboard", "Microsoft Whiteboard"),
+  app("extra", false, "Microsoft.RemoteDesktop", "Escritorio remoto (app)", "Remote Desktop (app)", "Área de Trabalho Remota (app)"),
+  app("extra", false, "Microsoft.WindowsScan", "Escáner de Windows", "Windows Scan", "Scanner do Windows"),
+  app("extra", false, "Microsoft.CommsPhone", "Teléfono", "Phone", "Telefone"),
+  app("extra", false, "Microsoft.ConnectivityStore", "Microsoft Wi-Fi"),
 ];
 
-// Apps de Microsoft que casi nadie usa (explícitas: no se quita nada por comodín).
-const MS_APPS = [
-  "Microsoft.BingNews", "Microsoft.BingWeather", "Microsoft.BingFinance", "Microsoft.BingSports", "Microsoft.BingTravel",
-  "Microsoft.BingFoodAndDrink", "Microsoft.BingHealthAndFitness", "Microsoft.BingTranslator", "Microsoft.BingSearch",
-  "Microsoft.GetHelp", "Microsoft.Getstarted", "Microsoft.Messaging", "Microsoft.Microsoft3DViewer", "Microsoft.3DBuilder",
-  "Microsoft.MicrosoftSolitaireCollection", "Microsoft.MicrosoftOfficeHub", "Microsoft.Office.OneNote", "Microsoft.Office.Sway",
-  "Microsoft.NetworkSpeedTest", "Microsoft.News", "Microsoft.OneConnect", "Microsoft.People", "Microsoft.Print3D",
-  "Microsoft.SkypeApp", "Microsoft.Wallet", "Microsoft.WindowsAlarms", "Microsoft.WindowsFeedbackHub", "Microsoft.WindowsMaps",
-  "Microsoft.ZuneVideo", "Microsoft.YourPhone", "Microsoft.MixedReality.Portal",
-  "Microsoft.Todos", "Microsoft.PowerAutomateDesktop", "Microsoft.MicrosoftPowerBIForWindows", "Microsoft.WindowsReadingList",
-  "Microsoft.549981C3F5F10", "Microsoft.Copilot", "Microsoft.MicrosoftJournal", "Microsoft.OutlookForWindows",
-  "microsoft.windowscommunicationsapps", "Microsoft.Windows.DevHome", "MicrosoftCorporationII.MicrosoftFamily",
-  "MicrosoftTeams", "MSTeams", "Clipchamp.Clipchamp",
-];
+export const BLOAT_RECOMMENDED = BLOAT_APPS.filter((a) => a.rec).map((a) => a.id);
 
-// Apps de terceros que vienen preinstaladas o se instalan solas como "sugerencia".
-const THIRD_PARTY = [
-  "*CandyCrush*", "*BubbleWitch*", "*RoyalRevolt*", "*MarchofEmpires*", "*HiddenCity*", "*FarmVille*", "*Asphalt8*",
-  "*Duolingo*", "*EclipseManager*", "*AdobePhotoshopExpress*", "*Wunderlist*", "*Flipboard*", "*Twitter*", "*Facebook*",
-  "*Instagram*", "*Spotify*", "*Netflix*", "*PandoraMediaInc*", "*TikTok*", "*Disney*", "*Booking*", "*WildTangent*",
-  "*McAfee*", "*Norton*", "*LinkedInforWindows*", "*king.com*", "*Amazon.com.Amazon*", "*PrimeVideo*",
-];
+const patternsOf = (g: BloatGroup) => BLOAT_APPS.filter((a) => a.group === g).flatMap((a) => a.patterns);
+// Presets de Optimizaciones ("Eliminar apps Microsoft innecesarias" / "…de terceros").
+const MS_APPS = patternsOf("ms");
+const THIRD_PARTY = patternsOf("third");
 
 const CORE = String.raw`$script:GoRemoved = 0; $script:GoFailed = 0
 function Test-Like($name, $patterns) { foreach ($p in $patterns) { if ($name -like $p) { return $true } }; return $false }
@@ -132,12 +213,39 @@ Remove-GoApps ${psList(THIRD_PARTY)} ${keepCore}
 Block-Reinstall
 Write-GoSummary`;
 
-// Lista completa: las de Microsoft + terceros + las "agresivas", todas explícitas.
-export const BLOAT_ALL = `${CORE}
-Write-Output "Eliminando bloatware (lista completa)..."
-Remove-GoApps ${psList([...MS_APPS, ...THIRD_PARTY, ...AGGRESSIVE])} ${keepCore}
+// Las apps que el usuario eligió en el menú "Elegir apps" (ids de BLOAT_APPS).
+export const bloatCustom = (ids: string[]) => {
+  const pats = BLOAT_APPS.filter((a) => ids.includes(a.id)).flatMap((a) => a.patterns);
+  return `${CORE}
+Write-Output "Eliminando bloatware (apps elegidas)..."
+Remove-GoApps ${psList(pats)} ${keepCore}
 Block-Reinstall
 Write-GoSummary`;
+};
+
+// Nombres de los paquetes que se PUEDEN quitar en esta PC (instalados para algún usuario o
+// provisionados), con el mismo filtro que Remove-GoApps: sin frameworks, sistema ni KEEP_CORE.
+export const BLOAT_DETECT = String.raw`function Test-Like($name, $patterns) { foreach ($p in $patterns) { if ($name -like $p) { return $true } }; return $false }
+$keep = ${keepCore}
+$n = @{}
+foreach ($p in @(Get-AppxPackage -AllUsers -ErrorAction SilentlyContinue)) {
+  if (-not $p.IsFramework -and "$($p.SignatureKind)" -ne 'System' -and -not $p.NonRemovable -and -not (Test-Like $p.Name $keep)) { $n[$p.Name] = 1 }
+}
+foreach ($p in @(Get-AppxProvisionedPackage -Online -ErrorAction SilentlyContinue)) { if (-not (Test-Like $p.DisplayName $keep)) { $n[$p.DisplayName] = 1 } }
+if ($n.Count -eq 0) { '[]' } else { @($n.Keys) | ConvertTo-Json -Compress }`;
+
+// -like de PowerShell (sin distinguir mayúsculas; los patrones sólo usan *).
+const likeRx = (p: string) =>
+  new RegExp("^" + p.split("*").map((x) => x.replace(/[.+?^${}()|[\]\\]/g, "\\$&")).join(".*") + "$", "i");
+/** Ids de BLOAT_APPS que están en la PC, según los nombres de paquete de BLOAT_DETECT. */
+export function bloatInstalled(names: string[]): Set<string> {
+  const out = new Set<string>();
+  for (const a of BLOAT_APPS) {
+    const rx = a.patterns.map(likeRx);
+    if (names.some((n) => rx.some((r) => r.test(n)))) out.add(a.id);
+  }
+  return out;
+}
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Microsoft Edge. Solo se desinstala si hay OTRO navegador instalado (para no dejar

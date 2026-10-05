@@ -1,9 +1,10 @@
 // Catálogo de Optimizaciones. Mantenido a mano (ya NO se regenera desde main.py).
 // optIn: nunca se preselecciona (ni con "Marcar todo"); el usuario debe tildarlo a mano.
-import { BLOAT_MS, BLOAT_THIRD, BLOAT_ALL, EDGE_REMOVE } from "./bloat";
+import { BLOAT_MS, BLOAT_THIRD, EDGE_REMOVE } from "./bloat";
 import { EXPLORER_FNS } from "./lib/shell";
 
-export interface Tweak { name: string; script: string; os?: 10 | 11; risk?: "advanced"; optIn?: boolean; }
+// picker "bloat": el script se arma con las apps elegidas en el menú (bloatCustom); `script` queda vacío.
+export interface Tweak { name: string; script: string; os?: 10 | 11; risk?: "advanced"; optIn?: boolean; picker?: "bloat"; }
 export interface Category { id: string; name: string; color: string; tweaks: Tweak[]; }
 
 export const CATEGORIES: Category[] = [
@@ -41,7 +42,7 @@ export const CATEGORIES: Category[] = [
     name: "Eliminar Bloatware",
     color: "#2196F3",
     tweaks: [
-      { name: "Eliminar bloatware (lista completa)", optIn: true, risk: "advanced", script: BLOAT_ALL },
+      { name: "Eliminar bloatware (elegir apps)", optIn: true, picker: "bloat", script: "" },
       { name: "Eliminar apps Microsoft innecesarias", script: BLOAT_MS },
       { name: "Eliminar apps de terceros preinstaladas", script: BLOAT_THIRD },
       { name: "Desinstalar Microsoft Edge (si usás otro navegador)", optIn: true, risk: "advanced", script: EDGE_REMOVE },

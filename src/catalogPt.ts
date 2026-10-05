@@ -33,7 +33,7 @@ export const TWEAK_PT: Record<string, string> = {
   "Deshabilitar Large Send Offload (LSO)": "Desativar Large Send Offload (LSO)",
   "Reservar 0% de ancho de banda para QoS": "Reservar 0% da largura de banda para QoS",
   // Bloatware
-  "Eliminar bloatware (lista completa)": "Eliminar bloatware (lista completa)",
+  "Eliminar bloatware (elegir apps)": "Remover bloatware (escolher apps)",
   "Eliminar apps Microsoft innecesarias": "Remover apps desnecessários da Microsoft",
   "Eliminar apps de terceros preinstaladas": "Remover apps pré-instalados de terceiros",
   "Deshabilitar OneDrive": "Desativar OneDrive",
@@ -124,7 +124,7 @@ export const TWEAK_DESC_PT: Record<string, string> = {
   "Deshabilitar Windows Search (indexado)": "Desliga a indexação da pesquisa, que usa o disco. Avançado: a pesquisa fica mais lenta.",
   "Eliminar apps Microsoft innecesarias": "Remove apps da Microsoft que quase ninguém usa (Notícias, Clima, Paciência, Mapas, Teams, Outlook novo, Copilot, Clipchamp…) para todos os usuários, e impede que o Windows os reinstale. Nunca mexe em Xbox/Game Pass, na Store nem nos seus jogos.",
   "Eliminar apps de terceros preinstaladas": "Remove jogos e apps de terceiros que o Windows instala como “sugestão” (Candy Crush, TikTok, Facebook, Netflix, Spotify, McAfee…) e impede que voltem. Não mexe em Minecraft, Roblox nem WhatsApp.",
-  "Eliminar bloatware (lista completa)": "Tudo dos dois anteriores mais apps do Windows que alguns usam: Widgets, Notas Autoadesivas, Gravador, Assistência Rápida, Reprodutor Multimídia, Paint 3D, Whiteboard… É uma lista fixa: nunca apaga apps que você instalou.",
+  "Eliminar bloatware (elegir apps)": "Abra “Escolher apps” para marcar, um por um, quais apps remover: apps da Microsoft, de terceiros e outros apps do Windows, com os instalados neste PC indicados. “Marcar recomendados” marca os que quase ninguém usa. São removidos para todos os usuários e o Windows não os reinstala sozinho.",
   "Desinstalar Microsoft Edge (si usás otro navegador)": "Desinstala o Edge com o desinstalador oficial e impede que o Windows o reinstale. Só faz isso se você tiver outro navegador instalado (Chrome, Firefox…). Não mexe no WebView2, que outros apps usam. Desfaça em Reativar → Microsoft Edge.",
   "Desactivar HPET (timer de alta precisión)": "Desativa o temporizador HPET e o “dynamic tick”. Em alguns PCs reduz a latência de entrada; em outros piora. Requer reiniciar. Avançado: teste e reverta se notar travadas.",
   "Deshabilitar OneDrive": "Desinstala o OneDrive e impede que volte a sincronizar. Os arquivos da pasta OneDrive não são apagados. Faça só se não usa o OneDrive.",

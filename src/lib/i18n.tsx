@@ -719,6 +719,22 @@ const STR: Record<string, { es: string; en: string }> = {
   "sys.vbsOff": { es: "Inactiva (sin costo de FPS)", en: "Off (no FPS cost)" },
   "sys.vbsHint": { es: "se puede desactivar en Motor de Cambios → Rendimiento", en: "can be turned off in Change Engine → Performance" },
   "profiles.planFail": { es: "no se pudo cambiar el plan de energía", en: "couldn't change the power plan" },
+  "bloat.menuBtn": { es: "Elegir apps", en: "Choose apps" },
+  "bloat.recommended": { es: "Marcar recomendados", en: "Select recommended" },
+  "bloat.all": { es: "Todas", en: "All" },
+  "bloat.none": { es: "Ninguna", en: "None" },
+  "bloat.onlyInstalled": { es: "Sólo las instaladas en esta PC", en: "Only the ones on this PC" },
+  "bloat.scanning": { es: "Buscando qué apps hay en esta PC…", en: "Checking which apps are on this PC…" },
+  "bloat.scanFail": { es: "No se pudo ver qué apps están instaladas: se muestra la lista completa.", en: "Couldn't check which apps are installed: showing the full list." },
+  "bloat.noneInstalled": { es: "No hay bloatware de esta lista en tu PC. 🎉", en: "There's no bloatware from this list on your PC. 🎉" },
+  "bloat.selectedN": { es: "{n} elegidas", en: "{n} selected" },
+  "bloat.installed": { es: "Instalada", en: "Installed" },
+  "bloat.recBadge": { es: "Recomendado", en: "Recommended" },
+  "bloat.group.ms": { es: "Apps de Microsoft", en: "Microsoft apps" },
+  "bloat.group.third": { es: "Apps de terceros preinstaladas", en: "Preinstalled third-party apps" },
+  "bloat.group.extra": { es: "Otras apps de Windows (algunos las usan)", en: "Other Windows apps (some people use them)" },
+  "bloat.hint": { es: "“Recomendados” marca las que casi nadie usa. Nunca marca Outlook, Correo, Teams, Reloj, Vincular al teléfono ni apps de streaming o redes sociales: esas elegilas vos. Mientras uses esta lista, “Eliminar apps Microsoft innecesarias” y “Eliminar apps de terceros preinstaladas” se desmarcan para no quitar apps que dejaste sin marcar.", en: "“Recommended” selects the ones almost nobody uses. It never selects Outlook, Mail, Teams, Clock, Phone Link or streaming/social apps: pick those yourself. While you use this list, “Remove unneeded Microsoft apps” and “Remove preinstalled third-party apps” are unchecked so apps you left unchecked aren't removed." },
+  "bloat.noneChosen": { es: "No elegiste ninguna app: abrí “Elegir apps”.", en: "You didn't choose any app: open “Choose apps”." },
 };
 
 interface Ctx { lang: Lang; setLang: (l: Lang) => void; t: (k: string) => string; }

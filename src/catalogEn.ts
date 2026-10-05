@@ -34,7 +34,7 @@ export const TWEAK_EN: Record<string, string> = {
   "Deshabilitar Large Send Offload (LSO)": "Disable Large Send Offload (LSO)",
   "Reservar 0% de ancho de banda para QoS": "Reserve 0% bandwidth for QoS",
   // Bloatware
-  "Eliminar bloatware (lista completa)": "Remove bloatware (full list)",
+  "Eliminar bloatware (elegir apps)": "Remove bloatware (choose apps)",
   "Eliminar apps Microsoft innecesarias": "Remove unneeded Microsoft apps",
   "Eliminar apps de terceros preinstaladas": "Remove preinstalled third-party apps",
   "Deshabilitar OneDrive": "Disable OneDrive",
@@ -125,7 +125,7 @@ export const TWEAK_DESC_EN: Record<string, string> = {
   "Deshabilitar Windows Search (indexado)": "Turns off search indexing, which uses disk. Advanced: search becomes slower.",
   "Eliminar apps Microsoft innecesarias": "Removes Microsoft apps almost nobody uses (News, Weather, Solitaire, Maps, Teams, new Outlook, Copilot, Clipchamp…) for all users, and stops Windows from reinstalling them. Never touches Xbox/Game Pass, the Store or your games.",
   "Eliminar apps de terceros preinstaladas": "Removes third-party games and apps Windows installs as “suggestions” (Candy Crush, TikTok, Facebook, Netflix, Spotify, McAfee…) and keeps them from coming back. Doesn't touch Minecraft, Roblox or WhatsApp.",
-  "Eliminar bloatware (lista completa)": "Everything from the two above plus Windows apps some people do use: Widgets, Sticky Notes, Sound Recorder, Quick Assist, Media Player, Paint 3D, Whiteboard… It's a fixed list: it never deletes apps you installed.",
+  "Eliminar bloatware (elegir apps)": "Open “Choose apps” to pick, one by one, which apps to remove: Microsoft apps, third-party apps and other Windows apps, with the ones installed on this PC marked. “Select recommended” picks the ones almost nobody uses. They're removed for all users and Windows won't reinstall them on its own.",
   "Desinstalar Microsoft Edge (si usás otro navegador)": "Uninstalls Edge with its official uninstaller and stops Windows from reinstalling it. It only does it if you have another browser installed (Chrome, Firefox…). It doesn't touch WebView2, which other apps use. Undo it in Re-enable → Microsoft Edge.",
   "Desactivar HPET (timer de alta precisión)": "Disables the HPET timer and dynamic tick. On some PCs it lowers input latency; on others it makes it worse. Requires a restart. Advanced: try it and revert if you notice stutter.",
   "Deshabilitar OneDrive": "Uninstalls OneDrive and blocks it from syncing again. Files in your OneDrive folder are not deleted. Only do it if you don't use OneDrive.",

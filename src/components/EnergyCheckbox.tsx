@@ -1,3 +1,4 @@
+import type { ReactNode } from "react";
 import Tooltip from "./Tooltip";
 import { Check, Badge } from "./ui";
 import { useI18n } from "../lib/i18n";
@@ -9,11 +10,13 @@ interface Props {
   badge?: string;
   risk?: "safe" | "advanced";
   desc?: string;
+  /** Control extra a la derecha (ej. el botón del menú de bloatware); su clic no toca la casilla. */
+  action?: ReactNode;
 }
 
 /** Fila con casilla (Optimizaciones, Motor, Gráficos, Limpieza): nombre, etiquetas
  *  (W11 / Avanzado) y un "?" con la explicación del tweak. */
-export default function EnergyCheckbox({ checked, onChange, label, badge, risk, desc }: Props) {
+export default function EnergyCheckbox({ checked, onChange, label, badge, risk, desc, action }: Props) {
   const { t } = useI18n();
   return (
     <div
@@ -37,6 +40,7 @@ export default function EnergyCheckbox({ checked, onChange, label, badge, risk, 
         </Tooltip>
       )}
       <span className="ml-auto flex items-center gap-1.5 shrink-0">
+        {action && <span onClick={(e) => e.stopPropagation()}>{action}</span>}
         {badge && <Badge>{badge}</Badge>}
         {risk === "advanced" && <Badge tone="warn">{t("common.advancedBadge")}</Badge>}
       </span>
