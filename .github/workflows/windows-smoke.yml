@@ -4,9 +4,13 @@ name: prueba de fuego (Windows)
 # lecturas, todos los tweaks + restaurar (y compara el registro con el de antes),
 # Auto Game-Mode, Limpieza, Desinstalar, Reparar, Reactivar, Red... Ver tests/windows/smoke.ts.
 # Se lanza a mano (Actions → "prueba de fuego (Windows)" → Run workflow): cambia toda la
-# máquina y tarda ~20-40 min, así que no corre en cada push.
+# máquina y tarda ~20-40 min, así que no corre en cada push: sólo cuando cambia la prueba.
 on:
   workflow_dispatch:
+  push:
+    paths:
+      - 'tests/windows/**'
+      - '.github/workflows/windows-smoke.yml'
 
 jobs:
   smoke:
