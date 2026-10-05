@@ -39,6 +39,7 @@ import { WINGET_SETUP } from "./.src/lib/wingetSetup";
 import { APP_CATALOG, isAppInstalled } from "./.src/apps";
 import { runStream } from "./.src/lib/api";
 import { NV_MAXPERF, NV_RESTORE, AMD_MAXPERF, AMD_RESTORE } from "./.src/lib/gpu";
+import { nvScript, amdScript } from "./.src/lib/gpuDriver";
 import { PROFILES } from "./.src/profiles";
 import type { Tweak } from "./.src/catalog";
 
@@ -92,6 +93,7 @@ async function main() {
     const all: [string, string][] = [
       ["BACKUP", BACKUP], ["Chequeo", CHEQUEO_SCAN], ["Inicio", STARTUP_LIST], ["Desinstalar (lista)", UNINSTALL_LIST],
       ["winget", WINGET_SETUP], ["bloat (todo)", bloatCustom(BLOAT_APPS.map((a) => a.id))], ["Restaurar", restoreScript("x")],
+      ...(["status", "apply", "restore"] as const).flatMap((m) => [[`Driver NVIDIA ${m}`, nvScript(m)], [`Driver AMD ${m}`, amdScript(m)]] as [string, string][]),
       ...ALL_CATEGORIES.flatMap((c) => c.tweaks.map((t) => [`Tweak ${t.name}`, scriptOf(t)] as [string, string])),
     ];
     const big = all.map(([n, s]) => [n, encodeScript(s).length] as const).filter(([, l]) => l > CMDLINE_MAX);
@@ -253,6 +255,7 @@ async function main() {
   for (const p of PROFILES) await test(`Perfiles: plan de energía ${p.id}`, async () => first(await ok(p.planScript)));
   for (const [n, s] of [["NVIDIA máx.", NV_MAXPERF(false)], ["NVIDIA restaurar", NV_RESTORE(false)], ["AMD máx.", AMD_MAXPERF(false)], ["AMD restaurar", AMD_RESTORE(false)]] as const)
     await test(`Gráficos: ${n}`, async () => first(await ok(s)));
+  await gpuDriverTests();
   await repairTests();
   for (const f of FIXES) {
     await test(`Reactivar: ${f.id}`, async () => first(await ok(f.script, 900)), { envOk: ["bluetooth", "busqueda", "edge", "onedrive", "impresora"].includes(f.id) });
@@ -355,6 +358,22 @@ New-Item -ItemType Directory -Force -Path "$env:ProgramData\GO Smoke App" | Out-
     must(!fs.existsSync(dir) && !fs.existsSync(path.join(process.env.ProgramData ?? "C:\\ProgramData", "GO Smoke App")), "quedaron carpetas: " + o);
     return first(o);
   });
+}
+
+// El runner no tiene placa NVIDIA ni AMD: se prueba que el C# compile con el PowerShell 5.1
+// de Windows y que, sin el driver de la marca, no se toque nada y se informe bien.
+async function gpuDriverTests() {
+  for (const [vendor, script, none] of [["NVIDIA", nvScript, "nonv"], ["AMD", amdScript, "noadlx"]] as const) {
+    for (const mode of ["status", "apply", "restore"] as const) {
+      await test(`Gráficos: driver ${vendor} (${mode})`, async () => {
+        const o = await ok(script(mode), 120);
+        const d = lastJson(o);
+        must(d.reason === none || d.reason === "" || (mode === "restore" && d.reason === "nobackup"), `respuesta inesperada: ${o.slice(-400)}`);
+        must(!(await ok(String.raw`(Get-ItemProperty 'HKCU:\Software\GamingOptimizer\GpuPrev' -EA SilentlyContinue | Out-String)`)).match(/_NVDRS_saved|_ADLX_saved/), "guardó un backup sin haber placa");
+        return `reason=${d.reason || "ok"}`;
+      });
+    }
+  }
 }
 
 async function repairTests() {

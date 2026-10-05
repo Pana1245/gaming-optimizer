@@ -1,9 +1,11 @@
 import { useEffect, useRef, useState } from "react";
 import { Page, Badge, SectionTitle, List, LogPanel } from "../components/ui";
 import EnergyCheckbox from "../components/EnergyCheckbox";
-import { getSystemInfo, runPowershell } from "../lib/api";
+import { getSystemInfo } from "../lib/api";
 import { applyOp, loadLedger, saveLedger } from "../lib/engine";
-import { GPU_OPS, isNvidia, isAmd, isIntegrated, getNvInfo, NV_MAXPERF, NV_RESTORE, AMD_MAXPERF, AMD_RESTORE, type NvInfo } from "../lib/gpu";
+import { GPU_OPS, isNvidia, isAmd, isIntegrated, getNvInfo, type NvInfo } from "../lib/gpu";
+import type { Vendor } from "../lib/gpuDriver";
+import GpuDriverPanel from "../components/GpuDriverPanel";
 import { notify } from "../lib/notify";
 import { useI18n } from "../lib/i18n";
 import { useAppVisible } from "../lib/useAppVisible";
@@ -20,33 +22,13 @@ function Metric({ label, value, unit, color }: { label: string; value: number; u
   );
 }
 
-/** Ajuste propio de la marca (NVIDIA / AMD): aplicar o restaurar el driver. */
-function VendorCard({ title, desc, color, busy, onApply, onRestore }: {
-  title: string; desc: string; color: string; busy: boolean; onApply: () => void; onRestore: () => void;
-}) {
-  const { t } = useI18n();
-  return (
-    <div className="rounded-xl border border-line bg-surface p-5 flex flex-col">
-      <div className="flex items-center gap-2 text-[14px] font-medium text-text">
-        <span className="w-2 h-2 rounded-full" style={{ background: color }} />{title}
-      </div>
-      <p className="text-[12.5px] text-text-mute mt-1.5 leading-relaxed flex-1">{desc}</p>
-      <div className="flex gap-2 mt-4">
-        <button onClick={onApply} disabled={busy} className="btn btn-primary">{busy ? "…" : t("common.apply")}</button>
-        <button onClick={onRestore} disabled={busy} className="btn btn-ghost">{t("common.restore")}</button>
-      </div>
-    </div>
-  );
-}
-
-export default function Graficos() {
+export default function Graficos({ onNavigate }: { onNavigate?: (page: string) => void }) {
   const { t, lang } = useI18n();
   const [gpus, setGpus] = useState<{ name: string; vram_gb: number }[] | null>(null);
   const [nv, setNv] = useState<NvInfo | null>(null);
   const [sel, setSel] = useState<Record<string, boolean>>(() =>
     Object.fromEntries(GPU_OPS.map((o) => [o.id, o.risk !== "advanced"])));
   const [busy, setBusy] = useState(false);
-  const [vendorBusy, setVendorBusy] = useState(false);
   const [log, setLog] = useState<string[]>(() => [t("gpu.logReady")]);
   const logRef = useRef<HTMLDivElement>(null);
   const mounted = useRef(true);
@@ -111,19 +93,6 @@ export default function Graficos() {
     }
   };
 
-  const runVendor = async (script: string, label: string) => {
-    setVendorBusy(true);
-    addLog(`\n— ${label} —`);
-    try {
-      const r = await runPowershell(script);
-      addLog(r.output.trim());
-    } catch (err) {
-      addLog(`✗ ${t("gpu.errPrefix")} ${t(err instanceof Error ? err.message : String(err))}`);
-    } finally {
-      setVendorBusy(false);
-    }
-  };
-
   return (
     <Page tkey="page.gpu" scroll>
       <div className="space-y-4 pb-2">
@@ -159,34 +128,24 @@ export default function Graficos() {
           {!nvidia && !amd && list.length > 0 && <p className="text-[12.5px] text-text-mute mt-3">{t("gpu.otherNote")}</p>}
         </div>
 
-        <div className={`grid gap-4 items-start ${nvidia || amd ? "grid-cols-[1.4fr_1fr]" : "grid-cols-1"}`}>
-          {/* Ajustes universales */}
-          <div>
-            <SectionTitle right={<button onClick={applyUniversal} disabled={busy} className="text-[12.5px] font-medium text-accent hover:underline disabled:opacity-50">{busy ? t("gpu.applying") : t("gpu.applySelected")}</button>}>
-              {t("gpu.universal")}
-            </SectionTitle>
-            <List>
-              {GPU_OPS.map((o) => (
-                <EnergyCheckbox key={o.id} checked={!!sel[o.id]} onChange={(v) => setSel((s) => ({ ...s, [o.id]: v }))}
-                  label={lang === "es" ? o.name : t(`gpu.op.${o.id}.name`)} desc={lang === "es" ? o.desc : t(`gpu.op.${o.id}.desc`)}
-                  risk={o.risk === "advanced" ? "advanced" : "safe"} />
-              ))}
-            </List>
-            <p className="text-[12px] text-text-mute mt-2">{t("gpu.movedHint")}</p>
-          </div>
+        {/* Driver de NVIDIA / AMD en 1 clic (lo del panel de cada marca) */}
+        {(nvidia || amd) && (
+          <GpuDriverPanel vendors={[...(nvidia ? ["nvidia"] : []), ...(amd ? ["amd"] : [])] as Vendor[]} onLog={addLog} onNavigate={onNavigate} />
+        )}
 
-          {/* Ajuste propio de la marca */}
-          {(nvidia || amd) && (
-            <div>
-              <SectionTitle>{t("gpu.vendorTitle")}</SectionTitle>
-              <div className="space-y-4">
-              {nvidia && <VendorCard title={t("gpu.nvMax")} desc={t("gpu.nvDesc")} color="#76b900" busy={vendorBusy}
-                onApply={() => runVendor(NV_MAXPERF(lang === "en"), t("gpu.nvApply"))} onRestore={() => runVendor(NV_RESTORE(lang === "en"), t("gpu.nvRestore"))} />}
-              {amd && <VendorCard title={t("gpu.amdMax")} desc={t("gpu.amdDesc")} color="#ed1c24" busy={vendorBusy}
-                onApply={() => runVendor(AMD_MAXPERF(lang === "en"), t("gpu.amdApply"))} onRestore={() => runVendor(AMD_RESTORE(lang === "en"), t("gpu.amdRestore"))} />}
-              </div>
-            </div>
-          )}
+        {/* Ajustes universales */}
+        <div>
+          <SectionTitle right={<button onClick={applyUniversal} disabled={busy} className="text-[12.5px] font-medium text-accent hover:underline disabled:opacity-50">{busy ? t("gpu.applying") : t("gpu.applySelected")}</button>}>
+            {t("gpu.universal")}
+          </SectionTitle>
+          <List>
+            {GPU_OPS.map((o) => (
+              <EnergyCheckbox key={o.id} checked={!!sel[o.id]} onChange={(v) => setSel((s) => ({ ...s, [o.id]: v }))}
+                label={lang === "es" ? o.name : t(`gpu.op.${o.id}.name`)} desc={lang === "es" ? o.desc : t(`gpu.op.${o.id}.desc`)}
+                risk={o.risk === "advanced" ? "advanced" : "safe"} />
+            ))}
+          </List>
+          <p className="text-[12px] text-text-mute mt-2">{t("gpu.movedHint")}</p>
         </div>
 
         <LogPanel ref={logRef} label={t("common.log")} className="h-[150px]">{trLog(log.join("\n"), lang)}</LogPanel>

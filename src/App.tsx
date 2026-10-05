@@ -77,7 +77,7 @@ function renderPage(page: string, go: (p: string) => void) {
     case "panel": return <Panel onNavigate={go} />;
     case "profiles": return <Perfiles />;
     case "network": return <Red />;
-    case "gpu": return <Graficos />;
+    case "gpu": return <Graficos onNavigate={go} />;
     case "opt": return <Optimizaciones />;
     case "engine": return <Motor />;
     case "gamemode": return <GameMode />;
