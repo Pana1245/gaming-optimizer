@@ -1,0 +1,29 @@
+<!--
+  Probar Gaming Optimizer en Windows Sandbox (un Windows descartable dentro de tu PC:
+  al cerrarlo se borra TODO, tu Windows no se toca).
+
+  Requisitos: Windows 10/11 Pro, Enterprise o Education (en Home no existe; ahí usá
+  VirtualBox o Hyper-V con una ISO de Windows).
+  1. Activá "Espacio aislado de Windows" (Windows Sandbox): Inicio → "Activar o desactivar
+     las características de Windows" → tildar "Espacio aislado de Windows" → reiniciar.
+  2. Creá la carpeta C:\GamingOptimizer-Sandbox y poné adentro el instalador
+     (GamingOptimizer_x.y.z_x64-setup.exe o GamingOptimizer-Installer.exe).
+  3. Doble clic en este archivo. Se abre el Sandbox y arranca el instalador solo.
+  La carpeta aparece en el Escritorio del Sandbox como "GO" (sólo lectura).
+-->
+<Configuration>
+  <VGpu>Enable</VGpu>
+  <Networking>Enable</Networking>
+  <MemoryInMB>4096</MemoryInMB>
+  <ClipboardRedirection>Enable</ClipboardRedirection>
+  <MappedFolders>
+    <MappedFolder>
+      <HostFolder>C:\GamingOptimizer-Sandbox</HostFolder>
+      <SandboxFolder>C:\Users\WDAGUtilityAccount\Desktop\GO</SandboxFolder>
+      <ReadOnly>true</ReadOnly>
+    </MappedFolder>
+  </MappedFolders>
+  <LogonCommand>
+    <Command>powershell.exe -NoProfile -ExecutionPolicy Bypass -Command "$f = Get-ChildItem 'C:\Users\WDAGUtilityAccount\Desktop\GO\*.exe' | Where-Object Name -match 'setup|Installer' | Sort-Object LastWriteTime -Descending | Select-Object -First 1; if ($f) { Start-Process $f.FullName } else { Start-Process explorer.exe 'C:\Users\WDAGUtilityAccount\Desktop\GO' }"</Command>
+  </LogonCommand>
+</Configuration>
