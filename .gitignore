@@ -12,6 +12,10 @@ dist
 dist-ssr
 *.local
 
+# Prueba de fuego en Windows (generados por tests/windows/build.mjs)
+/tests/windows/.src
+/tests/windows/out
+
 # Rust / Tauri build
 /src-tauri/target
 /src-tauri/gen/schemas

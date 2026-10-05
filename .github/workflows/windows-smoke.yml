@@ -1,0 +1,43 @@
+name: prueba de fuego (Windows)
+
+# Corre los scripts REALES de la app en un Windows descartable de GitHub (con admin):
+# lecturas, todos los tweaks + restaurar (y compara el registro con el de antes),
+# Auto Game-Mode, Limpieza, Desinstalar, Reparar, Reactivar, Red... Ver tests/windows/smoke.ts.
+# Se lanza a mano (Actions → "prueba de fuego (Windows)" → Run workflow): cambia toda la
+# máquina y tarda ~20-40 min, así que no corre en cada push.
+on:
+  workflow_dispatch:
+
+jobs:
+  smoke:
+    runs-on: windows-latest
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Setup Node
+        uses: actions/setup-node@v5
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install deps
+        run: npm ci
+
+      - name: Armar la prueba
+        run: node tests/windows/build.mjs
+
+      - name: Prueba de fuego
+        run: node tests/windows/out/smoke.mjs
+        env:
+          GO_REPO: ${{ github.workspace }}
+
+      - name: Subir resultados
+        if: always()
+        uses: actions/upload-artifact@v5
+        with:
+          name: prueba-de-fuego
+          path: |
+            tests/windows/out/results.json
+            tests/windows/out/summary.md
+          if-no-files-found: ignore
