@@ -1,6 +1,7 @@
 import { createContext, useContext, useState, type ReactNode } from "react";
 import { runPowershell, runStream } from "./api";
 import { WINGET_SETUP } from "./wingetSetup";
+import { waitTask } from "./shell";
 import { notify } from "./notify";
 import { useI18n } from "./i18n";
 
@@ -51,10 +52,10 @@ $usr  = [Security.Principal.WindowsIdentity]::GetCurrent().Name
 $prin = New-ScheduledTaskPrincipal -UserId $usr -LogonType Interactive -RunLevel Limited
 try {
   Register-ScheduledTask -TaskName $tn -Action $act -Principal $prin -Force -ErrorAction Stop | Out-Null
+  $t0 = Get-Date
   Start-ScheduledTask -TaskName $tn
-  $w = 0
-  while ((($t = Get-ScheduledTask -TaskName $tn -EA SilentlyContinue)) -and ($t.State -ne 'Ready') -and ($w -lt 300)) { Start-Sleep -Seconds 2; $w += 2 }
-} catch { Write-Output ('GO_FAIL ' + $_.Exception.Message); exit }
+${waitTask(300)}
+} catch { Unregister-ScheduledTask -TaskName $tn -Confirm:$false -EA SilentlyContinue; Write-Output ('GO_FAIL ' + $_.Exception.Message); exit }
 Unregister-ScheduledTask -TaskName $tn -Confirm:$false -EA SilentlyContinue
 $rc   = if (Test-Path $code) { (Get-Content $code -Raw).Trim() } else { '' }
 $otxt = if (Test-Path $out)  { (Get-Content $out -Raw) } else { '' }

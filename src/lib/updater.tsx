@@ -41,7 +41,8 @@ export function UpdaterProvider({ children }: { children: ReactNode }) {
   useEffect(() => { checkNow(); /* eslint-disable-next-line react-hooks/exhaustive-deps */ }, []);
 
   const install = async () => {
-    if (!upd) return;
+    // Sin la guarda, Enter/doble clic en "Actualizar" lanzaba dos descargas a la vez.
+    if (!upd || installing) return;
     setInstalling(true);
     try {
       await upd.downloadAndInstall();

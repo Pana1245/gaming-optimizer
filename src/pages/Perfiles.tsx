@@ -33,11 +33,17 @@ export default function Perfiles() {
     try {
       const ledger = await loadLedger();
       let ok = 0;
+      // Cada op por separado: si una fallaba, el throw salteaba el saveLedger y las que
+      // YA se habían aplicado quedaban en el registro sin entrada para deshacerlas.
       for (const op of p.ops) {
-        const e = await applyOp(op);
-        ledger.push(e);
-        addLog(`${e.verified ? "✓" : "✗"} ${opName(op, lang)}`);
-        if (e.verified) ok++;
+        try {
+          const e = await applyOp(op);
+          ledger.push(e);
+          addLog(`${e.verified ? "✓" : "✗"} ${opName(op, lang)}`);
+          if (e.verified) ok++;
+        } catch (err) {
+          addLog(`✗ ${opName(op, lang)} — ${t(err instanceof Error ? err.message : String(err))}`);
+        }
       }
       await saveLedger(ledger);
       const planRes = await runPowershell(p.planScript);

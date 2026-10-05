@@ -1,4 +1,5 @@
 import type { Tweak, Category } from "./catalog";
+import { EXPLORER_FNS } from "./lib/shell";
 
 // Tweaks nuevos, fusionados por id de categoría en Optimizaciones.
 export const EXTRA_TWEAKS: Record<string, Tweak[]> = {
@@ -66,7 +67,8 @@ export const EXTRA_CATEGORIES: Category[] = [
     color: "#00BCD4",
     tweaks: [
       { name: "Menú contextual clásico (clic derecho de W10)", os: 11, risk: "advanced", script: String.raw`reg add "HKCU\Software\Classes\CLSID\{86ca1aa0-34aa-4e8b-a509-50c905bae2a2}\InprocServer32" /f /ve | Out-Null
-Stop-Process -Name explorer -Force; Start-Process explorer
+${EXPLORER_FNS}
+Stop-GoExplorer; Start-GoExplorer
 Write-Output "Menú contextual clásico activado"` },
       { name: "Mostrar extensiones de archivo", script: String.raw`Set-ItemProperty 'HKCU:\Software\Microsoft\Windows\CurrentVersion\Explorer\Advanced' HideFileExt 0 -Type DWord -Force
 Write-Output "Extensiones visibles"` },
@@ -106,7 +108,8 @@ Write-Output "Wi-Fi Sense desactivado"` },
 Write-Output "Telemetría de PowerShell desactivada"` },
       { name: "Desactivar hibernación (libera espacio)", risk: "advanced", script: String.raw`powercfg /hibernate off
 Write-Output "Hibernación desactivada"` },
-      { name: "Desactivar IPv6", risk: "advanced", script: String.raw`Disable-NetAdapterBinding -Name '*' -ComponentID ms_tcpip6 -EA SilentlyContinue
+      // optIn: puede romper el chat de Xbox (Teredo) y algunas redes; nunca se preselecciona.
+      { name: "Desactivar IPv6", risk: "advanced", optIn: true, script: String.raw`Disable-NetAdapterBinding -Name '*' -ComponentID ms_tcpip6 -EA SilentlyContinue
 Write-Output "IPv6 desactivado"` },
       { name: "Desactivar reinicio automático tras actualizar", script: String.raw`$p='HKLM:\SOFTWARE\Policies\Microsoft\Windows\WindowsUpdate\AU'
 if(!(Test-Path $p)){ New-Item $p -Force | Out-Null }
@@ -122,7 +125,9 @@ Write-Output "NumLock activado al inicio"` },
 Write-Output "Sticky Keys desactivado"` },
       { name: "Mostrar segundos en el reloj de la barra", os: 11, script: String.raw`Set-ItemProperty 'HKCU:\Software\Microsoft\Windows\CurrentVersion\Explorer\Advanced' ShowSecondsInSystemClock 1 -Type DWord -Force
 Write-Output "Segundos en el reloj activados"` },
-      { name: "Hora del sistema en UTC (dual-boot con Linux)", risk: "advanced", script: String.raw`Set-ItemProperty 'HKLM:\SYSTEM\CurrentControlSet\Control\TimeZoneInformation' RealTimeIsUniversal 1 -Type DWord -Force
+      // optIn: SOLO para dual-boot con Linux. Estaba preseleccionado y en una PC sin
+      // Linux atrasa/adelanta el reloj de Windows tantas horas como el huso horario.
+      { name: "Hora del sistema en UTC (dual-boot con Linux)", risk: "advanced", optIn: true, script: String.raw`Set-ItemProperty 'HKLM:\SYSTEM\CurrentControlSet\Control\TimeZoneInformation' RealTimeIsUniversal 1 -Type DWord -Force
 Write-Output "Hora en UTC (dual-boot)"` },
       { name: "Desactivar servicio HomeGroup", script: String.raw`foreach($s in 'HomeGroupListener','HomeGroupProvider'){ Stop-Service $s -EA SilentlyContinue; Set-Service $s -StartupType Disabled -EA SilentlyContinue }
 Write-Output "HomeGroup desactivado"` },

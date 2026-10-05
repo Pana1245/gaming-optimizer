@@ -114,7 +114,7 @@ export default function Limpieza() {
       const it = selected[i];
       addLog(`▸ ${t(`clean.item.${it.id}`)}`);
       const r = await runPowershell(it.clean);
-      if (!mounted.current) return;
+      // Se sigue limpiando aunque el usuario cambie de sección (antes se cortaba a medias).
       const m = r.output.match(/FREED=([\d.]+)/);
       const mb = m ? parseFloat(m[1]) : 0;
       total += mb;

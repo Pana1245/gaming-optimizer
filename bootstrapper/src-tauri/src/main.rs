@@ -50,14 +50,18 @@ fn ensure_webview2() {
 /// Escribe el NSIS a temporal y lo ejecuta en modo silencioso (/S) con elevación (UAC).
 /// Espera a que termine y devuelve el código de salida. El NSIS hace la instalación
 /// real, así que el auto-update y el desinstalador siguen funcionando igual.
-#[tauri::command]
+/// `async`: un comando síncrono corre en el hilo principal y la ventana quedaba
+/// congelada ("No responde") durante toda la instalación.
+#[tauri::command(async)]
 fn install() -> Result<i32, String> {
     let tmp = std::env::temp_dir().join("GamingOptimizer_setup.exe");
     std::fs::write(&tmp, SETUP).map_err(|e| format!("No se pudo preparar el instalador: {e}"))?;
 
+    // La ruta va entre comillas simples de PowerShell: con un usuario como "D'Angelo"
+    // (%TEMP% = C:\Users\D'Angelo\...) el script no parseaba y la instalación fallaba.
     let ps = format!(
         "$ErrorActionPreference='Stop'; try {{ $p = Start-Process -FilePath '{}' -ArgumentList '/S' -Verb RunAs -Wait -PassThru; exit $p.ExitCode }} catch {{ exit 1223 }}",
-        tmp.display()
+        tmp.display().to_string().replace('\'', "''")
     );
     let status = Command::new("powershell")
         .args(["-NoProfile", "-WindowStyle", "Hidden", "-Command", &ps])

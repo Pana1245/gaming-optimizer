@@ -1,6 +1,7 @@
 // Catálogo de Optimizaciones. Mantenido a mano (ya NO se regenera desde main.py).
 // optIn: nunca se preselecciona (ni con "Marcar todo"); el usuario debe tildarlo a mano.
 import { BLOAT_MS, BLOAT_THIRD, BLOAT_ALL, EDGE_REMOVE } from "./bloat";
+import { EXPLORER_FNS } from "./lib/shell";
 
 export interface Tweak { name: string; script: string; os?: 10 | 11; risk?: "advanced"; optIn?: boolean; }
 export interface Category { id: string; name: string; color: string; tweaks: Tweak[]; }
@@ -75,7 +76,36 @@ export const CATEGORIES: Category[] = [
     tweaks: [
       { name: "Activar Modo Oscuro (apps y sistema)", script: "$path = 'HKCU:\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Themes\\Personalize'\nif (!(Test-Path $path)) { New-Item -Path $path -Force | Out-Null }\nSet-ItemProperty -Path $path -Name 'AppsUseLightTheme'    -Value 0 -Type DWord -Force\nSet-ItemProperty -Path $path -Name 'SystemUsesLightTheme' -Value 0 -Type DWord -Force\nWrite-Output \"Modo oscuro activado\"" },
       { name: "Simplificar barra de tareas (conservar buscador)", script: "$adv = 'HKCU:\\Software\\Microsoft\\Windows\\CurrentVersion\\Explorer\\Advanced'\n# Ocultar boton Task View\nSet-ItemProperty -Path $adv -Name 'ShowTaskViewButton' -Value 0 -Type DWord -Force -ErrorAction SilentlyContinue\n# Ocultar boton Cortana\nSet-ItemProperty -Path $adv -Name 'ShowCortanaButton'  -Value 0 -Type DWord -Force -ErrorAction SilentlyContinue\n# Ocultar icono People (contactos)\nSet-ItemProperty -Path $adv -Name 'PeopleBand'          -Value 0 -Type DWord -Force -ErrorAction SilentlyContinue\n# Ocultar Noticias y tiempo (widgets Windows 10)\nSet-ItemProperty -Path $adv -Name 'TaskbarDa'           -Value 0 -Type DWord -Force -ErrorAction SilentlyContinue\n# Ocultar Meet Now (camara rapida)\n$pol = 'HKCU:\\Software\\Microsoft\\Windows\\CurrentVersion\\Policies\\Explorer'\nif (!(Test-Path $pol)) { New-Item -Path $pol -Force | Out-Null }\nSet-ItemProperty -Path $pol -Name 'HideSCAMeetNow'      -Value 1 -Type DWord -Force\n# Mantener buscador visible (modo barra completa = 2, solo icono = 1)\nSet-ItemProperty -Path $adv -Name 'SearchboxTaskbarMode' -Value 1 -Type DWord -Force -ErrorAction SilentlyContinue\nWrite-Output \"Barra de tareas simplificada (buscador conservado)\"" },
-      { name: "Desanclar todas las apps del menu Inicio", script: "$blankLayout = @'\n<LayoutModificationTemplate\n    xmlns=\"http://schemas.microsoft.com/Start/2014/LayoutModification\"\n    xmlns:defaultlayout=\"http://schemas.microsoft.com/Start/2014/FullDefaultLayout\"\n    xmlns:start=\"http://schemas.microsoft.com/Start/2014/StartLayout\"\n    Version=\"1\">\n  <LayoutOptions StartTileGroupsColumnCount=\"4\" />\n  <DefaultLayoutOverride>\n    <StartLayoutCollection>\n      <defaultlayout:StartLayout GroupCellWidth=\"4\" />\n    </StartLayoutCollection>\n  </DefaultLayoutOverride>\n</LayoutModificationTemplate>\n'@\n$layoutFile = \"$env:TEMP\\BlankStart.xml\"\n$blankLayout | Out-File $layoutFile -Encoding utf8 -Force\ntry {\n    Import-StartLayout -LayoutPath $layoutFile -MountPath \"$env:SystemDrive\\\" -ErrorAction Stop\n    Write-Output \"Apps del Inicio desancladas (reinicia para ver los cambios)\"\n} catch {\n    # Metodo alternativo: borrar base de datos de tiles\n    $db = \"$env:LOCALAPPDATA\\TileDataLayer\\Database\"\n    if (Test-Path $db) {\n        Stop-Process -Name 'explorer' -Force -ErrorAction SilentlyContinue\n        Start-Sleep 1\n        Remove-Item $db -Recurse -Force -ErrorAction SilentlyContinue\n        Start-Process explorer\n    }\n    Write-Output \"Apps del Inicio desancladas (metodo alternativo)\"\n}" },
+      { name: "Desanclar todas las apps del menu Inicio", script: String.raw`${EXPLORER_FNS}
+$blankLayout = @'
+<LayoutModificationTemplate
+    xmlns="http://schemas.microsoft.com/Start/2014/LayoutModification"
+    xmlns:defaultlayout="http://schemas.microsoft.com/Start/2014/FullDefaultLayout"
+    xmlns:start="http://schemas.microsoft.com/Start/2014/StartLayout"
+    Version="1">
+  <LayoutOptions StartTileGroupsColumnCount="4" />
+  <DefaultLayoutOverride>
+    <StartLayoutCollection>
+      <defaultlayout:StartLayout GroupCellWidth="4" />
+    </StartLayoutCollection>
+  </DefaultLayoutOverride>
+</LayoutModificationTemplate>
+'@
+$layoutFile = "$env:TEMP\BlankStart.xml"
+$blankLayout | Out-File $layoutFile -Encoding utf8 -Force
+try {
+    Import-StartLayout -LayoutPath $layoutFile -MountPath "$env:SystemDrive\" -ErrorAction Stop
+    Write-Output "Apps del Inicio desancladas (reinicia para ver los cambios)"
+} catch {
+    # Metodo alternativo: borrar base de datos de tiles
+    $db = "$env:LOCALAPPDATA\TileDataLayer\Database"
+    if (Test-Path $db) {
+        Stop-GoExplorer
+        Remove-Item $db -Recurse -Force -ErrorAction SilentlyContinue
+        Start-GoExplorer
+    }
+    Write-Output "Apps del Inicio desancladas (metodo alternativo)"
+}` },
       { name: "Desactivar panel de Widgets", script: "$path = 'HKCU:\\Software\\Microsoft\\Windows\\CurrentVersion\\Explorer\\Advanced'\nSet-ItemProperty -Path $path -Name 'TaskbarDa' -Value 0 -Type DWord -Force -ErrorAction SilentlyContinue\n$pol = 'HKLM:\\SOFTWARE\\Policies\\Microsoft\\Dsh'\nif (!(Test-Path $pol)) { New-Item -Path $pol -Force | Out-Null }\nSet-ItemProperty -Path $pol -Name 'AllowNewsAndInterests' -Value 0 -Type DWord -Force -ErrorAction SilentlyContinue\nWrite-Output \"Panel de Widgets desactivado\"", os: 11 },
       { name: "Desactivar botón Chat / Teams en barra de tareas", script: "$path = 'HKCU:\\Software\\Microsoft\\Windows\\CurrentVersion\\Explorer\\Advanced'\nSet-ItemProperty -Path $path -Name 'TaskbarMn' -Value 0 -Type DWord -Force -ErrorAction SilentlyContinue\nWrite-Output \"Boton Chat/Teams eliminado de la barra de tareas\"", os: 11 },
       { name: "Desactivar Copilot", script: "$adv = 'HKCU:\\Software\\Microsoft\\Windows\\CurrentVersion\\Explorer\\Advanced'\nSet-ItemProperty -Path $adv -Name 'ShowCopilotButton' -Value 0 -Type DWord -Force -ErrorAction SilentlyContinue\n$pol = 'HKCU:\\Software\\Policies\\Microsoft\\Windows\\WindowsCopilot'\nif (!(Test-Path $pol)) { New-Item -Path $pol -Force | Out-Null }\nSet-ItemProperty -Path $pol -Name 'TurnOffWindowsCopilot' -Value 1 -Type DWord -Force -ErrorAction SilentlyContinue\nWrite-Output \"Copilot desactivado\"", os: 11 },

@@ -6,19 +6,31 @@ import { StatusLine } from "../components/Feedback";
 import { useI18n } from "../lib/i18n";
 import { trLog } from "../lib/logI18n";
 
-interface Entry { name: string; cmd: string; scope: "HKCU" | "HKLM"; enabled: boolean; }
+// HKLM32 = clave Run de las apps de 32 bits (WOW6432Node), donde escriben la mayoría de
+// los instaladores de 32 bits: antes no se listaban (el Administrador de tareas sí las
+// muestra). Su estado va en StartupApproved\Run32.
+interface Entry { name: string; cmd: string; scope: "HKCU" | "HKLM" | "HKLM32"; enabled: boolean; }
 
+const APPROVED: Record<Entry["scope"], string> = {
+  HKCU: String.raw`HKCU:\Software\Microsoft\Windows\CurrentVersion\Explorer\StartupApproved\Run`,
+  HKLM: String.raw`HKLM:\Software\Microsoft\Windows\CurrentVersion\Explorer\StartupApproved\Run`,
+  HKLM32: String.raw`HKLM:\Software\Microsoft\Windows\CurrentVersion\Explorer\StartupApproved\Run32`,
+};
+
+// Estado en StartupApproved: primer byte par = activado (02, 06…), impar = desactivado
+// (03…), igual que lo lee el Chequeo; antes sólo 03 contaba como desactivado.
 const LIST = String.raw`$out=@()
 $keys=@(
- @{p='HKCU:\Software\Microsoft\Windows\CurrentVersion\Run'; a='HKCU:\Software\Microsoft\Windows\CurrentVersion\Explorer\StartupApproved\Run'; s='HKCU'},
- @{p='HKLM:\Software\Microsoft\Windows\CurrentVersion\Run'; a='HKLM:\Software\Microsoft\Windows\CurrentVersion\Explorer\StartupApproved\Run'; s='HKLM'}
+ @{p='HKCU:\Software\Microsoft\Windows\CurrentVersion\Run'; a='${APPROVED.HKCU}'; s='HKCU'},
+ @{p='HKLM:\Software\Microsoft\Windows\CurrentVersion\Run'; a='${APPROVED.HKLM}'; s='HKLM'},
+ @{p='HKLM:\Software\WOW6432Node\Microsoft\Windows\CurrentVersion\Run'; a='${APPROVED.HKLM32}'; s='HKLM32'}
 )
 foreach($k in $keys){
  if(Test-Path $k.p){
   foreach($name in (Get-Item $k.p).Property){
    $cmd=(Get-ItemProperty $k.p).$name
    $enabled=$true
-   if(Test-Path $k.a){ $b=(Get-ItemProperty -Path $k.a -Name $name -EA SilentlyContinue).$name; if($b){ $enabled = ($b[0] -ne 3) } }
+   if(Test-Path $k.a){ $b=(Get-ItemProperty -Path $k.a -Name $name -EA SilentlyContinue).$name; if($b){ $enabled = (($b[0] -band 1) -eq 0) } }
    $out += [pscustomobject]@{name=$name; cmd="$cmd"; scope=$k.s; enabled=$enabled}
   }
  }
@@ -27,9 +39,7 @@ if($out.Count -eq 0){ '[]' } else { $out | ConvertTo-Json -Compress -Depth 3 }`;
 
 const toggleScript = (e: Entry, enable: boolean) => {
   const name = e.name.replace(/'/g, "''");
-  const appr = e.scope === "HKCU"
-    ? String.raw`HKCU:\Software\Microsoft\Windows\CurrentVersion\Explorer\StartupApproved\Run`
-    : String.raw`HKLM:\Software\Microsoft\Windows\CurrentVersion\Explorer\StartupApproved\Run`;
+  const appr = APPROVED[e.scope];
   const bytes = enable ? "2,0,0,0,0,0,0,0,0,0,0,0" : "3,0,0,0,0,0,0,0,0,0,0,0";
   return `$a='${appr}'\nif(!(Test-Path $a)){ New-Item $a -Force | Out-Null }\nSet-ItemProperty -Path $a -Name '${name}' -Value ([byte[]](${bytes})) -Type Binary -Force\nWrite-Output OK`;
 };
@@ -91,7 +101,7 @@ export default function Inicio() {
                 title={e.name}
                 desc={<span className="font-mono">{e.cmd}</span>}
                 right={<>
-                  <Badge>{e.scope}</Badge>
+                  <Badge>{e.scope === "HKLM32" ? "HKLM 32-bit" : e.scope}</Badge>
                   <Switch on={e.enabled} onChange={() => toggle(e)} disabled={busy === e.name} label={e.name} />
                 </>} />
             ))}

@@ -139,7 +139,8 @@ $cs = Get-CimInstance Win32_ComputerSystem -EA SilentlyContinue
 $o.pagefile = [ordered]@{ auto = [bool]$cs.AutomaticManagedPagefile; count = @(Get-CimInstance Win32_PageFileUsage -EA SilentlyContinue).Count }
 $on = 0
 foreach ($pair in @(@('HKCU:\Software\Microsoft\Windows\CurrentVersion\Run','HKCU:\Software\Microsoft\Windows\CurrentVersion\Explorer\StartupApproved\Run'),
-                    @('HKLM:\Software\Microsoft\Windows\CurrentVersion\Run','HKLM:\Software\Microsoft\Windows\CurrentVersion\Explorer\StartupApproved\Run'))) {
+                    @('HKLM:\Software\Microsoft\Windows\CurrentVersion\Run','HKLM:\Software\Microsoft\Windows\CurrentVersion\Explorer\StartupApproved\Run'),
+                    @('HKLM:\Software\WOW6432Node\Microsoft\Windows\CurrentVersion\Run','HKLM:\Software\Microsoft\Windows\CurrentVersion\Explorer\StartupApproved\Run32'))) {
   $run = Get-ItemProperty $pair[0] -EA SilentlyContinue; $apr = Get-ItemProperty $pair[1] -EA SilentlyContinue
   if ($run) { foreach ($n in ($run.PSObject.Properties | Where-Object { $_.Name -notlike 'PS*' }).Name) {
     $st = if ($apr) { $apr.$n } else { $null }

@@ -19,7 +19,15 @@ export default function Modal({
     if (!open) return;
     const onKey = (e: KeyboardEvent) => {
       if (e.key === "Escape") onClose();
-      else if (e.key === "Enter") (onConfirm ?? onClose)();
+      else if (e.key === "Enter") {
+        // Enter sobre un botón/casilla/campo hace lo de ESE control (el navegador lo
+        // "clickea"). Antes además se confirmaba: Enter con el foco en "Cancelar" o en
+        // una casilla de la lista ejecutaba la acción (borrar restos, cerrar un proceso…),
+        // y con el foco en el botón que abrió el modal se disparaba dos veces.
+        if ((e.target as HTMLElement | null)?.closest?.("button, input, select, textarea, a, [contenteditable]")) return;
+        e.preventDefault();
+        (onConfirm ?? onClose)();
+      }
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
@@ -49,11 +57,13 @@ export default function Modal({
               {children}
             </div>
             <div className="flex justify-end gap-2.5">
-              <button onClick={onClose} className="btn btn-ghost">
+              {/* autoFocus: el foco pasa al modal (si quedaba en el botón que lo abrió,
+                  Enter volvía a apretar ese botón en vez de confirmar). */}
+              <button onClick={onClose} className="btn btn-ghost" autoFocus={!onConfirm}>
                 {onConfirm ? closeText : "OK"}
               </button>
               {onConfirm && (
-                <button onClick={onConfirm} className="btn btn-primary">
+                <button onClick={onConfirm} className="btn btn-primary" autoFocus>
                   {confirmText}
                 </button>
               )}

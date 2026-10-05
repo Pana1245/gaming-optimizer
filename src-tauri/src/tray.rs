@@ -80,7 +80,9 @@ fn powershell(script: &str) -> Option<std::process::Output> {
 }
 
 /// ¿Está activada la tarea de inicio con Windows?
-#[tauri::command]
+/// `async`: lanza PowerShell (~1 s); como comando síncrono corría en el hilo principal
+/// y congelaba la ventana al abrir Auto Game-Mode.
+#[tauri::command(async)]
 pub fn autostart_get() -> bool {
     powershell(&format!(
         "if (Get-ScheduledTask -TaskName '{TASK_NAME}' -EA SilentlyContinue) {{ 'YES' }} else {{ 'NO' }}"
@@ -90,18 +92,21 @@ pub fn autostart_get() -> bool {
 }
 
 /// Crea o borra la tarea de inicio con Windows. Devuelve el estado final.
-#[tauri::command]
+#[tauri::command(async)]
 pub fn autostart_set(enable: bool) -> Result<bool, String> {
     let script = if enable {
         let exe = std::env::current_exe().map_err(|e| e.to_string())?;
         // La ruta va entre comillas simples de PowerShell: se duplican las que tenga.
         let exe = exe.to_string_lossy().replace('\'', "''");
+        // -Priority 4: las tareas programadas arrancan por defecto con prioridad 7
+        // ("debajo de lo normal"); la app y todo lo que lanza (PowerShell del modo
+        // gamer incluido) heredaban esa prioridad baja al iniciar con Windows.
         format!(
             "$user =[System.Security.Principal.WindowsIdentity]::GetCurrent().Name\n\
              $a = New-ScheduledTaskAction -Execute '{exe}' -Argument '{MINIMIZED_ARG}'\n\
              $t = New-ScheduledTaskTrigger -AtLogOn -User $user\n\
              $p = New-ScheduledTaskPrincipal -UserId $user -LogonType Interactive -RunLevel Highest\n\
-             $s = New-ScheduledTaskSettingsSet -AllowStartIfOnBatteries -DontStopIfGoingOnBatteries -ExecutionTimeLimit ([TimeSpan]::Zero)\n\
+             $s = New-ScheduledTaskSettingsSet -AllowStartIfOnBatteries -DontStopIfGoingOnBatteries -ExecutionTimeLimit ([TimeSpan]::Zero) -Priority 4\n\
              Register-ScheduledTask -TaskName '{TASK_NAME}' -Action $a -Trigger $t -Principal $p -Settings $s -Force -ErrorAction Stop | Out-Null\n\
              'OK'"
         )

@@ -112,7 +112,14 @@ export default function Panel({ onNavigate }: { onNavigate: (page: string) => vo
     getSystemInfo().then((i) => mounted.current && setSys(
       [i.windows, i.cpu, i.gpus?.length ? i.gpus.map((g) => g.name).join(" + ") : i.gpu, `${Math.round(i.ram_gb)} GB RAM`].filter(Boolean).join("  ·  "),
     )).catch(() => {});
-    const loadTemps = () => readTemps().then((tp) => mounted.current && setTemps(tp)).catch(() => {});
+    // Una lectura por vez: cada una abre un PowerShell que carga el driver de sensores y
+    // en PCs lentas puede tardar más que el intervalo (se apilaban procesos).
+    let reading = false;
+    const loadTemps = () => {
+      if (reading) return;
+      reading = true;
+      readTemps().then((tp) => mounted.current && setTemps(tp)).catch(() => {}).finally(() => { reading = false; });
+    };
     loadTemps();
     const ti = setInterval(loadTemps, 10000);
     const tick = () => getStats().then((s) => mounted.current && setStats(s)).catch(() => {});

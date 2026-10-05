@@ -169,8 +169,11 @@ export default function SpeedTest() {
 
   const start = async () => {
     set({ ...EMPTY, running: true, phase: "ping" });
-    const started = await invoke<boolean>("speed_test").catch(() => false);
-    if (!started && !st.running) set({ running: false });
+    // false = ya había un test corriendo (sigue en curso: se ve igual). Si el invoke
+    // FALLA, antes quedaba "corriendo" para siempre: la condición miraba st.running,
+    // que se acababa de poner en true.
+    const started = await invoke<boolean>("speed_test").catch(() => null);
+    if (started === null) set({ running: false, phase: "" });
   };
   const cancel = () => { invoke("speed_cancel").catch(() => {}); };
 

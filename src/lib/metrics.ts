@@ -30,9 +30,14 @@ export interface Temps { cpu: number | null; gpu: number | null; }
 // No se llama Close() a propósito: deja el driver cargado para que las lecturas
 // siguientes sean rápidas y no se reinstale el servicio en cada poll. Si falla
 // (o no hay admin), cae a nvidia-smi para GPU y N/D para CPU — nunca el valor ACPI.
+// CPU: Intel informa "CPU Package"; AMD Ryzen NO tiene ese sensor ("Core (Tctl/Tdie)",
+// "Core (Tdie)", "Core (Tctl)" o "Package"): antes en AMD la temperatura de CPU salía
+// siempre "N/D". Se toma el primero que exista según esta prioridad.
 const TEMP_SCRIPT = (dll: string) => String.raw`$cpu=$null; $gpu=$null
+$cpuNames=@('CPU Package','Core (Tctl/Tdie)','Core (Tdie)','Core (Tctl)','Package','Tdie','Tctl')
+$cpuRank=99
 try{
-  Add-Type -Path '${dll}' -EA Stop
+  Add-Type -Path '${dll.replace(/'/g, "''")}' -EA Stop
   $c=New-Object LibreHardwareMonitor.Hardware.Computer
   $c.IsCpuEnabled=$true; $c.IsGpuEnabled=$true
   $c.Open()
@@ -41,7 +46,8 @@ try{
     $ht=$hw.HardwareType.ToString()
     foreach($s in $hw.Sensors){
       if($s.SensorType -eq [LibreHardwareMonitor.Hardware.SensorType]::Temperature -and $null -ne $s.Value){
-        if($ht -like '*Cpu*' -and $s.Name -eq 'CPU Package'){ $cpu=[int][math]::Round([double]$s.Value,0) }
+        $ci=[array]::IndexOf($cpuNames,[string]$s.Name)
+        if($ht -like '*Cpu*' -and $ci -ge 0 -and $ci -lt $cpuRank){ $cpuRank=$ci; $cpu=[int][math]::Round([double]$s.Value,0) }
         elseif($ht -like '*Gpu*' -and $null -eq $gpu -and ($s.Name -eq 'GPU Core' -or $s.Name -eq 'GPU Temperature' -or $s.Name -eq 'GPU')){ $gpu=[int][math]::Round([double]$s.Value,0) }
       }
     }

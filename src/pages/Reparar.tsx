@@ -5,18 +5,31 @@ import { IconShieldCheck, IconLayers, IconGlobe, IconReset, IconApps } from "../
 import { Spinner, IndeterminateBar } from "../components/Feedback";
 import { useI18n } from "../lib/i18n";
 import { trLog } from "../lib/logI18n";
+import { EXPLORER_FNS } from "../lib/shell";
+
+// sfc escribe su salida en UTF-16 cuando no va a una consola: leída como texto normal
+// llegaba con un NUL entre cada letra, así que nunca se reconocía el resultado ("no
+// encontró ninguna infracción", "reparó…") y el resumen dependía sólo del código de salida.
+const SFC_SCRIPT = String.raw`$psi = New-Object System.Diagnostics.ProcessStartInfo 'sfc.exe', '/scannow'
+$psi.UseShellExecute = $false; $psi.RedirectStandardOutput = $true; $psi.CreateNoWindow = $true
+$psi.StandardOutputEncoding = [Text.Encoding]::Unicode
+$p = [Diagnostics.Process]::Start($psi)
+while ($null -ne ($l = $p.StandardOutput.ReadLine())) { $l = $l -replace '\x00', ''; if ($l.Trim()) { Write-Output $l } }
+$p.WaitForExit(); exit $p.ExitCode`;
 
 const ACTIONS = [
   { id: "sfc", title: "Reparar archivos del sistema (SFC)", desc: "Escanea y repara archivos de Windows dañados. Puede tardar varios minutos.",
-    btn: "Ejecutar SFC", script: String.raw`sfc /scannow 2>&1; exit $LASTEXITCODE` },
+    btn: "Ejecutar SFC", script: SFC_SCRIPT },
   { id: "dism", title: "Reparar imagen de Windows (DISM)", desc: "Restaura la salud de la imagen del sistema. Requiere internet.",
     btn: "Ejecutar DISM", script: String.raw`DISM /Online /Cleanup-Image /RestoreHealth 2>&1; exit $LASTEXITCODE` },
   { id: "net", title: "Resetear la red", desc: "Winsock + IP + caché DNS. Soluciona problemas de conexión.",
     btn: "Resetear red", script: String.raw`netsh winsock reset | Out-Null; netsh int ip reset | Out-Null; ipconfig /flushdns | Out-Null; ipconfig /release | Out-Null; ipconfig /renew | Out-Null; Write-Output "Red reseteada. Reinicia para aplicar."` },
   { id: "explorer", title: "Reiniciar el Explorador", desc: "Refresca la barra de tareas y el escritorio si quedaron colgados.",
-    btn: "Reiniciar Explorer", script: String.raw`Stop-Process -Name explorer -Force; Start-Sleep 1; Start-Process explorer; Write-Output "Explorador reiniciado"` },
+    btn: "Reiniciar Explorer", script: String.raw`${EXPLORER_FNS}
+Stop-GoExplorer; Start-GoExplorer; Write-Output "Explorador reiniciado"` },
   { id: "iconcache", title: "Reconstruir caché de iconos", desc: "Arregla iconos en blanco o corruptos.",
-    btn: "Reconstruir", script: String.raw`Stop-Process -Name explorer -Force -EA SilentlyContinue; Remove-Item "$env:LocalAppData\IconCache.db" -Force -EA SilentlyContinue; Remove-Item "$env:LocalAppData\Microsoft\Windows\Explorer\iconcache_*" -Force -EA SilentlyContinue; Start-Process explorer; Write-Output "Caché de iconos reconstruida"` },
+    btn: "Reconstruir", script: String.raw`${EXPLORER_FNS}
+Stop-GoExplorer; Remove-Item "$env:LocalAppData\IconCache.db" -Force -EA SilentlyContinue; Remove-Item "$env:LocalAppData\Microsoft\Windows\Explorer\iconcache_*" -Force -EA SilentlyContinue; Start-GoExplorer; Write-Output "Caché de iconos reconstruida"` },
 ];
 
 const REPAIR_ICONS: Record<string, ReactNode> = {
@@ -42,7 +55,11 @@ export default function Reparar() {
     addLog(`▸ ${title}…`);
     if (a.id === "sfc" || a.id === "dism") addLog("  " + t("repair.mayTake"));
     const lines: string[] = [];
-    const res = await runStream(a.script, (line) => { lines.push(line); addLog("  " + line); });
+    const res = await runStream(a.script, (raw) => {
+      const line = raw.replace(/\0/g, "");   // por si alguna herramienta igual manda UTF-16
+      if (!line.trim()) return;
+      lines.push(line); addLog("  " + line);
+    });
     const out = lines.join("\n").toLowerCase();
     // No damos "completado" por defecto: si el código de salida no fue 0, lo decimos.
     let summary = res.ok ? `✓ ${title} — ${t("repair.completed")}` : `⚠ ${title} — ${t("repair.errCode")} ${res.code})`;

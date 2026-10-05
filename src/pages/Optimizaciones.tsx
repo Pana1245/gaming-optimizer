@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { CATEGORIES } from "../catalog";
+import { CATEGORIES, type Tweak } from "../catalog";
 import { EXTRA_TWEAKS, EXTRA_CATEGORIES } from "../extraCatalog";
 import { TWEAK_DESC } from "../tweakDesc";
 import { CATEGORY_EN, TWEAK_EN, TWEAK_DESC_EN } from "../catalogEn";
@@ -125,6 +125,11 @@ const MODO_GAMER: Record<string, number[]> = {
   visual: [0, 1],
 };
 
+// Clave de selección por NOMBRE del tweak (no por posición): la lista visible se filtra
+// por versión de Windows y, con claves por índice, al ocultarse un tweak W11 en Windows 10
+// las casillas quedaban corridas respecto de la preselección (y de lo que se aplicaba).
+const selKey = (catId: string, tw: Tweak) => `${catId}:${tw.name}`;
+
 export default function Optimizaciones() {
   const { t, lang } = useI18n();
   // Nombre/descripción del tweak en el idioma actual (las claves son el nombre en español).
@@ -139,11 +144,6 @@ export default function Optimizaciones() {
   const [done, setDone] = useState<string | null>(null);
   const [canReboot, setCanReboot] = useState(false);
   const logRef = useRef<HTMLDivElement>(null);
-  const mounted = useRef(true);
-  useEffect(() => {
-    mounted.current = true;
-    return () => { mounted.current = false; };
-  }, []);
   const scrollRef = useScrollMemory<HTMLDivElement>("opt");
 
   const cats = useMemo(
@@ -156,7 +156,7 @@ export default function Optimizaciones() {
 
   useEffect(() => {
     const init: Record<string, boolean> = {};
-    ALL_CATEGORIES.forEach((c) => c.tweaks.forEach((t, i) => (init[`${c.id}:${i}`] = !t.optIn)));
+    ALL_CATEGORIES.forEach((c) => c.tweaks.forEach((t) => (init[selKey(c.id, t)] = !t.optIn)));
     setSel(init);
     getSystemInfo().then((info) => setWinVer(info.win_ver)).catch(() => {});
   }, []);
@@ -168,22 +168,22 @@ export default function Optimizaciones() {
   const addLog = (s: string) => setLog((l) => [...l, s]);
   const setAll = (v: boolean) => {
     const n: Record<string, boolean> = {};
-    cats.forEach((c) => c.tweaks.forEach((t, i) => (n[`${c.id}:${i}`] = v && !t.optIn)));
+    cats.forEach((c) => c.tweaks.forEach((t) => (n[selKey(c.id, t)] = v && !t.optIn)));
     setSel(n);
   };
   const modoGamer = () => {
     const n: Record<string, boolean> = {};
-    cats.forEach((c) => c.tweaks.forEach((_, i) => (n[`${c.id}:${i}`] = false)));
-    Object.entries(MODO_GAMER).forEach(([cid, idx]) =>
-      idx.forEach((i) => (n[`${cid}:${i}`] = true)));
+    cats.forEach((c) => c.tweaks.forEach((t) => (n[selKey(c.id, t)] = false)));
+    // Los índices del preset son del catálogo completo (sin filtrar por Windows).
+    Object.entries(MODO_GAMER).forEach(([cid, idx]) => {
+      const cat = ALL_CATEGORIES.find((c) => c.id === cid);
+      idx.forEach((i) => { const tw = cat?.tweaks[i]; if (tw && cats.some((c) => c.id === cid && c.tweaks.includes(tw))) n[selKey(cid, tw)] = true; });
+    });
     setSel(n);
   };
 
   const selectedList = () =>
-    cats.flatMap((c) => c.tweaks
-      .map((t, i) => ({ t, key: `${c.id}:${i}` }))
-      .filter(({ key }) => sel[key])
-      .map(({ t }) => t));
+    cats.flatMap((c) => c.tweaks.filter((t) => sel[selKey(c.id, t)]));
 
   const run = async () => {
     setConfirm(false);
@@ -218,7 +218,8 @@ export default function Optimizaciones() {
     for (let i = 0; i < list.length; i++) {
       addLog(`▸ ${tn(list[i].name)}`);
       const r = await runPowershell(list[i].script);
-      if (!mounted.current) return;
+      // Si el usuario cambió de sección, se SIGUE aplicando: cortar acá dejaba la
+      // lista a medias sin avisar (los setState sobre la página desmontada no hacen nada).
       if (r.ok) ok++;
       addLog(`  ${r.ok ? "✓" : "✗"} ${(r.output.split("\n")[0] || "OK").trim()}`);
       setProgress((i + 1) / list.length);
@@ -249,11 +250,11 @@ export default function Optimizaciones() {
         {/* Lista por categorías */}
         <div ref={scrollRef} className={`overflow-y-auto pr-3 -mr-3 space-y-6 pb-2 transition-opacity ${running ? "pointer-events-none opacity-50" : ""}`}>
           {cats.map((c) => {
-            const selCount = c.tweaks.filter((_, i) => sel[`${c.id}:${i}`]).length;
-            const allOn = c.tweaks.every((tw, i) => tw.optIn || sel[`${c.id}:${i}`]);
+            const selCount = c.tweaks.filter((tw) => sel[selKey(c.id, tw)]).length;
+            const allOn = c.tweaks.every((tw) => tw.optIn || sel[selKey(c.id, tw)]);
             const toggleCat = () => setSel((s) => {
               const n = { ...s };
-              c.tweaks.forEach((tw, i) => (n[`${c.id}:${i}`] = !allOn && !tw.optIn));
+              c.tweaks.forEach((tw) => (n[selKey(c.id, tw)] = !allOn && !tw.optIn));
               return n;
             });
             return (
@@ -266,15 +267,15 @@ export default function Optimizaciones() {
                 </SectionTitle>
                 {c.id === "winutil" && <p className="text-[12px] text-text-mute -mt-1 mb-2">{t("opt.winutilNote")}</p>}
                 <List>
-                  {c.tweaks.map((tw, i) => (
+                  {c.tweaks.map((tw) => (
                     <EnergyCheckbox
-                      key={i}
+                      key={tw.name}
                       label={tn(tw.name)}
                       badge={tw.os ? `W${tw.os}` : undefined}
                       risk={tw.risk === "advanced" || ADVANCED.has(tw.name) ? "advanced" : "safe"}
                       desc={td(tw.name)}
-                      checked={!!sel[`${c.id}:${i}`]}
-                      onChange={(v) => setSel((s) => ({ ...s, [`${c.id}:${i}`]: v }))}
+                      checked={!!sel[selKey(c.id, tw)]}
+                      onChange={(v) => setSel((s) => ({ ...s, [selKey(c.id, tw)]: v }))}
                     />
                   ))}
                 </List>

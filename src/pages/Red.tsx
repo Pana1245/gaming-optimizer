@@ -56,20 +56,30 @@ if($d){ Write-Output ($d.ServerAddresses -join ', ') } else { Write-Output 'Auto
 
 // Guarda el DNS MANUAL previo del usuario (por interfaz), una sola vez, para
 // poder devolvérselo. Lee NameServer del registro (vacío = DHCP → nada que guardar).
+// Se identifica la placa por su GUID (fijo): el índice de interfaz puede cambiar al
+// reinstalar el driver o reconectar un adaptador USB, y se restauraba en otra placa.
 const SAVE_DNS_PREV = String.raw`$store='HKCU:\Software\GamingOptimizer'; if(!(Test-Path $store)){ New-Item $store -Force | Out-Null }
 if((Get-ItemProperty $store -Name DnsPrev -EA SilentlyContinue).DnsPrev){ Write-Output 'HASSAVED'; return }
 $saved=@()
 Get-NetAdapter -Physical -EA SilentlyContinue | Where-Object Status -eq 'Up' | ForEach-Object {
   $ns=(Get-ItemProperty "HKLM:\SYSTEM\CurrentControlSet\Services\Tcpip\Parameters\Interfaces\$($_.InterfaceGuid)" -Name NameServer -EA SilentlyContinue).NameServer
-  if($ns){ $addrs=(($ns -split '[,\s]+') | Where-Object { $_ }) -join ','; if($addrs){ $saved += ($_.ifIndex.ToString()+'='+$addrs) } }
+  if($ns){ $addrs=(($ns -split '[,\s]+') | Where-Object { $_ }) -join ','; if($addrs){ $saved += ("$($_.InterfaceGuid)"+'='+$addrs) } }
 }
 if($saved.Count -gt 0){ Set-ItemProperty $store -Name DnsPrev -Value ($saved -join ';') -Force; Write-Output 'SAVED' } else { Write-Output 'NONE' }`;
 
 const RESTORE_DNS_PREV = String.raw`$store='HKCU:\Software\GamingOptimizer'
 $raw=(Get-ItemProperty $store -Name DnsPrev -EA SilentlyContinue).DnsPrev
 if(-not $raw){ Write-Output 'NONE'; return }
-foreach($pair in ($raw -split ';')){ $kv=$pair -split '=',2; if($kv.Count -eq 2){ try{ Set-DnsClientServerAddress -InterfaceIndex ([int]$kv[0]) -ServerAddresses ($kv[1] -split ',') -EA Stop }catch{} } }
+$ok=0
+foreach($pair in ($raw -split ';')){
+  $kv=$pair -split '=',2; if($kv.Count -ne 2){ continue }
+  # Formato viejo: índice de interfaz; nuevo: GUID de la placa.
+  $idx = if($kv[0] -match '^\d+$'){ [int]$kv[0] } else { (Get-NetAdapter -EA SilentlyContinue | Where-Object { "$($_.InterfaceGuid)" -eq $kv[0] } | Select-Object -First 1).ifIndex }
+  if($idx){ try{ Set-DnsClientServerAddress -InterfaceIndex $idx -ServerAddresses ($kv[1] -split ',') -EA Stop; $ok++ }catch{} }
+}
 Clear-DnsClientCache
+# Antes se borraba el respaldo y se informaba éxito aunque no se hubiera restaurado nada.
+if($ok -eq 0){ Write-Output 'No se pudo restaurar el DNS anterior: la placa de red no está disponible.'; exit 1 }
 Remove-ItemProperty $store -Name DnsPrev -Force -EA SilentlyContinue
 Write-Output 'DNS anterior restaurado'`;
 
@@ -274,10 +284,10 @@ export default function Red() {
     try {
       const r = await runPowershell(RESTORE_DNS_PREV);
       if (!mounted.current) return;
-      setMsg(/restaurado/i.test(r.output)
-        ? `✓ ${t("net.restoredPrev")}`
-        : `✗ ${r.output}`);
-      setHasSaved(false);
+      const restored = /DNS anterior restaurado/.test(r.output);
+      setMsg(restored ? `✓ ${t("net.restoredPrev")}` : `✗ ${r.output}`);
+      // Si falló, el respaldo sigue guardado: se mantiene el botón para reintentar.
+      if (restored || /^NONE$/m.test(r.output)) setHasSaved(false);
       await refreshCurrent();
     } catch (err) {
       if (mounted.current) setMsg(`✗ ${err instanceof Error ? err.message : String(err)}`);

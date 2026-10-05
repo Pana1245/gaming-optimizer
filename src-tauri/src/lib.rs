@@ -270,7 +270,9 @@ fn stop_game_watch(state: tauri::State<AppState>) {
 }
 
 /// Uso instantáneo de CPU, RAM y disco del sistema (%).
-#[tauri::command]
+/// `async`: los comandos síncronos corren en el hilo PRINCIPAL y congelan la ventana;
+/// listar los discos puede tardar (unidades de red desconectadas) y se llama cada 1-2 s.
+#[tauri::command(async)]
 fn stats(state: tauri::State<AppState>) -> Stats {
     let mut sys = state.sys.lock().unwrap();
     sys.refresh_cpu_usage();
@@ -530,10 +532,11 @@ fn ledger_write(content: String) -> bool {
 // ---- RAM Booster: baja el uso real de RAM (working sets + cache + standby) ---
 /// Libera RAM como los "memory cleaners": vacia el working set de cada proceso,
 /// descarga la cache de archivos del sistema y purga la standby list. Requiere admin.
+/// `async`: recorre todos los procesos (puede tardar segundos); síncrono congelaba la ventana.
 #[cfg(windows)]
-#[tauri::command]
+#[tauri::command(async)]
 fn clear_standby_ram(lang: String) -> RunResult {
-    let en = lang == "en";
+    let (en, pt) = (lang == "en", lang == "pt");
     use windows::core::{s, w};
     use windows::Win32::Foundation::{CloseHandle, HANDLE, LUID};
     use windows::Win32::Security::{
@@ -616,6 +619,8 @@ fn clear_standby_ram(lang: String) -> RunResult {
             ""
         } else if en {
             " (standby: needs admin)"
+        } else if pt {
+            " (standby: requer admin)"
         } else {
             " (standby: requiere admin)"
         };
@@ -627,7 +632,7 @@ fn clear_standby_ram(lang: String) -> RunResult {
 }
 
 #[cfg(not(windows))]
-#[tauri::command]
+#[tauri::command(async)]
 fn clear_standby_ram(_lang: String) -> RunResult {
     RunResult { ok: false, output: "only Windows".into() }
 }

@@ -85,11 +85,18 @@ export default function Graficos() {
     try {
       const ledger = await loadLedger();
       let ok = 0;
+      // Cada op por separado: un fallo a mitad ya no deja las anteriores aplicadas
+      // pero sin guardar en el Historial (imposibles de deshacer).
       for (const op of ops) {
-        const e = await applyOp(op);
-        ledger.push(e);
-        addLog(`${e.verified ? "✓" : "✗"} ${lang === "es" ? op.name : t(`gpu.op.${op.id}.name`)}`);
-        if (e.verified) ok++;
+        const label = lang === "es" ? op.name : t(`gpu.op.${op.id}.name`);
+        try {
+          const e = await applyOp(op);
+          ledger.push(e);
+          addLog(`${e.verified ? "✓" : "✗"} ${label}`);
+          if (e.verified) ok++;
+        } catch (err) {
+          addLog(`✗ ${label} — ${t(err instanceof Error ? err.message : String(err))}`);
+        }
       }
       await saveLedger(ledger);
       addLog(`${ok}/${ops.length} ${t("gpu.verified")}`);

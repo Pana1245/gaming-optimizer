@@ -7,13 +7,20 @@ import { useI18n } from "./i18n";
 // Guarda el plan de energía y SystemResponsiveness previos para restaurarlos al salir.
 const GUID_RX = String.raw`([0-9a-fA-F]{8}-([0-9a-fA-F]{4}-){3}[0-9a-fA-F]{12})`;
 
+// GmActive=1 mientras el modo gamer está aplicado. Si la app se cerraba en pleno juego
+// ("Salir" en la bandeja, cuelgue, apagado), el próximo juego guardaba como "previo" el
+// plan de ALTO RENDIMIENTO y el plan original del usuario se perdía para siempre. Con la
+// marca, el previo sólo se guarda una vez, y al abrir la app se restaura (RECOVER).
 const GAMER_ON = String.raw`$p='HKCU:\Software\GamingOptimizer'; if(!(Test-Path $p)){ New-Item $p -Force | Out-Null }
-$as=powercfg /getactivescheme
-if($as -match '${GUID_RX}'){ Set-ItemProperty $p PrevPlan $matches[1] -Force }
 $sysp='HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Multimedia\SystemProfile'
-$cr=(Get-ItemProperty $sysp -Name SystemResponsiveness -EA SilentlyContinue).SystemResponsiveness
-if($null -eq $cr){ $cr=20 }
-Set-ItemProperty $p PrevResp $cr -Force
+if((Get-ItemProperty $p -Name GmActive -EA SilentlyContinue).GmActive -ne 1){
+  $as=powercfg /getactivescheme
+  if($as -match '${GUID_RX}'){ Set-ItemProperty $p PrevPlan $matches[1] -Force }
+  $cr=(Get-ItemProperty $sysp -Name SystemResponsiveness -EA SilentlyContinue).SystemResponsiveness
+  if($null -eq $cr){ $cr=20 }
+  Set-ItemProperty $p PrevResp $cr -Force
+  Set-ItemProperty $p GmActive 1 -Type DWord -Force
+}
 # Por prioridad: primero Máximo rendimiento (Ultimate) en cualquier idioma, después Alto rendimiento.
 # Antes se tomaba la primera línea que coincidía: en Windows en español "Máximo rendimiento" no
 # coincidía con 'Ultimate' y siempre terminaba activando "Alto rendimiento".
@@ -31,6 +38,7 @@ if($prev){ powercfg /setactive $prev } else { powercfg /setactive SCHEME_BALANCE
 $pr=(Get-ItemProperty $p -Name PrevResp -EA SilentlyContinue).PrevResp
 $sysp='HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Multimedia\SystemProfile'
 if($null -ne $pr){ Set-ItemProperty $sysp SystemResponsiveness $pr -Type DWord -Force -EA SilentlyContinue }
+Remove-ItemProperty $p -Name GmActive -EA SilentlyContinue
 Write-Output OK`;
 
 // Apps de fondo a las que se les baja la prioridad mientras jugás (Discord queda
@@ -39,18 +47,31 @@ const BG_APPS = "'spotify','chrome','msedge','firefox','opera','brave','slack','
 // Antes de bajar a Idle, guardamos la prioridad original de cada proceso POR PID
 // (no por nombre) en el registro, para restaurar exactamente lo que bajamos —
 // aunque haya dos procesos con el mismo .exe y prioridades distintas.
+// Si quedó una lista sin restaurar (la app se cerró en pleno juego), se conserva la
+// prioridad ORIGINAL de esos procesos: si no, se guardaba "Idle" y quedaban en Idle.
 const BG_LOWER = String.raw`$bg=@(${BG_APPS}); $p='HKCU:\Software\GamingOptimizer'; if(!(Test-Path $p)){ New-Item $p -Force | Out-Null }
+$old=@{}
+$raw=(Get-ItemProperty $p -Name BgPrios -EA SilentlyContinue).BgPrios
+if($raw){ foreach($pair in ($raw -split ';')){ $kv=$pair -split '=',2; if($kv.Count -eq 2){ $old[$kv[0]]=$kv[1] } } }
 $saved=@(); $n=0
 foreach($x in $bg){ Get-Process -Name $x -EA SilentlyContinue | ForEach-Object {
-  try{ $saved += ($_.Id.ToString() + '=' + $_.PriorityClass.ToString()); $_.PriorityClass='Idle'; $n++ }catch{}
+  try{ $id=$_.Id.ToString(); $prio=if($old.ContainsKey($id)){ $old[$id] }else{ $_.PriorityClass.ToString() }; $_.PriorityClass='Idle'; $saved += ($id + '=' + $prio); $n++ }catch{}
 } }
 Set-ItemProperty $p BgPrios ($saved -join ';') -Force
 Write-Output ("BG=" + $n)`;
 const BG_RESTORE = String.raw`$p='HKCU:\Software\GamingOptimizer'
 $raw=(Get-ItemProperty $p -Name BgPrios -EA SilentlyContinue).BgPrios
-if($raw){ foreach($pair in ($raw -split ';')){ $kv=$pair -split '=',2; if($kv.Count -eq 2){ try{ (Get-Process -Id ([int]$kv[0]) -EA Stop).PriorityClass=$kv[1] }catch{} } } }
+# Sólo si sigue en Idle (la que pusimos): si el PID ya es OTRO proceso (se cerró y se
+# reusó el número, ej. tras reiniciar) o el usuario la cambió, no se toca.
+if($raw){ foreach($pair in ($raw -split ';')){ $kv=$pair -split '=',2; if($kv.Count -eq 2){ try{ $pr=Get-Process -Id ([int]$kv[0]) -EA Stop; if("$($pr.PriorityClass)" -eq 'Idle'){ $pr.PriorityClass=$kv[1] } }catch{} } } }
 Remove-ItemProperty $p -Name BgPrios -EA SilentlyContinue
 Write-Output OK`;
+// Al abrir la app: si quedó el modo gamer aplicado de una sesión que no terminó bien,
+// se restaura (plan de energía, SystemResponsiveness y prioridades de fondo).
+const RECOVER = String.raw`$p='HKCU:\Software\GamingOptimizer'
+$on=(Get-ItemProperty $p -Name GmActive -EA SilentlyContinue).GmActive -eq 1
+$bg=[bool](Get-ItemProperty $p -Name BgPrios -EA SilentlyContinue).BgPrios
+Write-Output ("GM=" + [int]$on + ";BG=" + [int]$bg)`;
 const prioScript = (exe: string) => {
   const base = exe.replace(/\.exe$/i, "").replace(/'/g, "''");
   return `Get-Process -Name '${base}' -EA SilentlyContinue | ForEach-Object { try{ $_.PriorityClass='High' }catch{} }; Write-Output OK`;
@@ -129,7 +150,18 @@ export function GameModeProvider({ children }: { children: ReactNode }) {
 
   // Listeners de eventos del daemon — una sola vez, a nivel app.
   useEffect(() => {
+    // Recuperación al arrancar: se encola ANTES que cualquier game-on, así un juego que
+    // ya esté abierto vuelve a aplicar el modo gamer después de restaurar.
+    enqueue(async () => {
+      const r = await runPowershell(RECOVER);
+      if (/GM=1/.test(r.output)) await runPowershell(GAMER_OFF);
+      if (/BG=1/.test(r.output)) await runPowershell(BG_RESTORE);
+    });
     const uns: UnlistenFn[] = [];
+    // StrictMode (dev) desmonta antes de que listen() resuelva: sin esto quedaban
+    // listeners duplicados y cada juego se procesaba dos veces.
+    let disposed = false;
+    const keep = (u: UnlistenFn) => (disposed ? u() : uns.push(u));
     listen<string>("game-on", (e) => {
       const g = e.payload;
       enqueue(async () => {
@@ -148,7 +180,7 @@ export function GameModeProvider({ children }: { children: ReactNode }) {
           addLog((tt) => tt("gml.pro").replace("{n}", bgN).replace("{ram}", tt(ram.ok ? "gml.ramFreed" : "gml.ramSame")));
         }
       });
-    }).then((u) => uns.push(u));
+    }).then(keep);
     listen("game-off", () => {
       enqueue(async () => {
         addLog((tt) => tt("gml.closed"));
@@ -157,8 +189,8 @@ export function GameModeProvider({ children }: { children: ReactNode }) {
         if (appliedProRef.current) { await runPowershell(BG_RESTORE); appliedProRef.current = false; }
         setPlaying(null);
       });
-    }).then((u) => uns.push(u));
-    return () => uns.forEach((u) => u());
+    }).then(keep);
+    return () => { disposed = true; uns.forEach((u) => u()); };
   }, []);
 
   // Arranca/detiene el daemon según enabled/games (también al iniciar si quedó activado).
