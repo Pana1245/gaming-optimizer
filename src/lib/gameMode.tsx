@@ -3,6 +3,7 @@ import { listen, type UnlistenFn } from "@tauri-apps/api/event";
 import { startGameWatch, stopGameWatch, runPowershell, clearStandbyRam } from "./api";
 import { ensureNotify, notify } from "./notify";
 import { useI18n } from "./i18n";
+import { BG_CATALOG, BG_RECOMMENDED } from "../bgApps";
 
 // Guarda el plan de energía y SystemResponsiveness previos para restaurarlos al salir.
 const GUID_RX = String.raw`([0-9a-fA-F]{8}-([0-9a-fA-F]{4}-){3}[0-9a-fA-F]{12})`;
@@ -41,15 +42,16 @@ if($null -ne $pr){ Set-ItemProperty $sysp SystemResponsiveness $pr -Type DWord -
 Remove-ItemProperty $p -Name GmActive -EA SilentlyContinue
 Write-Output OK`;
 
-// Apps de fondo a las que se les baja la prioridad mientras jugás (Discord queda
-// en Normal para no afectar la voz). Se restauran al cerrar el juego.
-const BG_APPS = "'spotify','chrome','msedge','firefox','opera','brave','slack','onedrive','dropbox','steamwebhelper','epicgameslauncher','googledrivefs'";
+// Apps de fondo a las que se les baja la prioridad mientras jugás: las que el usuario
+// eligió en Auto Game-Mode (ver bgApps.ts; Discord nunca, para no cortar la voz). Se
+// restauran al cerrar el juego.
+const psNames = (ids: string[]) => ids.map((x) => `'${x.replace(/'/g, "''")}'`).join(",");
 // Antes de bajar a Idle, guardamos la prioridad original de cada proceso POR PID
 // (no por nombre) en el registro, para restaurar exactamente lo que bajamos —
 // aunque haya dos procesos con el mismo .exe y prioridades distintas.
 // Si quedó una lista sin restaurar (la app se cerró en pleno juego), se conserva la
 // prioridad ORIGINAL de esos procesos: si no, se guardaba "Idle" y quedaban en Idle.
-const BG_LOWER = String.raw`$bg=@(${BG_APPS}); $p='HKCU:\Software\GamingOptimizer'; if(!(Test-Path $p)){ New-Item $p -Force | Out-Null }
+const BG_LOWER = (apps: string[]) => String.raw`$bg=@(${psNames(apps)}); $p='HKCU:\Software\GamingOptimizer'; if(!(Test-Path $p)){ New-Item $p -Force | Out-Null }
 $old=@{}
 $raw=(Get-ItemProperty $p -Name BgPrios -EA SilentlyContinue).BgPrios
 if($raw){ foreach($pair in ($raw -split ';')){ $kv=$pair -split '=',2; if($kv.Count -eq 2){ $old[$kv[0]]=$kv[1] } } }
@@ -87,6 +89,15 @@ export const DEFAULT_GAMES = [
 type LogMsg = (t: (k: string) => string) => string;
 interface LogEntry { ts: number | null; msg: LogMsg }
 
+// Apps de fondo elegidas (por defecto, las recomendadas). Sólo ids conocidos del catálogo.
+const loadBg = (): string[] => {
+  try {
+    const s = localStorage.getItem("gm_bg");
+    if (s) { const v = JSON.parse(s); if (Array.isArray(v)) return BG_CATALOG.map((x) => x.id).filter((id) => v.includes(id)); }
+  } catch { /* sin storage o dañado: recomendadas */ }
+  return BG_RECOMMENDED;
+};
+
 const loadGames = (): string[] => {
   try { const s = localStorage.getItem("gm_games"); if (s) return JSON.parse(s); } catch {}
   return DEFAULT_GAMES;
@@ -102,10 +113,13 @@ interface Ctx {
   removeGame: (g: string) => void;
   playing: string | null;
   log: string[];
+  bgApps: string[];
+  setBgApps: (ids: string[]) => void;
 }
 const GameModeCtx = createContext<Ctx>({
   enabled: false, setEnabled: () => {}, pro: true, setPro: () => {},
   games: [], addGame: () => {}, removeGame: () => {}, playing: null, log: [],
+  bgApps: [], setBgApps: () => {},
 });
 
 /** Controla el Auto Game-Mode a nivel de toda la app (siempre montado).
@@ -115,6 +129,14 @@ export function GameModeProvider({ children }: { children: ReactNode }) {
   const [pro, setProState] = useState(() => localStorage.getItem("gm_pro") !== "0");
   const [games, setGames] = useState<string[]>(loadGames);
   const [playing, setPlaying] = useState<string | null>(null);
+  const [bgApps, setBgAppsState] = useState<string[]>(loadBg);
+  // El listener de game-on se registra una vez: lee la lista ACTUAL vía ref (sólo cambia acá).
+  const bgRef = useRef(bgApps);
+  const setBgApps = (ids: string[]) => {
+    try { localStorage.setItem("gm_bg", JSON.stringify(ids)); } catch { /* sólo esta sesión */ }
+    bgRef.current = ids;
+    setBgAppsState(ids);
+  };
   const { t } = useI18n();
   // Los listeners se registran una sola vez: leen el idioma ACTUAL vía ref.
   const tRef = useRef(t);
@@ -171,7 +193,8 @@ export function GameModeProvider({ children }: { children: ReactNode }) {
         await runPowershell(GAMER_ON);
         if (proRef.current) {
           await runPowershell(prioScript(g));
-          const bg = await runPowershell(BG_LOWER);
+          // Sin apps elegidas no se toca nada (BG_LOWER guardaría una lista vacía igual).
+          const bg = bgRef.current.length ? await runPowershell(BG_LOWER(bgRef.current)) : { ok: true, output: "BG=0" };
           // Marcar YA: prioScript y BG_LOWER ya modificaron procesos, así que
           // game-off debe restaurar aunque lo que sigue (clearStandbyRam) falle.
           appliedProRef.current = true;
@@ -239,7 +262,7 @@ export function GameModeProvider({ children }: { children: ReactNode }) {
     });
 
   return (
-    <GameModeCtx.Provider value={{ enabled, setEnabled, pro, setPro, games, addGame, removeGame, playing, log }}>
+    <GameModeCtx.Provider value={{ enabled, setEnabled, pro, setPro, games, addGame, removeGame, playing, log, bgApps, setBgApps }}>
       {children}
     </GameModeCtx.Provider>
   );

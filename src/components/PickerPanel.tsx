@@ -9,9 +9,11 @@ export interface PickerGroup { id: string; label: string; items: PickerItem[] }
 /** Menú desplegable de elección (bloatware, permisos…): barra con "Marcar recomendados",
  *  "Todas" y "Ninguna", una ayuda y los ítems por grupo en dos columnas. Los botones
  *  actúan sobre lo que se ve. `order` = todos los ids en orden de catálogo (así se guarda). */
-export default function PickerPanel({ groups, selected, onChange, order, hint, toolbarRight, status }: {
+export default function PickerPanel({ groups, selected, onChange, order, hint, toolbarRight, status, compact }: {
   groups: PickerGroup[]; selected: string[]; onChange: (ids: string[]) => void; order: string[];
   hint: string; toolbarRight?: ReactNode; status?: ReactNode;
+  /** Para columnas angostas: una sola columna (el contenedor de afuera maneja el scroll). */
+  compact?: boolean;
 }) {
   const { t } = useI18n();
   const visible = groups.flatMap((g) => g.items);
@@ -43,7 +45,7 @@ export default function PickerPanel({ groups, selected, onChange, order, hint, t
                 {g.label}
                 <span className="text-text-mute tabular-nums font-normal">{n}/{g.items.length}</span>
               </div>
-              <div className="grid grid-cols-2 gap-x-3 gap-y-0.5">
+              <div className={`grid gap-x-3 gap-y-0.5 ${compact ? "grid-cols-1" : "grid-cols-2"}`}>
                 {g.items.map((a) => (
                   <button key={a.id} onClick={() => toggle(a.id)} title={a.sub}
                     className="flex items-center gap-2 min-w-0 px-2 py-1.5 rounded-md text-left hover:bg-white/[0.035] transition-colors">
@@ -64,5 +66,17 @@ export default function PickerPanel({ groups, selected, onChange, order, hint, t
         })}
       </div>
     </motion.div>
+  );
+}
+
+/** Botón que abre/cierra un menú desplegable, con la cantidad elegida. */
+export function MenuButton({ open, onClick, label, count }: { open: boolean; onClick: () => void; label: string; count?: number }) {
+  return (
+    <button onClick={onClick} aria-expanded={open}
+      className={`h-7 px-2.5 rounded-md border text-[12px] flex items-center gap-1.5 shrink-0 transition-colors ${open ? "border-accent/50 text-text bg-accent/[0.06]" : "border-line-2 text-text-dim hover:text-text hover:border-accent/40"}`}>
+      {label}
+      {!!count && <span className="text-accent tabular-nums">{count}</span>}
+      <svg width="10" height="10" viewBox="0 0 10 10" className={`transition-transform ${open ? "rotate-180" : ""}`}><path d="M2 3.5 5 6.5 8 3.5" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" /></svg>
+    </button>
   );
 }

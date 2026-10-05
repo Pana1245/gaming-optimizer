@@ -3,6 +3,7 @@ import { CATEGORIES, type Tweak } from "../catalog";
 import { EXTRA_TWEAKS, EXTRA_CATEGORIES } from "../extraCatalog";
 import { BLOAT_APPS, BLOAT_MS, BLOAT_THIRD, bloatCustom } from "../bloat";
 import { PERMS, PERMS_RECOMMENDED, permsDeny } from "../perms";
+import { SVCS, SVCS_RECOMMENDED, SVC_BACKUP_NAMES, svcDisable } from "../services";
 import { TWEAK_DESC } from "../tweakDesc";
 import { CATEGORY_EN, TWEAK_EN, TWEAK_DESC_EN } from "../catalogEn";
 import { CATEGORY_PT, TWEAK_PT, TWEAK_DESC_PT } from "../catalogPt";
@@ -12,6 +13,8 @@ import { useScrollMemory } from "../lib/useScrollMemory";
 import EnergyCheckbox from "../components/EnergyCheckbox";
 import BloatPicker from "../components/BloatPicker";
 import PermsPicker from "../components/PermsPicker";
+import SvcPicker from "../components/SvcPicker";
+import { MenuButton } from "../components/PickerPanel";
 import { Page, SectionTitle, List, LogPanel, Progress } from "../components/ui";
 import Modal from "../components/Modal";
 import { useI18n, pick } from "../lib/i18n";
@@ -90,7 +93,7 @@ Write-Output "Backup del registro: $n ramas exportadas"
 # Servicios y tareas que modifican los tweaks: no viven en las ramas exportadas,
 # así que se guarda su estado para que Restaurar también los devuelva.
 $svcState=@{}
-foreach($sn in @('DiagTrack','dmwappushservice','RemoteRegistry','Sense','Spooler','SysMain','WdBoot','WdFilter','WdNisDrv','WdNisSvc','WinDefend','WSearch','wuauserv','XblAuthManager','XblGameSave','XboxGipSvc','XboxNetApiSvc','HomeGroupListener','HomeGroupProvider')){
+foreach($sn in @(${[...new Set(["DiagTrack", "dmwappushservice", "Sense", "WdBoot", "WdFilter", "WdNisDrv", "WdNisSvc", "WinDefend", "wuauserv", "HomeGroupListener", "HomeGroupProvider", ...SVC_BACKUP_NAMES])].map((n) => `'${n}'`).join(",")})){
   $sk="HKLM:\SYSTEM\CurrentControlSet\Services\$sn"
   $v=(Get-ItemProperty -LiteralPath $sk -Name Start -EA SilentlyContinue).Start
   if($null -ne $v){ $svcState[$sn]=@{ start=[int]$v; delayed=(Get-ItemProperty -LiteralPath $sk -Name DelayedAutostart -EA SilentlyContinue).DelayedAutostart } }
@@ -148,6 +151,7 @@ const PICKERS: Record<PickerKey, {
 }> = {
   bloat: { storage: "bloat_sel", ids: BLOAT_APPS.map((a) => a.id), initial: [], btn: "bloat.menuBtn", script: bloatCustom, presets: isBloatPreset, Menu: BloatPicker },
   perms: { storage: "perms_sel", ids: PERMS.map((x) => x.id), initial: PERMS_RECOMMENDED, btn: "perms.menuBtn", script: permsDeny, Menu: PermsPicker },
+  svc: { storage: "svc_sel", ids: SVCS.map((x) => x.id), initial: SVCS_RECOMMENDED, btn: "perms.menuBtn", script: svcDisable, Menu: SvcPicker },
 };
 const loadPick = (k: PickerKey): string[] => {
   const d = PICKERS[k];
@@ -175,7 +179,7 @@ export default function Optimizaciones() {
   const [confirm, setConfirm] = useState(false);
   const [done, setDone] = useState<string | null>(null);
   const [canReboot, setCanReboot] = useState(false);
-  const [picks, setPicks] = useState<Record<PickerKey, string[]>>(() => ({ bloat: loadPick("bloat"), perms: loadPick("perms") }));
+  const [picks, setPicks] = useState<Record<PickerKey, string[]>>(() => ({ bloat: loadPick("bloat"), perms: loadPick("perms"), svc: loadPick("svc") }));
   const [openMenu, setOpenMenu] = useState<Partial<Record<PickerKey, boolean>>>({});
   const logRef = useRef<HTMLDivElement>(null);
   const scrollRef = useScrollMemory<HTMLDivElement>("opt");
@@ -341,15 +345,8 @@ export default function Optimizaciones() {
                         markPickerRow(k, v);
                       }}
                       action={tw.picker ? (() => {
-                        const k = tw.picker, open = !!openMenu[k], n = picks[k].length;
-                        return (
-                          <button onClick={() => setOpenMenu((o) => ({ ...o, [k]: !o[k] }))} aria-expanded={open}
-                            className={`h-7 px-2.5 rounded-md border text-[12px] flex items-center gap-1.5 transition-colors ${open ? "border-accent/50 text-text bg-accent/[0.06]" : "border-line-2 text-text-dim hover:text-text hover:border-accent/40"}`}>
-                            {t(PICKERS[k].btn)}
-                            {n > 0 && <span className="text-accent tabular-nums">{n}</span>}
-                            <svg width="10" height="10" viewBox="0 0 10 10" className={`transition-transform ${open ? "rotate-180" : ""}`}><path d="M2 3.5 5 6.5 8 3.5" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" /></svg>
-                          </button>
-                        );
+                        const k = tw.picker;
+                        return <MenuButton open={!!openMenu[k]} onClick={() => setOpenMenu((o) => ({ ...o, [k]: !o[k] }))} label={t(PICKERS[k].btn)} count={picks[k].length} />;
                       })() : undefined}
                     />
                     {tw.picker && openMenu[tw.picker] && (() => {

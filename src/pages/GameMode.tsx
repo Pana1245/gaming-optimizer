@@ -3,11 +3,14 @@ import { invoke } from "@tauri-apps/api/core";
 import { useGameMode } from "../lib/gameMode";
 import { detectGames, type DetectedGame } from "../lib/detect";
 import { Page, Switch, SectionTitle, List, Row, Badge, LogPanel } from "../components/ui";
+import BgPicker from "../components/BgPicker";
+import { MenuButton } from "../components/PickerPanel";
 import { useI18n } from "../lib/i18n";
 import { trLog } from "../lib/logI18n";
 
 export default function GameMode() {
-  const { enabled, setEnabled, pro, setPro, games, addGame, removeGame, playing, log } = useGameMode();
+  const { enabled, setEnabled, pro, setPro, games, addGame, removeGame, playing, log, bgApps, setBgApps } = useGameMode();
+  const [bgOpen, setBgOpen] = useState(false);
   const { t, lang } = useI18n();
   const [input, setInput] = useState("");
   const [scanning, setScanning] = useState(false);
@@ -112,7 +115,8 @@ export default function GameMode() {
 
         {/* Opciones + actividad */}
         <div className="flex flex-col min-h-0 gap-5">
-          <div className="shrink-0">
+          {/* Con el menú de apps de fondo abierto, las opciones scrollean y el registro no se aplasta. */}
+          <div className="min-h-0 shrink overflow-y-auto">
             <SectionTitle>{t("gm.options")}</SectionTitle>
             <List>
               <div className="px-4 py-3.5 flex items-start gap-3">
@@ -122,6 +126,14 @@ export default function GameMode() {
                 </div>
                 <Switch size="sm" on={pro} onChange={setPro} label={t("gm.proTitle")} />
               </div>
+              <div className={`px-4 py-3 flex items-center gap-3 transition-opacity ${pro ? "" : "opacity-50"}`}>
+                <div className="min-w-0 flex-1">
+                  <div className="text-[13px] text-text">{t("gm.bg.title")}</div>
+                  <p className="text-[12px] text-text-mute mt-0.5">{pro ? t("gm.bg.sub").replace("{n}", String(bgApps.length)) : t("gm.bg.needsPro")}</p>
+                </div>
+                <MenuButton open={bgOpen} onClick={() => setBgOpen((o) => !o)} label={t("gm.bg.btn")} count={bgApps.length} />
+              </div>
+              {bgOpen && <BgPicker selected={bgApps} onChange={setBgApps} />}
               <div className="px-4 py-3.5 flex items-start gap-3">
                 <div className="min-w-0 flex-1">
                   <div className="text-[13.5px] text-text">{t("gm.autostartTitle")}</div>
@@ -132,7 +144,7 @@ export default function GameMode() {
               </div>
             </List>
           </div>
-          <LogPanel className="flex-1" label={t("gm.activity")}>{trLog(log.join("\n"), lang)}</LogPanel>
+          <LogPanel className="flex-1 min-h-[140px]" label={t("gm.activity")}>{trLog(log.join("\n"), lang)}</LogPanel>
         </div>
       </div>
     </Page>

@@ -751,6 +751,21 @@ const STR: Record<string, { es: string; en: string }> = {
   "startup.recDone": { es: "{n} apps desactivadas del inicio", en: "{n} apps disabled at startup" },
   "startup.recFail": { es: "{n} no se pudieron desactivar", en: "{n} couldn't be disabled" },
   "startup.recBadge": { es: "Recomendado desactivar", en: "Recommended to disable" },
+  "gm.bg.title": { es: "Apps de fondo que se frenan", en: "Background apps that get slowed down" },
+  "gm.bg.sub": { es: "{n} apps bajan su prioridad mientras jugás", en: "{n} apps get lower priority while you play" },
+  "gm.bg.needsPro": { es: "Se usa con el Modo Pro activado", en: "Used when Pro Mode is on" },
+  "gm.bg.btn": { es: "Elegir", en: "Choose" },
+  "gm.bg.open": { es: "Abierta", en: "Open" },
+  "gm.bg.group.browsers": { es: "Navegadores", en: "Browsers" },
+  "gm.bg.group.apps": { es: "Apps", en: "Apps" },
+  "gm.bg.group.launchers": { es: "Launchers de juegos", en: "Game launchers" },
+  "gm.bg.group.sync": { es: "Sincronización de archivos", en: "File sync" },
+  "gm.bg.hint": { es: "Mientras jugás, estas apps ceden la CPU al juego (no se cierran) y al terminar vuelven a la normalidad. No se recomiendan apps con llamadas (Teams, WhatsApp, Telegram) ni launchers que algunos juegos necesitan; Discord nunca se frena, para no cortar la voz.", en: "While you play, these apps give the CPU to the game (they aren't closed) and go back to normal afterwards. Apps with calls (Teams, WhatsApp, Telegram) and launchers some games need aren't recommended; Discord is never slowed down, so voice isn't cut." },
+  "svc.group.perf": { es: "Rendimiento y diagnóstico", en: "Performance and diagnostics" },
+  "svc.group.features": { es: "Funciones que casi nadie usa", en: "Features almost nobody uses" },
+  "svc.group.gaming": { es: "Gaming", en: "Gaming" },
+  "svc.disabled": { es: "Ya deshabilitado", en: "Already disabled" },
+  "svc.hint": { es: "“Recomendados” sólo marca servicios que un jugador típico no usa (SysMain, Registro remoto, Fax, Informe de errores…). Nunca marca Búsqueda, impresión, ubicación ni Xbox: dicen qué rompen. Se muestran sólo los que existen en tu Windows. Restaurar los devuelve.", en: "“Recommended” only selects services a typical gamer doesn't use (SysMain, Remote Registry, Fax, Error Reporting…). It never selects Search, printing, location or Xbox: they say what they break. Only the ones that exist on your Windows are shown. Restore brings them back." },
 };
 
 interface Ctx { lang: Lang; setLang: (l: Lang) => void; t: (k: string) => string; }

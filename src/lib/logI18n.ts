@@ -271,6 +271,8 @@ const RX: [RegExp, string, string][] = [
   [/^Otro navegador detectado: (.+)$/, "Other browser detected: $1", "Outro navegador detectado: $1"],
   [/^Windows no permitió desinstalar Microsoft Edge en esta PC \(sigue en: (.+)\)\.$/, "Windows didn't allow uninstalling Microsoft Edge on this PC (still at: $1).", "O Windows não permitiu desinstalar o Microsoft Edge neste PC (ainda em: $1)."],
   [/^Permisos bloqueados: (\d+)$/, "Permissions blocked: $1", "Permissões bloqueadas: $1"],
+  [/^Servicios deshabilitados: (\d+)\/(\d+)$/, "Services disabled: $1/$2", "Serviços desativados: $1/$2"],
+  [/^! No se pudo deshabilitar: (.+)$/, "! Couldn't disable: $1", "! Não foi possível desativar: $1"],
   [/^Servicios restaurados: (\d+) · tareas: (\d+)$/, "Services restored: $1 · tasks: $2", "Serviços restaurados: $1 · tarefas: $2"],
   [/^Cambios agregados después del backup que se quitaron: (\d+)$/, "Changes added after the backup that were removed: $1", "Mudanças adicionadas depois do backup que foram removidas: $1"],
   [/^No se pudieron habilitar: (.+)$/, "Couldn't enable: $1", "Não foi possível habilitar: $1"],
