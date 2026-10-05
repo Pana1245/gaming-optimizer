@@ -90,6 +90,15 @@ export const TWEAK_PT: Record<string, string> = {
   "Hora del sistema en UTC (dual-boot con Linux)": "Hora do sistema em UTC (dual-boot com Linux)",
   "Desactivar servicio HomeGroup": "Desativar o serviço Grupo Doméstico",
   "Desinstalar Microsoft Edge (si usás otro navegador)": "Desinstalar o Microsoft Edge (se você usa outro navegador)",
+  "Optimizaciones para juegos en ventana": "Otimizações para jogos em janela",
+  "Desactivar Power Throttling (no frenar programas)": "Desativar Power Throttling (não frear programas)",
+  "Desactivar Network Throttling": "Desativar Network Throttling",
+  "No compartir Windows Update con otras PCs (P2P)": "Não compartilhar o Windows Update com outros PCs (P2P)",
+  "No bajar el volumen del juego en llamadas": "Não abaixar o volume do jogo em chamadas",
+  "Desactivar Filter Keys y Toggle Keys": "Desativar Teclas de Filtragem e de Alternância",
+  "Abrir el Explorador en «Este equipo»": "Abrir o Explorador em “Este Computador”",
+  "Edge sin segundo plano ni inicio anticipado": "Edge sem segundo plano nem inicialização antecipada",
+  "Desactivar Inicio rápido (Fast Startup)": "Desativar Inicialização Rápida (Fast Startup)",
 };
 
 export const TWEAK_DESC_PT: Record<string, string> = {
@@ -160,4 +169,13 @@ export const TWEAK_DESC_PT: Record<string, string> = {
   "Mostrar segundos en el reloj de la barra": "O relógio da barra de tarefas mostra também os segundos.",
   "Hora del sistema en UTC (dual-boot con Linux)": "Faz o Windows interpretar o relógio do PC em UTC, como o Linux. Avançado: só se usa Linux no mesmo PC e a hora fica errada.",
   "Desactivar servicio HomeGroup": "Desliga os serviços de Grupo Doméstico (recurso antigo de rede que o Windows 10/11 não usa mais).",
+  "Optimizaciones para juegos en ventana": "Faz os jogos em janela ou janela sem bordas usarem o modo de apresentação moderno do DirectX: menos latência, quase como em tela cheia. É a opção do Windows 11 em Configurações > Tela > Gráficos.",
+  "Desactivar Power Throttling (no frenar programas)": "O Windows reduz a velocidade dos programas que considera em segundo plano para economizar energia e às vezes freia launchers, Discord ou o próprio jogo. Em notebooks gasta um pouco mais de bateria.",
+  "Desactivar Network Throttling": "O Windows limita o tráfego de rede enquanto toca áudio ou vídeo, para priorizar a multimídia. Remover evita esse freio quando você joga com música ou Discord.",
+  "No compartir Windows Update con otras PCs (P2P)": "O Windows usa sua conexão para enviar atualizações a outros PCs pela internet (Otimização de Entrega). Desativar libera seu upload para jogar. As atualizações continuam sendo baixadas normalmente da Microsoft.",
+  "No bajar el volumen del juego en llamadas": "O Windows abaixa sozinho o volume de todo o resto quando detecta uma chamada (Discord, Teams…) e o jogo fica baixo. Com isto fica sempre no mesmo volume.",
+  "Desactivar Filter Keys y Toggle Keys": "Remove os atalhos de acessibilidade que ativam ao segurar o Shift direito por 8 segundos ou o Num Lock por 5 segundos: no meio do jogo podem fazer o teclado ignorar teclas ou apitar.",
+  "Abrir el Explorador en «Este equipo»": "O Explorador de Arquivos abre direto nos seus discos em vez de Início / Acesso rápido.",
+  "Edge sin segundo plano ni inicio anticipado": "O Edge deixa de ficar aberto escondido depois de fechado e de iniciar com o Windows para “abrir mais rápido”. Libera RAM. Não afeta o WebView2 (usado por outros apps, incluindo este).",
+  "Desactivar Inicio rápido (Fast Startup)": "Com a Inicialização Rápida, “Desligar” não desliga de verdade: o Windows salva o estado e os drivers não reiniciam, o que pode arrastar problemas. Desativar faz uma inicialização limpa toda vez (alguns segundos mais lenta). Útil com dual boot. Avançado.",
 };

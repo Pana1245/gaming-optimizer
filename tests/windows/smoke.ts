@@ -219,6 +219,26 @@ async function main() {
     return "sin cambios";
   });
 
+  await test("Restaurar: Core Parking en el plan que se usa", async () => {
+    // En la pasada general el plan cambia antes (Máximo rendimiento) y Core Parking toca ese
+    // plan nuevo. Acá se aplica solo, sobre Equilibrado, y Restaurar tiene que devolverlo.
+    const orig = (await ok("powercfg /getactivescheme")).match(/[0-9a-f-]{36}/i)?.[0] ?? "";
+    await ok("powercfg /setactive 381b4222-f694-41f0-9685-ff5bb260df2e");
+    try {
+      const before = await ok(CPU_VALUES);
+      must(before.includes("X|cpu|"), "no se pudieron leer los valores del procesador");
+      const name = (await ok(BACKUP, 900)).match(/Backup en: .*\\([^\\\s]+)\s*$/m)?.[1] ?? "";
+      must(name, "no informó la carpeta del backup");
+      const cp = ALL_CATEGORIES.flatMap((c) => c.tweaks).find((t) => t.name.startsWith("Core Parking"))!;
+      await ok(cp.script);
+      must((await ok(CPU_VALUES)) !== before, "el tweak no cambió nada");
+      const o = await ok(restoreScript(name), 900);
+      const after = await ok(CPU_VALUES);
+      must(after === before, `quedó distinto:\n${after}\nantes:\n${before}\n${o.split("\n").filter((l) => /Sistema/.test(l)).join(" ")}`);
+      return before.split("\n").map((l) => l.split("|").slice(2).join("=")).join(" ");
+    } finally { if (orig) await ps(`powercfg /setactive ${orig}`); }
+  });
+
   // ── 3. Funciones ───────────────────────────────────────────────────────────
   phase = "Funciones";
   await gameModeTests();
@@ -421,8 +441,14 @@ Get-PnpDevice -EA SilentlyContinue | Where-Object { $_.InstanceId -like 'ACPI\PN
 Get-NetAdapterLso -EA SilentlyContinue | ForEach-Object { "X|lso|$($_.Name)|$($_.IPv4Enabled)|$($_.IPv6Enabled)" }
 Get-NetAdapterBinding -ComponentID ms_tcpip6 -EA SilentlyContinue | ForEach-Object { "X|ipv6|$($_.Name)|$($_.Enabled)" }
 "X|rtOff|" + (Get-MpPreference -EA SilentlyContinue).DisableRealtimeMonitoring
+"X|autotuning|" + (Get-NetTCPSetting -SettingName Internet -EA SilentlyContinue).AutoTuningLevelLocal
+"X|rss|" + (Get-NetOffloadGlobalSetting -EA SilentlyContinue).ReceiveSideScaling
+${CPU_VALUES}
 "X|hosts|" + ((@(Get-Content "$env:windir\System32\drivers\etc\hosts" -EA SilentlyContinue) | Where-Object { $_.Trim() }) -join ' / ')`;
 }
+
+// Valores del procesador que cambia "Core Parking OFF", en el plan activo.
+const CPU_VALUES = String.raw`foreach($cs in 'CPMINCORES','CPMAXCORES','PROCTHROTTLEMIN','PROCTHROTTLEMAX'){ foreach($q in '/q','/qh'){ $hx=@([regex]::Matches((powercfg $q SCHEME_CURRENT SUB_PROCESSOR $cs 2>$null | Out-String), '0x[0-9a-fA-F]{8}') | ForEach-Object { $_.Value }); if($hx.Count -ge 2){ "X|cpu|$cs|" + $hx[-2] + '|' + $hx[-1]; break } } }`;
 
 // Re-exporta cada rama del backup y la compara con la copia de antes de los tweaks.
 // Se ignoran datos que Windows cambia solo (DHCP de las placas de red).

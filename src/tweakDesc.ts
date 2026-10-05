@@ -67,4 +67,13 @@ export const TWEAK_DESC: Record<string, string> = {
   "Mostrar segundos en el reloj de la barra": "El reloj de la barra de tareas muestra también los segundos.",
   "Hora del sistema en UTC (dual-boot con Linux)": "Hace que Windows interprete el reloj de la PC en UTC, como Linux. Avanzado: solo si usás Linux en la misma PC y la hora se desfasa.",
   "Desactivar servicio HomeGroup": "Apaga los servicios de Grupo Hogar (función vieja de redes que Windows 10/11 ya no usa).",
+  "Optimizaciones para juegos en ventana": "Hace que los juegos en ventana o ventana sin bordes usen el modo de presentación moderno de DirectX: menos latencia, casi como en pantalla completa. Es la opción de Windows 11 en Configuración > Pantalla > Gráficos.",
+  "Desactivar Power Throttling (no frenar programas)": "Windows baja la velocidad de los programas que cree que están en segundo plano para ahorrar energía, y a veces frena launchers, Discord o el propio juego. En notebooks gasta un poco más de batería.",
+  "Desactivar Network Throttling": "Windows limita el tráfico de red mientras suena audio o video, para priorizar la multimedia. Quitarlo evita ese freno cuando jugás con música o Discord.",
+  "No compartir Windows Update con otras PCs (P2P)": "Windows usa tu conexión para subir actualizaciones a otras PCs por internet (Optimización de distribución). Desactivarlo libera tu subida para jugar. Las actualizaciones se siguen bajando normal desde Microsoft.",
+  "No bajar el volumen del juego en llamadas": "Windows baja solo el volumen de todo lo demás cuando detecta una llamada (Discord, Teams…) y el juego se escucha bajo. Con esto queda siempre al mismo volumen.",
+  "Desactivar Filter Keys y Toggle Keys": "Quita los atajos de accesibilidad que se activan al mantener Shift derecho 8 segundos o Bloq Num 5 segundos: en pleno juego pueden hacer que el teclado ignore teclas o pite.",
+  "Abrir el Explorador en «Este equipo»": "El Explorador de archivos abre directo en tus discos en vez de Inicio / Acceso rápido.",
+  "Edge sin segundo plano ni inicio anticipado": "Edge deja de quedar abierto escondido después de cerrarlo y de arrancar con Windows para «abrir más rápido». Libera RAM. No afecta a WebView2 (lo que usan otras apps, incluida esta).",
+  "Desactivar Inicio rápido (Fast Startup)": "Con Inicio rápido, «Apagar» no apaga del todo: Windows guarda su estado y los drivers no se reinician, lo que puede arrastrar problemas. Desactivarlo hace un arranque limpio cada vez (tarda unos segundos más). Útil con dual-boot. Avanzado.",
 };

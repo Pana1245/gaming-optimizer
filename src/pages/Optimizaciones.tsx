@@ -77,6 +77,10 @@ $keys = [ordered]@{
   'lfsvc'             = 'HKLM\SYSTEM\CurrentControlSet\Services\lfsvc\Service\Configuration'
   'storagesense'      = 'HKCU\Software\Microsoft\Windows\CurrentVersion\StorageSense'
   'keyboard-default'  = 'HKU\.DEFAULT\Control Panel\Keyboard'
+  'audio'             = 'HKCU\Software\Microsoft\Multimedia\Audio'
+  'sm-power'          = 'HKLM\SYSTEM\CurrentControlSet\Control\Session Manager\Power'
+  'directx-user'      = 'HKCU\Software\Microsoft\DirectX\UserGpuPreferences'
+  'powerthrottling'   = 'HKLM\SYSTEM\CurrentControlSet\Control\Power\PowerThrottling'
   # Claves que crean los tweaks: si no existen, queda la marca .absent y Restaurar las borra.
   'classic-menu'      = 'HKCU\Software\Classes\CLSID\{86ca1aa0-34aa-4e8b-a509-50c905bae2a2}'
   'taskbar-endtask'   = 'HKCU\Software\Microsoft\Windows\CurrentVersion\Explorer\Advanced\TaskbarDeveloperSettings'
@@ -88,7 +92,7 @@ foreach($g in @(Get-CimInstance Win32_VideoController -EA SilentlyContinue | Whe
 }
 # De estas sólo se guardan los valores de la clave: los tweaks no tocan sus subclaves y
 # algunas (drivers de video) ni un administrador las puede escribir al restaurar.
-$flat = @('graphicsdrivers','sessionmanager','crashcontrol','timezone')
+$flat = @('graphicsdrivers','sessionmanager','crashcontrol','timezone','sm-power')
 $n = 0
 foreach($k in $keys.GetEnumerator()){
   $f = "$backDir\$($k.Name).reg"
@@ -132,8 +136,14 @@ $sys.teredo="$((Get-NetTeredoConfiguration -EA SilentlyContinue).Type)"
 $sys.lso=@(Get-NetAdapterLso -EA SilentlyContinue | ForEach-Object { @{ name=$_.Name; v4=[bool]$_.IPv4Enabled; v6=[bool]$_.IPv6Enabled } })
 $sys.ipv6=@(Get-NetAdapterBinding -ComponentID ms_tcpip6 -EA SilentlyContinue | Where-Object Enabled | ForEach-Object { $_.Name })
 $mp=Get-MpPreference -EA SilentlyContinue; if($mp){ $sys.rtOff=[bool]$mp.DisableRealtimeMonitoring }
+$sys.autotuning="$((Get-NetTCPSetting -SettingName Internet -EA SilentlyContinue).AutoTuningLevelLocal)"
+$sys.rss="$((Get-NetOffloadGlobalSetting -EA SilentlyContinue).ReceiveSideScaling)"
+# Core Parking cambia valores del plan activo (no del registro exportado): [AC, DC] de cada uno.
+function Get-CpuVal($plan, $cs){ foreach($q in '/q','/qh'){ $hx=@([regex]::Matches((powercfg $q $plan SUB_PROCESSOR $cs 2>$null | Out-String), '0x[0-9a-fA-F]{8}') | ForEach-Object { [Convert]::ToInt32($_.Value, 16) }); if($hx.Count -ge 2){ return ,@($hx[-2], $hx[-1]) } }; $null }
+$sys.cpu=@{}
+if($sys.plan){ foreach($cs in 'CPMINCORES','CPMAXCORES','PROCTHROTTLEMIN','PROCTHROTTLEMAX'){ $v=Get-CpuVal $sys.plan $cs; if($v){ $sys.cpu[$cs]=$v } } }
 Copy-Item -LiteralPath "$env:windir\System32\drivers\etc\hosts" -Destination "$backDir\hosts.bak" -Force -EA SilentlyContinue
-@{ services=$svcState; tasks=$taskState; timerTask=$timerTask; system=$sys } | ConvertTo-Json -Depth 4 | Set-Content -LiteralPath "$backDir\state.json" -Encoding UTF8
+@{ services=$svcState; tasks=$taskState; timerTask=$timerTask; system=$sys } | ConvertTo-Json -Depth 6 | Set-Content -LiteralPath "$backDir\state.json" -Encoding UTF8
 
 Write-Output "Creando punto de restauracion..."
 $srKey = "HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion\SystemRestore"

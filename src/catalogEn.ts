@@ -91,6 +91,15 @@ export const TWEAK_EN: Record<string, string> = {
   "Hora del sistema en UTC (dual-boot con Linux)": "System time in UTC (dual-boot with Linux)",
   "Desactivar servicio HomeGroup": "Disable HomeGroup service",
   "Desinstalar Microsoft Edge (si usás otro navegador)": "Uninstall Microsoft Edge (if you use another browser)",
+  "Optimizaciones para juegos en ventana": "Optimizations for windowed games",
+  "Desactivar Power Throttling (no frenar programas)": "Disable Power Throttling (don't slow programs down)",
+  "Desactivar Network Throttling": "Disable Network Throttling",
+  "No compartir Windows Update con otras PCs (P2P)": "Don't share Windows Update with other PCs (P2P)",
+  "No bajar el volumen del juego en llamadas": "Don't lower game volume during calls",
+  "Desactivar Filter Keys y Toggle Keys": "Disable Filter Keys and Toggle Keys",
+  "Abrir el Explorador en «Este equipo»": "Open File Explorer to “This PC”",
+  "Edge sin segundo plano ni inicio anticipado": "Edge without background mode or startup boost",
+  "Desactivar Inicio rápido (Fast Startup)": "Disable Fast Startup",
 };
 
 export const TWEAK_DESC_EN: Record<string, string> = {
@@ -161,4 +170,13 @@ export const TWEAK_DESC_EN: Record<string, string> = {
   "Mostrar segundos en el reloj de la barra": "The taskbar clock also shows seconds.",
   "Hora del sistema en UTC (dual-boot con Linux)": "Makes Windows read the PC clock as UTC, like Linux. Advanced: only if you dual-boot Linux and the time gets out of sync.",
   "Desactivar servicio HomeGroup": "Turns off the HomeGroup services (an old networking feature Windows 10/11 no longer uses).",
+  "Optimizaciones para juegos en ventana": "Makes windowed and borderless games use DirectX's modern presentation model: lower latency, close to fullscreen. It's the Windows 11 option in Settings > Display > Graphics.",
+  "Desactivar Power Throttling (no frenar programas)": "Windows slows down programs it thinks are in the background to save power, and sometimes throttles launchers, Discord or the game itself. On laptops it uses a bit more battery.",
+  "Desactivar Network Throttling": "Windows limits network traffic while audio or video is playing, to prioritize multimedia. Removing it avoids that cap when you play with music or Discord on.",
+  "No compartir Windows Update con otras PCs (P2P)": "Windows uses your connection to upload updates to other PCs over the internet (Delivery Optimization). Turning it off frees your upload for gaming. Updates still download normally from Microsoft.",
+  "No bajar el volumen del juego en llamadas": "Windows automatically lowers everything else when it detects a call (Discord, Teams…), so the game sounds quiet. With this it stays at the same volume.",
+  "Desactivar Filter Keys y Toggle Keys": "Removes the accessibility shortcuts triggered by holding right Shift for 8 seconds or Num Lock for 5 seconds: mid-game they can make the keyboard ignore keys or beep.",
+  "Abrir el Explorador en «Este equipo»": "File Explorer opens straight to your drives instead of Home / Quick access.",
+  "Edge sin segundo plano ni inicio anticipado": "Edge stops staying open hidden after you close it and stops starting with Windows to “open faster”. Frees RAM. Doesn't affect WebView2 (used by other apps, including this one).",
+  "Desactivar Inicio rápido (Fast Startup)": "With Fast Startup, “Shut down” doesn't fully shut down: Windows saves its state and drivers don't restart, which can carry problems over. Turning it off gives a clean boot every time (a few seconds slower). Useful with dual boot. Advanced.",
 };

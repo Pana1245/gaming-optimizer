@@ -35,6 +35,8 @@ const P = {
   deliv: String.raw`"$env:windir\SoftwareDistribution\DeliveryOptimization"`,
   browsers: String.raw`"$env:LocalAppData\Google\Chrome\User Data\Default\Cache", "$env:LocalAppData\Microsoft\Edge\User Data\Default\Cache"`,
   shader: String.raw`"$env:LocalAppData\NVIDIA\DXCache", "$env:LocalAppData\D3DSCache"`,
+  // Sólo carpetas de caché (no "Local Storage" ni cookies): no se pierde la sesión iniciada.
+  launchers: String.raw`$(if($sp=(Get-ItemProperty 'HKCU:\Software\Valve\Steam' -EA SilentlyContinue).SteamPath){ "$sp\appcache\httpcache" }), "$env:LocalAppData\Steam\htmlcache\Cache", "$env:LocalAppData\Steam\htmlcache\Code Cache", "$env:LocalAppData\Steam\htmlcache\GPUCache", "$env:LocalAppData\EpicGamesLauncher\Saved\webcache\Cache", "$env:LocalAppData\EpicGamesLauncher\Saved\webcache_4147\Cache", "$env:LocalAppData\EpicGamesLauncher\Saved\webcache_4430\Cache", "$env:AppData\discord\Cache", "$env:AppData\discord\Code Cache", "$env:AppData\discord\GPUCache"`,
 };
 
 const WU_SIZE = String.raw`$d="$env:windir\SoftwareDistribution\Download"
@@ -55,6 +57,7 @@ const ITEMS: Item[] = [
   { id: "deliv", name: "Delivery Optimization", scan: sizeOnly(P.deliv), clean: sizeAndClear(P.deliv) },
   { id: "browsers", name: "Caché de navegadores (Chrome/Edge)", scan: sizeOnly(P.browsers), clean: sizeAndClear(P.browsers) },
   { id: "shader", name: "Shader cache (NVIDIA / DirectX)", scan: sizeOnly(P.shader), clean: sizeAndClear(P.shader) },
+  { id: "launchers", name: "Caché de launchers (Steam, Epic, Discord)", scan: sizeOnly(P.launchers), clean: sizeAndClear(P.launchers) },
   { id: "recycle", name: "Papelera de reciclaje", scan: `${RECYCLE_SIZE}\nWrite-Output ("SIZE=" + [math]::Round($s/1MB,1))`,
     clean: `${RECYCLE_SIZE}\n$before=$s\nClear-RecycleBin -Force -EA SilentlyContinue\n$sh2=New-Object -ComObject Shell.Application; $bin2=$sh2.Namespace(10); $after=0\nif($bin2){ foreach($i in $bin2.Items()){ try{ $after += $i.Size }catch{} } }\nWrite-Output ("FREED=" + [math]::Round(($before-$after)/1MB,1))` },
 ];

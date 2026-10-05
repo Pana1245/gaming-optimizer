@@ -15,6 +15,29 @@ foreach($g in $gpus){
 }
 Write-Output "MSI mode activado en $n GPU(s). Reinicia para aplicar."`,
     },
+    // Lo mismo que Configuración > Pantalla > Gráficos > "Optimizaciones para juegos en ventana".
+    // El valor es una lista "clave=valor;": se cambia sólo la clave propia.
+    { name: "Optimizaciones para juegos en ventana", os: 11, script: String.raw`$p='HKCU:\Software\Microsoft\DirectX\UserGpuPreferences'
+if(!(Test-Path $p)){ New-Item $p -Force | Out-Null }
+$cur=[string](Get-ItemProperty $p -Name DirectXUserGlobalSettings -EA SilentlyContinue).DirectXUserGlobalSettings
+$kv=[ordered]@{}
+foreach($x in ($cur -split ';')){ if($x -match '^\s*([^=]+)=(.*)$'){ $kv[$Matches[1].Trim()]=$Matches[2].Trim() } }
+$kv['SwapEffectUpgradeEnable']='1'
+Set-ItemProperty $p DirectXUserGlobalSettings ((@($kv.Keys | ForEach-Object { "$_=$($kv[$_])" }) -join ';') + ';') -Type String -Force
+Write-Output "Optimizaciones para juegos en ventana activadas"` },
+    { name: "Desactivar Power Throttling (no frenar programas)", script: String.raw`$p='HKLM:\SYSTEM\CurrentControlSet\Control\Power\PowerThrottling'
+if(!(Test-Path $p)){ New-Item $p -Force | Out-Null }
+Set-ItemProperty $p PowerThrottlingOff 1 -Type DWord -Force
+Write-Output "Power Throttling desactivado"` },
+  ],
+  network: [
+    { name: "Desactivar Network Throttling", script: String.raw`Set-ItemProperty 'HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Multimedia\SystemProfile' NetworkThrottlingIndex 0xffffffff -Type DWord -Force
+Write-Output "Network Throttling desactivado"` },
+    // DODownloadMode 0: sólo descarga de Microsoft (HTTP), sin subir a otras PCs.
+    { name: "No compartir Windows Update con otras PCs (P2P)", script: String.raw`$p='HKLM:\SOFTWARE\Policies\Microsoft\Windows\DeliveryOptimization'
+if(!(Test-Path $p)){ New-Item $p -Force | Out-Null }
+Set-ItemProperty $p DODownloadMode 0 -Type DWord -Force
+Write-Output "Windows Update sin compartir con otras PCs"` },
   ],
   privacy: [
     {
@@ -97,7 +120,7 @@ Write-Output "Bing en Inicio desactivado"` },
       { name: "Debloat de Microsoft Edge (quitar promos)", script: String.raw`$p='HKLM:\SOFTWARE\Policies\Microsoft\Edge'
 if(!(Test-Path $p)){ New-Item $p -Force | Out-Null }
 foreach($k in 'EdgeShoppingAssistantEnabled','HubsSidebarEnabled','ShowRecommendationsEnabled','PersonalizationReportingEnabled'){ Set-ItemProperty $p $k 0 -Type DWord -Force -EA SilentlyContinue }
-Write-Output "Edge debloated"` },
+Write-Output "Promociones de Edge quitadas"` },
       { name: "Desactivar seguimiento de ubicación", script: String.raw`Set-ItemProperty 'HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\CapabilityAccessManager\ConsentStore\location' Value 'Deny' -Type String -Force -EA SilentlyContinue
 Set-ItemProperty 'HKLM:\SYSTEM\CurrentControlSet\Services\lfsvc\Service\Configuration' Status 0 -Type DWord -Force -EA SilentlyContinue
 Write-Output "Ubicación desactivada"` },
@@ -134,6 +157,29 @@ Write-Output "Segundos en el reloj activados"` },
 Write-Output "Hora en UTC (dual-boot)"` },
       { name: "Desactivar servicio HomeGroup", script: String.raw`foreach($s in 'HomeGroupListener','HomeGroupProvider'){ Stop-Service $s -EA SilentlyContinue; Set-Service $s -StartupType Disabled -EA SilentlyContinue }
 Write-Output "HomeGroup desactivado"` },
+      // 3 = "No hacer nada" en Sonido > Comunicaciones.
+      { name: "No bajar el volumen del juego en llamadas", script: String.raw`$p='HKCU:\Software\Microsoft\Multimedia\Audio'
+if(!(Test-Path $p)){ New-Item $p -Force | Out-Null }
+Set-ItemProperty $p UserDuckingPreference 3 -Type DWord -Force
+Write-Output "El volumen ya no baja durante las llamadas"` },
+      // Mismo criterio que Sticky Keys: se apaga el atajo de teclado (122 y 58 = sin atajo).
+      { name: "Desactivar Filter Keys y Toggle Keys", script: String.raw`$a='HKCU:\Control Panel\Accessibility'
+foreach($k in @(@('Keyboard Response','122'), @('ToggleKeys','58'))){
+  if(!(Test-Path "$a\$($k[0])")){ New-Item "$a\$($k[0])" -Force | Out-Null }
+  Set-ItemProperty "$a\$($k[0])" Flags $k[1] -Type String -Force
+}
+Write-Output "Filter Keys y Toggle Keys desactivados"` },
+      { name: "Abrir el Explorador en «Este equipo»", script: String.raw`Set-ItemProperty 'HKCU:\Software\Microsoft\Windows\CurrentVersion\Explorer\Advanced' LaunchTo 1 -Type DWord -Force
+Write-Output "El Explorador abre en Este equipo"` },
+      // Políticas de Edge (no de WebView2: las apps que lo usan, incluida esta, no cambian).
+      { name: "Edge sin segundo plano ni inicio anticipado", script: String.raw`$p='HKLM:\SOFTWARE\Policies\Microsoft\Edge'
+if(!(Test-Path $p)){ New-Item $p -Force | Out-Null }
+Set-ItemProperty $p StartupBoostEnabled 0 -Type DWord -Force
+Set-ItemProperty $p BackgroundModeEnabled 0 -Type DWord -Force
+Write-Output "Edge ya no queda abierto en segundo plano"` },
+      // optIn: arranca unos segundos más lento; sirve sobre todo con dual-boot o drivers problemáticos.
+      { name: "Desactivar Inicio rápido (Fast Startup)", risk: "advanced", optIn: true, script: String.raw`Set-ItemProperty 'HKLM:\SYSTEM\CurrentControlSet\Control\Session Manager\Power' HiberbootEnabled 0 -Type DWord -Force
+Write-Output "Inicio rápido desactivado"` },
     ],
   },
 ];

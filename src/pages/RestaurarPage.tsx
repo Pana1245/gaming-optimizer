@@ -143,6 +143,23 @@ if(Test-Path -LiteralPath $stf){
     }
     foreach($n in @($sy.ipv6)){ $b=Get-NetAdapterBinding -Name $n -ComponentID ms_tcpip6 -EA SilentlyContinue; if($b -and -not $b.Enabled){ Enable-NetAdapterBinding -Name $n -ComponentID ms_tcpip6 -EA SilentlyContinue; $done+='ipv6' } }
     if($sy.rtOff -eq $false -and (Get-MpPreference -EA SilentlyContinue).DisableRealtimeMonitoring){ Set-MpPreference -DisableRealtimeMonitoring $false -EA SilentlyContinue; $done+='defender' }
+    if($sy.autotuning -and "$((Get-NetTCPSetting -SettingName Internet -EA SilentlyContinue).AutoTuningLevelLocal)" -ne $sy.autotuning){ netsh int tcp set global autotuninglevel=$($sy.autotuning.ToLower()) 2>$null | Out-Null; $done+='tcp' }
+    if($sy.rss -and "$((Get-NetOffloadGlobalSetting -EA SilentlyContinue).ReceiveSideScaling)" -ne $sy.rss){ Set-NetOffloadGlobalSetting -ReceiveSideScaling $sy.rss -EA SilentlyContinue; $done+='tcp' }
+    # Core Parking: valores del procesador en el plan que estaba activo.
+    if($sy.plan -and $sy.cpu){
+      function Get-CpuVal($plan, $cs){ foreach($q in '/q','/qh'){ $hx=@([regex]::Matches((powercfg $q $plan SUB_PROCESSOR $cs 2>$null | Out-String), '0x[0-9a-fA-F]{8}') | ForEach-Object { [Convert]::ToInt32($_.Value, 16) }); if($hx.Count -ge 2){ return ,@($hx[-2], $hx[-1]) } }; $null }
+      $cpuChanged=$false
+      foreach($p in $sy.cpu.PSObject.Properties){
+        $hx=Get-CpuVal $sy.plan $p.Name
+        $want=@($p.Value)
+        if($hx -and $want.Count -eq 2 -and ($hx[0] -ne $want[0] -or $hx[1] -ne $want[1])){
+          powercfg /setacvalueindex $sy.plan SUB_PROCESSOR $p.Name $want[0] 2>$null | Out-Null
+          powercfg /setdcvalueindex $sy.plan SUB_PROCESSOR $p.Name $want[1] 2>$null | Out-Null
+          $cpuChanged=$true
+        }
+      }
+      if($cpuChanged){ if((powercfg /getactivescheme | Out-String) -match $sy.plan){ powercfg /setactive $sy.plan 2>$null | Out-Null }; $done+='cpu' }
+    }
     if($done){ Write-Output ("Sistema restaurado: " + (($done | Select-Object -Unique) -join ', ')) }
   }
 }
