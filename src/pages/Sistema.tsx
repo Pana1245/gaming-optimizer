@@ -53,7 +53,7 @@ function Graph({ data, color, label, value }: { data: Pt[]; color: string; label
               <Tooltip
                 contentStyle={{ background: "#111113", border: "1px solid #262629", borderRadius: 8, fontSize: 12 }}
                 labelStyle={{ display: "none" }}
-                formatter={(v: any) => [`${Number(v).toFixed(0)}%`, label]}
+                formatter={(v: unknown) => [`${Number(v).toFixed(0)}%`, label]}
               />
               <Area type="monotone" dataKey="v" stroke={color} strokeWidth={1.8}
                 fill={`url(#${id})`} isAnimationActive={false} />
@@ -85,7 +85,7 @@ export default function Sistema() {
         setCpu((d) => [...d, { t, v: s.cpu }].slice(-MAX));
         setRam((d) => [...d, { t, v: s.ram }].slice(-MAX));
         t++;
-      } catch {}
+      } catch { /* sin datos esta vez: el próximo tick reintenta */ }
     };
     const id = setInterval(tick, 1000);
     tick();

@@ -99,7 +99,7 @@ const loadBg = (): string[] => {
 };
 
 const loadGames = (): string[] => {
-  try { const s = localStorage.getItem("gm_games"); if (s) return JSON.parse(s); } catch {}
+  try { const s = localStorage.getItem("gm_games"); if (s) return JSON.parse(s); } catch { /* sin storage o dañado: lista por defecto */ }
   return DEFAULT_GAMES;
 };
 
@@ -140,15 +140,15 @@ export function GameModeProvider({ children }: { children: ReactNode }) {
   const { t } = useI18n();
   // Los listeners se registran una sola vez: leen el idioma ACTUAL vía ref.
   const tRef = useRef(t);
-  tRef.current = t;
   const tr = (k: string) => tRef.current(k);
   // La actividad se guarda como "mensaje por traducir" (no como texto ya traducido):
   // así, si cambiás de idioma, todo el registro se muestra en el idioma nuevo.
   const [entries, setEntries] = useState<LogEntry[]>(() => [{ ts: null, msg: (tt) => tt("gml.ready") }]);
-  const playingRef = useRef<string | null>(null);
-  playingRef.current = playing;
+  const playingRef = useRef<string | null>(playing);
   const proRef = useRef(pro);
-  proRef.current = pro;
+  // Los listeners (registrados una sola vez) leen idioma, juego y modo Pro actuales.
+  // Se actualizan después de cada render y antes que los demás efectos de este provider.
+  useEffect(() => { tRef.current = t; playingRef.current = playing; proRef.current = pro; });
   // ¿Se aplicaron las optimizaciones "pro" en la sesión de juego actual? Al cerrar
   // el juego hay que restaurar según lo que realmente se aplicó, no según el toggle
   // actual (el usuario pudo apagar Pro mientras jugaba y si no, las prioridades y

@@ -67,16 +67,17 @@ export default function Inicio() {
   const [recSel, setRecSel] = useState<Record<string, boolean>>({});
   const scrollRef = useScrollMemory<HTMLDivElement>("startup");
 
-  const load = async () => {
-    setLoading(true);
+  const readItems = async (): Promise<Entry[]> => {
     const r = await runPowershell(LIST);
     try {
       const data = JSON.parse(r.output.trim() || "[]");
-      setItems(Array.isArray(data) ? data : [data]);
-    } catch { setItems([]); }
-    setLoading(false);
+      return Array.isArray(data) ? data : [data];
+    } catch { return []; }
   };
-  useEffect(() => { load(); }, []);
+  const show = (l: Entry[]) => { setItems(l); setLoading(false); };
+  // `loading` ya arranca en true: al abrir sólo se lee la lista.
+  useEffect(() => { readItems().then(show); }, []);
+  const load = async () => { setLoading(true); show(await readItems()); };
 
   const toggle = async (e: Entry) => {
     setBusy(e.name);

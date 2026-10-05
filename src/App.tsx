@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { lazy, Suspense, useEffect, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import Sidebar, { type NavItem, type NavGroup } from "./components/Sidebar";
 import Splash from "./components/Splash";
@@ -12,25 +12,27 @@ import TitleBar from "./components/TitleBar";
 import AccountWarning from "./components/AccountWarning";
 import { ensureNotify } from "./lib/notify";
 import { dedupePowerPlansOnce } from "./lib/powerDedupe";
-import Optimizaciones from "./pages/Optimizaciones";
-import Motor from "./pages/Motor";
-import GameMode from "./pages/GameMode";
-import Limpieza from "./pages/Limpieza";
-import Inicio from "./pages/Inicio";
-import AppsPage from "./pages/AppsPage";
-import Desinstalar from "./pages/Desinstalar";
-import RestaurarPage from "./pages/RestaurarPage";
-import Reparar from "./pages/Reparar";
-import Sistema from "./pages/Sistema";
-import Guia from "./pages/Guia";
-import Panel from "./pages/Panel";
-import Chequeo from "./pages/Chequeo";
-import Drivers from "./pages/Drivers";
-import Perfiles from "./pages/Perfiles";
-import Red from "./pages/Red";
-import Graficos from "./pages/Graficos";
-import Herramientas from "./pages/Herramientas";
-import Reactivar from "./pages/Reactivar";
+// Cada sección se carga recién cuando se abre: antes todo iba en un solo archivo de
+// ~1,2 MB que se procesaba entero al arrancar (gráficos, test de velocidad, guía…).
+const Optimizaciones = lazy(() => import("./pages/Optimizaciones"));
+const Motor = lazy(() => import("./pages/Motor"));
+const GameMode = lazy(() => import("./pages/GameMode"));
+const Limpieza = lazy(() => import("./pages/Limpieza"));
+const Inicio = lazy(() => import("./pages/Inicio"));
+const AppsPage = lazy(() => import("./pages/AppsPage"));
+const Desinstalar = lazy(() => import("./pages/Desinstalar"));
+const RestaurarPage = lazy(() => import("./pages/RestaurarPage"));
+const Reparar = lazy(() => import("./pages/Reparar"));
+const Sistema = lazy(() => import("./pages/Sistema"));
+const Guia = lazy(() => import("./pages/Guia"));
+const Panel = lazy(() => import("./pages/Panel"));
+const Chequeo = lazy(() => import("./pages/Chequeo"));
+const Drivers = lazy(() => import("./pages/Drivers"));
+const Perfiles = lazy(() => import("./pages/Perfiles"));
+const Red = lazy(() => import("./pages/Red"));
+const Graficos = lazy(() => import("./pages/Graficos"));
+const Herramientas = lazy(() => import("./pages/Herramientas"));
+const Reactivar = lazy(() => import("./pages/Reactivar"));
 import {
   IconRocket, IconShieldCheck, IconGamepad, IconBroom, IconPower, IconApps, IconTrash, IconReset, IconWrench, IconChart, IconBook, IconGauge, IconLayers, IconGlobe, IconGpu, IconTools, IconLifeRing, IconPulse, IconChip,
 } from "./components/icons";
@@ -141,7 +143,7 @@ export default function App() {
               transition={{ duration: 0.16, ease: "easeOut" }}
               className="h-full relative z-10"
             >
-              {renderPage(page, setPage)}
+              <Suspense fallback={null}>{renderPage(page, setPage)}</Suspense>
             </motion.div>
           </AnimatePresence>
         </main>

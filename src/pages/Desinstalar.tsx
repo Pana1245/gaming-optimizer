@@ -284,7 +284,7 @@ export default function Desinstalar() {
         setStatus(t("unins.searchingLeft").replace("{name}", a.name));
         const r = await runPowershell(scanLeftovers(a));
         let items: Leftover[] = [];
-        try { const d = JSON.parse(r.output.trim() || "[]"); items = (Array.isArray(d) ? d : [d]) as Leftover[]; } catch {}
+        try { const d = JSON.parse(r.output.trim() || "[]"); items = (Array.isArray(d) ? d : [d]) as Leftover[]; } catch { /* salida inválida: sin restos que mostrar */ }
         setBusy(null); setWorking(false); setStatus("");
         if (items.length === 0) { setStatus(`✓ ${t("unins.noLeftovers").replace("{name}", a.name)}`); removeRow(a); return; }
         setScan({ app: a, items: items.map((it) => ({ ...it, checked: true })) });

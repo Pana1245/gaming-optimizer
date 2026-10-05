@@ -279,7 +279,7 @@ const RX: [RegExp, string, string][] = [
 ];
 
 // Prefijo que se conserva: sangría, [hora], y símbolos de estado (✓ ✗ ▸ ↩ ↪ ⚠ …).
-const PREFIX = /^(\s*(?:\[[^\]]*\]\s*)?(?:[✓✗▸↩↪⚠•·\-]\s*)*)([\s\S]*?)(\s*)$/u;
+const PREFIX = /^(\s*(?:\[[^\]]*\]\s*)?(?:[✓✗▸↩↪⚠•·-]\s*)*)([\s\S]*?)(\s*)$/u;
 
 function one(line: string, pt: boolean): string {
   const m = line.match(PREFIX);

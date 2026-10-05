@@ -39,8 +39,18 @@ jobs:
         run: |
           (Get-Content src-tauri/tauri.conf.json) -replace '"createUpdaterArtifacts": true', '"createUpdaterArtifacts": false' | Set-Content src-tauri/tauri.conf.json
 
+      # Lint (sin errores ni avisos): frena regresiones antes de compilar.
+      - name: Lint
+        run: npm run lint -- --max-warnings 0
+
+      # Incluye el chequeo de tipos (tsc -b).
       - name: Frontend build
         run: npm run build
+
+      # Tests del backend: los del Motor (registro, deshacer exacto) y de Drivers sólo
+      # corren en Windows. Van después del build del frontend (tauri los compila con dist/).
+      - name: Rust tests
+        run: cargo test --manifest-path src-tauri/Cargo.toml
 
       - name: Tauri build (installer)
         run: npm run tauri build

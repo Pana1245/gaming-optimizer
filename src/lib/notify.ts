@@ -18,5 +18,5 @@ export async function ensureNotify(): Promise<void> {
 export function notify(title: string, body: string): void {
   try {
     if (granted) sendNotification({ title, body });
-  } catch {}
+  } catch { /* sin notificaciones del sistema: no es crítico */ }
 }

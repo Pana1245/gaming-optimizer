@@ -23,22 +23,23 @@ export const useUpdater = () => useContext(UpdaterCtx);
 
 export function UpdaterProvider({ children }: { children: ReactNode }) {
   const [upd, setUpd] = useState<Update | null>(null);
-  const [status, setStatus] = useState<UpdStatus>("idle");
+  // Arranca en "checking": al abrir la app se consulta enseguida (efecto de abajo).
+  const [status, setStatus] = useState<UpdStatus>("checking");
   const [installing, setInstalling] = useState(false);
 
-  const checkNow = async (): Promise<UpdStatus> => {
-    setStatus("checking");
+  const query = async (): Promise<{ u: Update | null; st: UpdStatus }> => {
     try {
       const u = await check();
-      if (u) { setUpd(u); setStatus("available"); return "available"; }
-      setUpd(null); setStatus("none"); return "none";
+      return { u, st: u ? "available" : "none" };
     } catch {
-      setStatus("error"); return "error";
+      return { u: null, st: "error" };
     }
   };
+  const apply = ({ u, st }: { u: Update | null; st: UpdStatus }) => { setUpd(u); setStatus(st); return st; };
+  const checkNow = async (): Promise<UpdStatus> => { setStatus("checking"); return apply(await query()); };
 
   // Chequeo automático al iniciar (silencioso si falla).
-  useEffect(() => { checkNow(); /* eslint-disable-next-line react-hooks/exhaustive-deps */ }, []);
+  useEffect(() => { query().then(apply); }, []);
 
   const install = async () => {
     // Sin la guarda, Enter/doble clic en "Actualizar" lanzaba dos descargas a la vez.

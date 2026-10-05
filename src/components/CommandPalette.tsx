@@ -16,18 +16,18 @@ export default function CommandPalette({ items, onSelect }: { items: CmdItem[]; 
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
-      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "k") { e.preventDefault(); setOpen((o) => !o); }
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "k") { e.preventDefault(); setQ(""); setIdx(0); setOpen((o) => !o); }
       else if (e.key === "Escape") setOpen(false);
     };
     // También se abre desde el botón "Buscar" de la barra superior.
-    const onOpen = () => setOpen(true);
+    const onOpen = () => { setQ(""); setIdx(0); setOpen(true); };
     window.addEventListener("keydown", onKey);
     window.addEventListener("open-palette", onOpen);
     return () => { window.removeEventListener("keydown", onKey); window.removeEventListener("open-palette", onOpen); };
   }, []);
 
   useEffect(() => {
-    if (open) { setQ(""); setIdx(0); setTimeout(() => inputRef.current?.focus(), 40); }
+    if (open) setTimeout(() => inputRef.current?.focus(), 40);
   }, [open]);
 
   const filtered = useMemo(() => {
@@ -35,7 +35,6 @@ export default function CommandPalette({ items, onSelect }: { items: CmdItem[]; 
     return s ? items.filter((i) => i.label.toLowerCase().includes(s)) : items;
   }, [q, items]);
 
-  useEffect(() => { setIdx(0); }, [q]);
   useEffect(() => {
     listRef.current?.querySelector<HTMLElement>(`[data-i="${idx}"]`)?.scrollIntoView({ block: "nearest" });
   }, [idx]);
@@ -72,7 +71,7 @@ export default function CommandPalette({ items, onSelect }: { items: CmdItem[]; 
                 <circle cx="11" cy="11" r="7" /><path d="m21 21-4.3-4.3" />
               </svg>
               <input
-                ref={inputRef} value={q} onChange={(e) => setQ(e.target.value)} onKeyDown={onInputKey}
+                ref={inputRef} value={q} onChange={(e) => { setQ(e.target.value); setIdx(0); }} onKeyDown={onInputKey}
                 placeholder={t("cmd.placeholder")}
                 className="flex-1 bg-transparent outline-none text-[14px] text-text placeholder:text-text-mute"
               />

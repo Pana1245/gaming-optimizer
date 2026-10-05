@@ -119,7 +119,7 @@ export function UninstallProvider({ children }: { children: ReactNode }) {
           for (const k in map) next[k] = `data:image/png;base64,${map[k]}`;
           return next;
         });
-      } catch {}
+      } catch { /* tanda sin iconos: se muestran las iniciales */ }
     }
   };
 
@@ -133,7 +133,7 @@ export function UninstallProvider({ children }: { children: ReactNode }) {
     try {
       const data = JSON.parse(r.output.trim() || "[]");
       list = Array.isArray(data) ? data : [data];
-    } catch {}
+    } catch { /* salida inválida: lista vacía */ }
     setApps(list);
     setLoading(false);
     if (list.length) loadIcons(list, myTok);
@@ -148,6 +148,8 @@ export function UninstallProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     const id = setTimeout(() => { reload(); }, 1200);
     return () => clearTimeout(id);
+    // Sólo una vez, al abrir la app (después se recarga con el botón "Actualizar").
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   return (

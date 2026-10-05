@@ -18,5 +18,13 @@ export default defineConfig([
     languageOptions: {
       globals: globals.browser,
     },
+    rules: {
+      // Los providers de src/lib exportan junto al componente su hook y alguna constante:
+      // es el patrón de contexto de la app (sólo afecta al recargado en caliente en dev).
+      'react-refresh/only-export-components': ['error', {
+        allowConstantExport: true,
+        allowExportNames: ['useGameMode', 'DEFAULT_GAMES', 'useI18n', 'pick', 'LANGS', 'useInstaller', 'useUninstall', 'useUpdater'],
+      }],
+    },
   },
 ])
