@@ -287,8 +287,11 @@ if($o){ $res.reason=$o } else {
       }
       Set-ItemProperty $store -Name '_ADLX_saved' -Value '1' -Force
     }
+    # Primero lo que se apaga y al final lo que se activa: en Adrenalin, Anti-Lag no
+    # convive con Chill y el driver podría rechazarlo si Chill sigue prendido.
+    $order=@(0..($keys.Count - 1) | Sort-Object { $want[$_] })
     foreach($l in $list){ $p=$l -split '\|',4
-      for($i=0; $i -lt $keys.Count; $i++){
+      foreach($i in $order){
         if([GoAmd]::Get([int]$p[0], $keys[$i]) -eq 'na'){ continue }
         $res.total++; if([GoAmd]::Set([int]$p[0], $keys[$i], $want[$i]) -eq 0){ $res.done++ }
       }
