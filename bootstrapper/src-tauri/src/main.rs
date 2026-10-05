@@ -2,14 +2,20 @@
 
 use std::process::Command;
 
+#[cfg(windows)]
+use std::os::windows::process::CommandExt;
+#[cfg(windows)]
+const CREATE_NO_WINDOW: u32 = 0x0800_0000;
+
 /// El instalador NSIS real, embebido dentro de este binario en tiempo de compilación.
 /// Así el bootstrapper es un único .exe autocontenido.
 const SETUP: &[u8] = include_bytes!("../embedded/setup.exe");
 
-/// Bootstrapper oficial de WebView2 (Microsoft), embebido. Se usa sólo si la PC no
-/// tiene WebView2 (el runtime que necesita CUALQUIER app Tauri, incluido ESTE
-/// instalador). Sin esto, en Windows sin WebView2 el instalador ni abre.
-const WEBVIEW2: &[u8] = include_bytes!("../embedded/webview2setup.exe");
+/// Runtime COMPLETO de WebView2 (instalador offline oficial de Microsoft), embebido.
+/// Lo necesita cualquier app Tauri, incluido ESTE instalador, y se instala sólo si falta.
+/// Antes venía el instalador online: necesitaba internet y los Windows "debloateados"
+/// (Tiny11, AtlasOS…) bloquean su descarga, así que había que bajar aparte el offline.
+const WEBVIEW2: &[u8] = include_bytes!("../embedded/webview2offline.exe");
 
 /// ¿Está instalado el runtime de WebView2? Lo detecta por el registro de EdgeUpdate.
 #[cfg(windows)]
@@ -34,17 +40,86 @@ fn webview2_installed() -> bool {
     false
 }
 
-/// Si falta WebView2, lo instala (silencioso, por-usuario, sin UAC) ANTES de crear la
-/// ventana. En PCs que ya lo tienen (Win11 y la mayoría de Win10) es instantáneo.
+/// Textos de los avisos que salen ANTES de la ventana (sin WebView2 no hay interfaz):
+/// en el idioma de Windows (español, portugués o, si no, inglés).
 #[cfg(windows)]
-fn ensure_webview2() {
+fn texts() -> [&'static str; 3] {
+    #[link(name = "kernel32")]
+    extern "system" {
+        fn GetUserDefaultUILanguage() -> u16;
+    }
+    match unsafe { GetUserDefaultUILanguage() } & 0x3ff {
+        0x0a => [
+            "Gaming Optimizer necesita Microsoft Edge WebView2, que no está en esta PC.\n\nViene incluido en este instalador: se instala ahora (tarda alrededor de un minuto, no hace falta internet) y después se abre el instalador.",
+            "No se pudo instalar Microsoft Edge WebView2.\n\nVolvé a abrir el instalador y aceptá el aviso de Windows (UAC). Si sigue fallando, reiniciá la PC y probá de nuevo.",
+            "Instalar Gaming Optimizer",
+        ],
+        0x16 => [
+            "O Gaming Optimizer precisa do Microsoft Edge WebView2, que não está neste PC.\n\nEle vem incluído neste instalador: será instalado agora (leva cerca de um minuto, não precisa de internet) e depois o instalador abre.",
+            "Não foi possível instalar o Microsoft Edge WebView2.\n\nAbra o instalador de novo e aceite o aviso do Windows (UAC). Se continuar falhando, reinicie o PC e tente de novo.",
+            "Instalar Gaming Optimizer",
+        ],
+        _ => [
+            "Gaming Optimizer needs Microsoft Edge WebView2, which isn't on this PC.\n\nIt's included in this installer: it will be installed now (takes about a minute, no internet needed) and then the installer opens.",
+            "Microsoft Edge WebView2 couldn't be installed.\n\nOpen the installer again and accept the Windows prompt (UAC). If it keeps failing, restart the PC and try again.",
+            "Install Gaming Optimizer",
+        ],
+    }
+}
+
+/// Aviso nativo de Windows (no depende de WebView2).
+#[cfg(windows)]
+fn message_box(text: &str, caption: &str, error: bool) {
+    #[link(name = "user32")]
+    extern "system" {
+        fn MessageBoxW(hwnd: *mut std::ffi::c_void, text: *const u16, caption: *const u16, utype: u32) -> i32;
+    }
+    let wide = |s: &str| s.encode_utf16().chain(std::iter::once(0)).collect::<Vec<u16>>();
+    let (t, c) = (wide(text), wide(caption));
+    // MB_ICONERROR (0x10) o MB_ICONINFORMATION (0x40), al frente (MB_SETFOREGROUND).
+    let icon = if error { 0x10 } else { 0x40 };
+    unsafe {
+        MessageBoxW(std::ptr::null_mut(), t.as_ptr(), c.as_ptr(), icon | 0x0001_0000);
+    }
+}
+
+/// Si falta WebView2, lo instala desde el runtime embebido ANTES de crear la ventana
+/// (anda sin internet). En PCs que ya lo tienen (Win11 y casi todo Win10) es instantáneo.
+/// Devuelve false si no se pudo: sin WebView2 la ventana no puede abrir.
+#[cfg(windows)]
+fn ensure_webview2() -> bool {
     if webview2_installed() {
-        return;
+        return true;
     }
-    let tmp = std::env::temp_dir().join("MicrosoftEdgeWebview2Setup.exe");
+    let [notice, failed, caption] = texts();
+    message_box(notice, caption, false);
+    let tmp = std::env::temp_dir().join("MicrosoftEdgeWebView2RuntimeInstallerX64.exe");
     if std::fs::write(&tmp, WEBVIEW2).is_ok() {
-        let _ = Command::new(&tmp).args(["/silent", "/install"]).status();
+        // Para todos los usuarios (pide UAC): la app corre como administrador y, si el
+        // permiso lo da OTRA cuenta, esa cuenta no vería un WebView2 instalado por-usuario.
+        let ps = format!(
+            "try {{ $p = Start-Process -FilePath '{}' -ArgumentList '/silent','/install' -Verb RunAs -Wait -PassThru; exit $p.ExitCode }} catch {{ exit 1223 }}",
+            tmp.display().to_string().replace('\'', "''")
+        );
+        let _ = Command::new("powershell")
+            .args(["-NoProfile", "-WindowStyle", "Hidden", "-Command", &ps])
+            .creation_flags(CREATE_NO_WINDOW)
+            .status();
+        // UAC cancelado (o falló): al menos para este usuario, que no pide permiso.
+        if !webview2_installed() {
+            let _ = Command::new(&tmp).args(["/silent", "/install"]).status();
+        }
+        let _ = std::fs::remove_file(&tmp);
     }
+    if webview2_installed() {
+        return true;
+    }
+    message_box(failed, caption, true);
+    false
+}
+#[cfg(not(windows))]
+fn ensure_webview2() -> bool {
+    true
 }
 
 /// Escribe el NSIS a temporal y lo ejecuta en modo silencioso (/S) con elevación (UAC).
@@ -103,8 +178,9 @@ fn launch() -> Result<(), String> {
 fn main() {
     // Garantizar WebView2 antes de que Tauri intente crear la ventana (si no, en PCs
     // sin WebView2 la app muere con "Could not find the WebView2 Runtime").
-    #[cfg(windows)]
-    ensure_webview2();
+    if !ensure_webview2() {
+        return;
+    }
 
     tauri::Builder::default()
         .invoke_handler(tauri::generate_handler![install, launch])

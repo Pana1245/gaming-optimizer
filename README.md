@@ -24,7 +24,8 @@
 ## ⬇️ Descargar
 
 Bajá el instalador desde la sección [**Releases**](https://github.com/Pana1245/gaming-optimizer/releases/latest):
-el **instalador moderno** `GamingOptimizer-Installer.exe` (recomendado) o el clásico `GamingOptimizer_x64-setup.exe`.
+el **instalador moderno** `GamingOptimizer-Installer.exe` (recomendado: trae WebView2 adentro, así que anda en Windows
+debloateados y sin internet) o el clásico y liviano `GamingOptimizer_x64-setup.exe`.
 
 > **SmartScreen** puede avisar *"Windows protegió tu PC"* porque el instalador está auto-firmado.
 > Elegí **"Más información" → "Ejecutar de todas formas"**. Una vez instalado, se **auto-actualiza** solo.
@@ -84,7 +85,7 @@ Además: **auto-actualización** (con botón manual "Buscar actualizaciones"), *
 
 - **Frontend:** React + TypeScript + Tailwind CSS v4 + Framer Motion
 - **Backend:** Rust (Tauri v2)
-- **Tamaño:** ~5 MB de instalador · usa el WebView2 del sistema (no empaqueta navegador)
+- **Tamaño:** la app pesa ~5 MB y usa el WebView2 del sistema. El instalador moderno trae además el runtime offline de WebView2 (~210 MB) y solo lo instala si falta
 
 ## 🚀 Build desde el código
 
