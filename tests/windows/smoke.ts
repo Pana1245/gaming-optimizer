@@ -61,7 +61,7 @@ async function test(name: string, fn: () => Promise<string | void>, opts: { envO
   }
   const stderr = takeStderr();
   if (status === "ok" && stderr) status = "aviso";
-  const r = { phase, name, status, detail: detail.slice(0, 600), secs: Math.round((Date.now() - t0) / 100) / 10, stderr: stderr.slice(0, 1500) };
+  const r = { phase, name, status, detail: detail.slice(0, status === "ok" ? 600 : 6000), secs: Math.round((Date.now() - t0) / 100) / 10, stderr: stderr.slice(0, 1500) };
   results.push(r);
   const icon = status === "ok" ? "✓" : status === "aviso" ? "!" : "✗";
   console.log(`${icon} [${phase}] ${name} (${r.secs}s)${detail ? ` — ${r.detail.split("\n")[0]}` : ""}`);
@@ -430,14 +430,32 @@ function compareScript(name: string) {
   return String.raw`$dir=Join-Path "$env:SystemDrive\OptimizacionBackup" '${name.replace(/'/g, "''")}'
 $tmp=Join-Path $env:TEMP 'go-cmp'; Remove-Item $tmp -Recurse -Force -EA SilentlyContinue; New-Item $tmp -ItemType Directory | Out-Null
 $volatile='(?i)^"(Lease|T1|T2|Dhcp|IPAddress|SubnetMask|DefaultGateway|AddressType|IsServerNapAware)'
+# [clave] → valores, con los valores de varias líneas (hex con '\' al final) unidos en una.
+function Get-Sec($lines){
+  $h=[ordered]@{}; $k=$null; $buf=''
+  foreach($l in $lines){
+    if($l.EndsWith('\')){ $buf+=$l.TrimEnd('\').Trim(); continue }
+    $l=$buf + $l.Trim(); $buf=''
+    if($l -match '^\[(.+)\]$'){ $k=$Matches[1].ToLower(); $h[$k]=New-Object 'System.Collections.Generic.List[string]'; continue }
+    if($k -and $l){ $h[$k].Add($l) }
+  }
+  $h
+}
 foreach($f in Get-ChildItem -LiteralPath $dir -Filter *.reg){
-  $old=@(Get-Content -LiteralPath $f.FullName -Encoding Unicode)
-  $key=(($old | Where-Object { $_ -match '^\[(.+)\]$' } | Select-Object -First 1) -replace '^\[|\]$','')
+  if($f.BaseName -eq 'defender-features'){ continue }
+  $old=Get-Sec @(Get-Content -LiteralPath $f.FullName -Encoding Unicode)
+  $key=@($old.Keys)[0]
   $new=Join-Path $tmp $f.Name
   reg export $key $new /y > $null 2>&1
   if($LASTEXITCODE -ne 0){ Write-Output ("FALTA " + $f.BaseName + ": " + $key); continue }
-  $cur=@(Get-Content -LiteralPath $new -Encoding Unicode)
-  foreach($x in @(Compare-Object $old $cur)){ if($x.InputObject.Trim() -and $x.InputObject -notmatch $volatile){ Write-Output ("DIFF " + $f.BaseName + " " + $x.SideIndicator + " " + $x.InputObject) } }
+  $cur=Get-Sec @(Get-Content -LiteralPath $new -Encoding Unicode)
+  foreach($k in $old.Keys){
+    if(-not $cur.Contains($k)){ Write-Output ("DIFF " + $f.BaseName + " falta la subclave " + $k); continue }
+    foreach($v in $old[$k]){ if(-not $cur[$k].Contains($v) -and $v -notmatch $volatile){ Write-Output ("DIFF " + $f.BaseName + " [" + $k + "] <= " + $v) } }
+    foreach($v in $cur[$k]){ if(-not $old[$k].Contains($v) -and $v -notmatch $volatile){ Write-Output ("DIFF " + $f.BaseName + " [" + $k + "] => " + $v) } }
+  }
+  # Subclaves nuevas (no en las ramas que se guardan sin subclaves)
+  if($old.Count -gt 1){ foreach($k in $cur.Keys){ if(-not $old.Contains($k)){ Write-Output ("DIFF " + $f.BaseName + " subclave nueva " + $k) } } }
 }
 foreach($a in @(Get-ChildItem -LiteralPath $dir -Filter *.absent)){
   $k=(Get-Content -LiteralPath $a.FullName -Raw).Trim()

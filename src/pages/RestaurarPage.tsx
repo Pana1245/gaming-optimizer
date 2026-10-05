@@ -31,6 +31,8 @@ function Get-RegSections($lines){
   $h
 }
 foreach($r in $regs){
+  # Backups viejos: Defender no deja que nadie más escriba esa rama (y los tweaks tampoco pudieron).
+  if($r.BaseName -eq 'defender-features'){ continue }
   $out = & reg import $r.FullName 2>&1
   if($LASTEXITCODE -ne 0){
     # Hay subclaves que ni un administrador puede escribir (Defender con la Protección contra
@@ -49,9 +51,10 @@ foreach($r in $regs){
       reg import $sec > $null 2>&1
       if($LASTEXITCODE -ne 0){ $bad+=$k }
     }
-    if($bad){ $failed++; Write-Output ("  ERROR  " + $r.Name + ": " + ($out -join ' ') + " [" + ($bad -join '; ') + "]"); continue }
-  }
-  Write-Output ("  OK  " + $r.Name)
+    # Aunque falle una subclave, se sigue: hay que quitar igual los valores que agregaron los tweaks.
+    if($bad){ $failed++; Write-Output ("  ERROR  " + $r.Name + ": " + ($out -join ' ') + " [" + ($bad -join '; ') + "]") }
+    else { Write-Output ("  OK  " + $r.Name) }
+  } else { Write-Output ("  OK  " + $r.Name) }
   # Claves y valores que había en el backup
   $keys=@{}; $order=@(); $cur=$null
   foreach($line in (Get-Content -LiteralPath $r.FullName -Encoding Unicode)){
@@ -119,6 +122,8 @@ if(Test-Path -LiteralPath $stf){
     if($sy.plan -and ((powercfg /getactivescheme | Out-String) -notmatch $sy.plan)){ powercfg /setactive $sy.plan 2>$null | Out-Null; if($LASTEXITCODE -eq 0){ $done+='plan' } }
     $hib=(Get-ItemProperty 'HKLM:\SYSTEM\CurrentControlSet\Control\Power' -Name HibernateEnabled -EA SilentlyContinue).HibernateEnabled
     if($sy.hibernate -eq 1 -and $hib -ne 1){ powercfg /hibernate on 2>$null | Out-Null; $done+='hibernate' }
+    # No estaba configurada: Windows usa su valor por defecto (HibernateEnabledDefault).
+    elseif($null -eq $sy.hibernate -and $null -ne $hib){ Remove-ItemProperty 'HKLM:\SYSTEM\CurrentControlSet\Control\Power' -Name HibernateEnabled -Force -EA SilentlyContinue; $done+='hibernate' }
     $be=(bcdedit /enum '{current}' 2>$null | Out-String)
     foreach($e in 'useplatformclock','disabledynamictick'){
       $now=if($be -match "(?im)^$e\s+(\S+)"){ $Matches[1] } else { '' }

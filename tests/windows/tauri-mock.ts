@@ -38,7 +38,11 @@ export function runPs(script: string, timeoutSecs = 600, onLine?: (l: string) =>
   return new Promise((resolve) => {
     let child;
     try {
-      child = spawn("powershell.exe", ["-NoProfile", "-ExecutionPolicy", "Bypass", "-EncodedCommand", encodeScript(script)], { windowsHide: true });
+      // Sin el PSModulePath del PowerShell 7 que lanza la prueba en GitHub (con él, Windows
+      // PowerShell no encuentra cmdlets como Get-FileHash): igual que la app abierta desde el Explorador.
+      const env = { ...process.env };
+      delete env.PSModulePath;
+      child = spawn("powershell.exe", ["-NoProfile", "-ExecutionPolicy", "Bypass", "-EncodedCommand", encodeScript(script)], { windowsHide: true, env });
     } catch (e) {
       resolve({ ok: false, output: String(e), code: -1, stderr: String(e) });
       return;

@@ -72,7 +72,6 @@ $keys = [ordered]@{
   'accessibility'     = 'HKCU\Control Panel\Accessibility'
   'wifi-policy'       = 'HKLM\SOFTWARE\Microsoft\PolicyManager\default\WiFi'
   'consentstore-lm'   = 'HKLM\SOFTWARE\Microsoft\Windows\CurrentVersion\CapabilityAccessManager\ConsentStore'
-  'defender-features' = 'HKLM\SOFTWARE\Microsoft\Windows Defender\Features'
   'crashcontrol'      = 'HKLM\SYSTEM\CurrentControlSet\Control\CrashControl'
   'timezone'          = 'HKLM\SYSTEM\CurrentControlSet\Control\TimeZoneInformation'
   'lfsvc'             = 'HKLM\SYSTEM\CurrentControlSet\Services\lfsvc\Service\Configuration'
@@ -87,10 +86,21 @@ $i = 0
 foreach($g in @(Get-CimInstance Win32_VideoController -EA SilentlyContinue | Where-Object { $_.PNPDeviceID -like 'PCI*' })){
   $keys["msi-gpu$i"] = "HKLM\SYSTEM\CurrentControlSet\Enum\$($g.PNPDeviceID)\Device Parameters\Interrupt Management"; $i++
 }
+# De estas sólo se guardan los valores de la clave: los tweaks no tocan sus subclaves y
+# algunas (drivers de video) ni un administrador las puede escribir al restaurar.
+$flat = @('graphicsdrivers','sessionmanager','crashcontrol','timezone')
 $n = 0
 foreach($k in $keys.GetEnumerator()){
-  reg export $($k.Value) "$backDir\$($k.Name).reg" /y > $null 2>&1
-  if($LASTEXITCODE -eq 0){ $n++ }
+  $f = "$backDir\$($k.Name).reg"
+  reg export $($k.Value) $f /y > $null 2>&1
+  if($LASTEXITCODE -eq 0){
+    $n++
+    if($flat -contains $k.Name){
+      $ls = @(Get-Content -LiteralPath $f -Encoding Unicode)
+      $hd = @(for($j = 0; $j -lt $ls.Count; $j++){ if($ls[$j] -match '^\['){ $j } })
+      if($hd.Count -gt 1){ Set-Content -LiteralPath $f -Value $ls[0..($hd[1] - 1)] -Encoding Unicode }
+    }
+  }
   # Si la clave no existía, se anota: al restaurar se borra (la creó un tweak).
   elseif(-not (Test-Path -LiteralPath ('Registry::' + $k.Value))){ Set-Content -LiteralPath "$backDir\$($k.Name).absent" -Value $k.Value -Encoding UTF8 }
 }
