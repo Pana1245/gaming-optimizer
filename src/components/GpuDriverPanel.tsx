@@ -79,11 +79,11 @@ export default function GpuDriverPanel({ vendors, onLog, onNavigate }: {
     return (
       <div key={it.key} className="flex items-center gap-2 py-2 px-4 text-[13px]">
         <span className={`w-4 text-center ${na ? "text-text-mute" : ok ? "text-[#3ddc84]" : "text-[#ffb74d]"}`}>{na ? "–" : ok ? "✓" : "•"}</span>
-        <span className={na ? "text-text-mute" : "text-text"}>{t(`gpu.oc.k.${it.key}`)}</span>
+        <span className={`whitespace-nowrap ${na ? "text-text-mute" : "text-text"}`}>{t(`gpu.oc.k.${it.key}`)}</span>
         <Tooltip content={t(`gpu.oc.d.${it.key}`)}>
           <span className="w-[18px] h-[18px] rounded-full grid place-items-center text-[11px] font-bold leading-none cursor-help text-accent bg-accent/10 border border-accent/35 hover:bg-accent/20 hover:border-accent/60 transition-colors">?</span>
         </Tooltip>
-        <span className="ml-auto text-right text-[12.5px] tabular-nums">
+        <span className="ml-auto min-w-0 text-right text-[12.5px] tabular-nums">
           {na ? <span className="text-text-mute">{t("gpu.oc.na")}</span>
             : ok ? <span className="text-text-dim">{label(v, it.key, it.cur)}</span>
             : <><span className="text-text-mute">{label(v, it.key, it.cur)}</span><span className="text-text-mute mx-1.5">→</span><span className="text-text">{label(v, it.key, it.want)}</span></>}
