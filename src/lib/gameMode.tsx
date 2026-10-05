@@ -1,5 +1,6 @@
 import { createContext, useContext, useEffect, useRef, useState, type ReactNode } from "react";
 import { listen, type UnlistenFn } from "@tauri-apps/api/event";
+import { exit } from "@tauri-apps/plugin-process";
 import { startGameWatch, stopGameWatch, runPowershell, clearStandbyRam } from "./api";
 import { ensureNotify, notify } from "./notify";
 import { useI18n } from "./i18n";
@@ -30,16 +31,21 @@ foreach($rx in 'Gaming Optimizer|Ultimate|M.ximo rendimiento|Desempenho M.ximo|U
   $hp=$list | Select-String $rx | Select-Object -First 1; if($hp){ break }
 }
 if($hp -and "$hp" -match '${GUID_RX}'){ powercfg /setactive $matches[1] } else { powercfg /setactive SCHEME_MAX }
+$pc=$LASTEXITCODE
 Set-ItemProperty $sysp SystemResponsiveness 0 -Type DWord -Force -EA SilentlyContinue
+# Si powercfg falló, se avisa (antes el registro decía "activado" igual).
+if($pc -ne 0){ Write-Output 'PLAN_FAIL'; exit 1 }
 Write-Output OK`;
 
 const GAMER_OFF = String.raw`$p='HKCU:\Software\GamingOptimizer'
 $prev=(Get-ItemProperty $p -Name PrevPlan -EA SilentlyContinue).PrevPlan
 if($prev){ powercfg /setactive $prev } else { powercfg /setactive SCHEME_BALANCED }
+$pc=$LASTEXITCODE
 $pr=(Get-ItemProperty $p -Name PrevResp -EA SilentlyContinue).PrevResp
 $sysp='HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Multimedia\SystemProfile'
 if($null -ne $pr){ Set-ItemProperty $sysp SystemResponsiveness $pr -Type DWord -Force -EA SilentlyContinue }
 Remove-ItemProperty $p -Name GmActive -EA SilentlyContinue
+if($pc -ne 0){ Write-Output 'PLAN_FAIL'; exit 1 }
 Write-Output OK`;
 
 // Apps de fondo a las que se les baja la prioridad mientras jugás: las que el usuario
@@ -166,19 +172,24 @@ export function GameModeProvider({ children }: { children: ReactNode }) {
   // Encolando, siempre corren de a uno y en orden de llegada.
   const opChain = useRef<Promise<void>>(Promise.resolve());
   const enqueue = (fn: () => Promise<void>) => {
-    opChain.current = opChain.current.then(fn).catch(() => {});
+    // Un error en una operación no corta la cola, pero queda en la actividad (antes se perdía).
+    opChain.current = opChain.current.then(fn).catch((err) => {
+      addLog((tt) => tt("gml.error").replace("{e}", err instanceof Error ? err.message : String(err)));
+    });
     return opChain.current;
+  };
+  // Restaura lo que haya quedado del modo gamer (plan, SystemResponsiveness, prioridades).
+  const restoreLeftovers = async () => {
+    const r = await runPowershell(RECOVER);
+    if (/GM=1/.test(r.output)) await runPowershell(GAMER_OFF);
+    if (/BG=1/.test(r.output)) await runPowershell(BG_RESTORE);
   };
 
   // Listeners de eventos del daemon — una sola vez, a nivel app.
   useEffect(() => {
     // Recuperación al arrancar: se encola ANTES que cualquier game-on, así un juego que
     // ya esté abierto vuelve a aplicar el modo gamer después de restaurar.
-    enqueue(async () => {
-      const r = await runPowershell(RECOVER);
-      if (/GM=1/.test(r.output)) await runPowershell(GAMER_OFF);
-      if (/BG=1/.test(r.output)) await runPowershell(BG_RESTORE);
-    });
+    enqueue(restoreLeftovers);
     const uns: UnlistenFn[] = [];
     // StrictMode (dev) desmonta antes de que listen() resuelva: sin esto quedaban
     // listeners duplicados y cada juego se procesaba dos veces.
@@ -190,7 +201,8 @@ export function GameModeProvider({ children }: { children: ReactNode }) {
         setPlaying(g);
         addLog((tt) => tt("gml.detected").replace("{g}", g));
         notify(tr("gml.onTitle"), tr("gml.onBody").replace("{g}", g));
-        await runPowershell(GAMER_ON);
+        const on = await runPowershell(GAMER_ON);
+        if (!on.ok) addLog((tt) => tt("gml.planFail"));
         if (proRef.current) {
           await runPowershell(prioScript(g));
           // Sin apps elegidas no se toca nada (BG_LOWER guardaría una lista vacía igual).
@@ -208,12 +220,19 @@ export function GameModeProvider({ children }: { children: ReactNode }) {
       enqueue(async () => {
         addLog((tt) => tt("gml.closed"));
         notify(tr("gml.offTitle"), tr("gml.offBody"));
-        await runPowershell(GAMER_OFF);
+        const off = await runPowershell(GAMER_OFF);
+        if (!off.ok) addLog((tt) => tt("gml.planFail"));
         if (appliedProRef.current) { await runPowershell(BG_RESTORE); appliedProRef.current = false; }
         setPlaying(null);
       });
     }).then(keep);
+    // "Salir" desde la bandeja con el modo gamer aplicado: restaurar y recién ahí cerrar.
+    listen("tray-quit", () => {
+      enqueue(restoreLeftovers).finally(() => { exit(0).catch(() => {}); });
+    }).then(keep);
     return () => { disposed = true; uns.forEach((u) => u()); };
+    // Una sola vez: enqueue/addLog sólo usan refs y setters estables.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // Arranca/detiene el daemon según enabled/games (también al iniciar si quedó activado).

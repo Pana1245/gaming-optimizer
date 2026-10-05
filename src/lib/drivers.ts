@@ -83,7 +83,9 @@ export function nvidiaVersion(v: string): string {
 
 const fetchText = (url: string) => invoke<string>("drivers_fetch", { url });
 // new URL() normaliza (ej. los espacios de "?model=PRIME H610M-K D4" pasan a %20).
-export const openUrl = (url: string) => invoke("open_url", { url: new URL(url).href }).catch(() => {});
+// Devuelve false si no se pudo abrir (antes fallaba en silencio: el botón no hacía nada).
+export const openUrl = (url: string): Promise<boolean> =>
+  invoke("open_url", { url: new URL(url).href }).then(() => true, () => false);
 
 // ── clasificación de los drivers instalados ──────────────────────────────────
 const VIRTUAL = /virtual|vpn|tap-|tap |wan miniport|hyper-v|loopback|kernel debug|wi-fi direct|personal area|remote ndis|broadcast|sonar|voicemeeter|vb-audio|splitcam|obs/i;

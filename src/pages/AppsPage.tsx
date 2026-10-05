@@ -7,6 +7,7 @@ import { Page, SectionTitle, Switch, Badge, Check, LogPanel, Progress, Empty } f
 import Modal from "../components/Modal";
 import { useI18n, pick } from "../lib/i18n";
 import { trLog } from "../lib/logI18n";
+import { checkboxProps } from "../lib/a11y";
 
 const INSTALLED_NAMES = `$names=@()
 $roots=@('HKLM:\\Software\\Microsoft\\Windows\\CurrentVersion\\Uninstall\\*','HKLM:\\Software\\Wow6432Node\\Microsoft\\Windows\\CurrentVersion\\Uninstall\\*','HKCU:\\Software\\Microsoft\\Windows\\CurrentVersion\\Uninstall\\*')
@@ -107,6 +108,7 @@ export default function AppsPage() {
                       const inst = installed.has(a.id);
                       return (
                         <div key={a.id} onClick={() => setSel((s) => ({ ...s, [a.id]: !on }))}
+                          {...checkboxProps(on, () => setSel((s) => ({ ...s, [a.id]: !on })))}
                           className={`group flex items-center gap-3 px-3 py-2.5 rounded-lg border cursor-pointer transition-colors
                             ${on ? "border-accent/50 bg-accent/[0.05]" : "border-line bg-surface hover:border-line-2"}`}>
                           <div className="w-8 h-8 rounded-md grid place-items-center shrink-0 bg-white/[0.04]">

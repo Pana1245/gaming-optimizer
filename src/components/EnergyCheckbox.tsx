@@ -1,5 +1,6 @@
 import type { ReactNode } from "react";
 import Tooltip from "./Tooltip";
+import { checkboxProps } from "../lib/a11y";
 import { Check, Badge } from "./ui";
 import { useI18n } from "../lib/i18n";
 
@@ -22,6 +23,7 @@ export default function EnergyCheckbox({ checked, onChange, label, badge, risk, 
     <div
       className="group flex items-center gap-3 py-2.5 px-4 cursor-pointer hover:bg-white/[0.025] transition-colors"
       onClick={() => onChange(!checked)}
+      {...checkboxProps(checked, () => onChange(!checked))}
     >
       <Check on={checked} />
       <span className={`text-[13.5px] truncate transition-colors ${checked ? "text-text" : "text-text-dim"}`}>{label}</span>

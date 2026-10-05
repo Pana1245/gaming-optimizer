@@ -6,6 +6,7 @@ import { getStats, getSystemInfo, clearStandbyRam, type Stats } from "../lib/api
 import { readScore, readTemps, type ScoreResult, type Temps } from "../lib/metrics";
 import { useGameMode } from "../lib/gameMode";
 import { useI18n } from "../lib/i18n";
+import { useAppVisible } from "../lib/useAppVisible";
 import { opName } from "../lib/opNames";
 import { IconGamepad, IconGlobe, IconLayers } from "../components/icons";
 
@@ -105,6 +106,7 @@ export default function Panel({ onNavigate }: { onNavigate: (page: string) => vo
   const { enabled, playing } = useGameMode();
   const { t, lang } = useI18n();
   const mounted = useRef(true);
+  const visible = useAppVisible();
 
   useEffect(() => {
     mounted.current = true;
@@ -112,8 +114,15 @@ export default function Panel({ onNavigate }: { onNavigate: (page: string) => vo
     getSystemInfo().then((i) => mounted.current && setSys(
       [i.windows, i.cpu, i.gpus?.length ? i.gpus.map((g) => g.name).join(" + ") : i.gpu, `${Math.round(i.ram_gb)} GB RAM`].filter(Boolean).join("  ·  "),
     )).catch(() => {});
-    // Una lectura por vez: cada una abre un PowerShell que carga el driver de sensores y
-    // en PCs lentas puede tardar más que el intervalo (se apilaban procesos).
+    return () => { mounted.current = false; };
+  }, []);
+
+  // Lecturas periódicas, sólo con la ventana a la vista (en la bandeja o minimizada se
+  // pausan y al volver se leen enseguida). Temperaturas cada 15 s: cada lectura abre un
+  // PowerShell que carga el driver de sensores; el uso (CPU/RAM/disco) es barato.
+  useEffect(() => {
+    if (!visible) return;
+    // Una lectura por vez: en PCs lentas puede tardar más que el intervalo.
     let reading = false;
     const loadTemps = () => {
       if (reading) return;
@@ -121,12 +130,12 @@ export default function Panel({ onNavigate }: { onNavigate: (page: string) => vo
       readTemps().then((tp) => mounted.current && setTemps(tp)).catch(() => {}).finally(() => { reading = false; });
     };
     loadTemps();
-    const ti = setInterval(loadTemps, 10000);
+    const ti = setInterval(loadTemps, 15000);
     const tick = () => getStats().then((s) => mounted.current && setStats(s)).catch(() => {});
     tick();
     const si = setInterval(tick, 2000);
-    return () => { mounted.current = false; clearInterval(ti); clearInterval(si); };
-  }, []);
+    return () => { clearInterval(ti); clearInterval(si); };
+  }, [visible]);
 
   const boost = async () => {
     setBoosting(true);

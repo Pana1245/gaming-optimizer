@@ -3,7 +3,7 @@ import { motion } from "framer-motion";
 import { Page, Badge, type Tone } from "../components/ui";
 import { IconChip } from "../components/icons";
 import { useI18n } from "../lib/i18n";
-import { scanDrivers, analyze, openUrl, cmpVer, type Result, type Item, type Status } from "../lib/drivers";
+import { scanDrivers, analyze, openUrl as openOfficial, cmpVer, type Result, type Item, type Status } from "../lib/drivers";
 
 // El resultado queda a nivel de módulo: al volver a la sección se sigue viendo el último escaneo.
 let last: Result | null = null;
@@ -18,6 +18,13 @@ export default function Drivers() {
   const [res, setRes] = useState<Result | null>(last);
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState(false);
+  // Enlace que no se pudo abrir en el navegador: se muestra para copiarlo.
+  const [linkErr, setLinkErr] = useState<string | null>(null);
+  const [copied, setCopied] = useState(false);
+  const openUrl = (url: string) => {
+    setLinkErr(null); setCopied(false);
+    openOfficial(url).then((ok) => { if (!ok) setLinkErr(url); });
+  };
 
   const run = async () => {
     setBusy(true); setErr(false);
@@ -60,6 +67,15 @@ export default function Drivers() {
     )}>
       <div className="flex-1 min-h-0 overflow-y-auto -mr-2 pr-2">
         {err && <p className="text-[13px] text-[#ff5470] mb-3">{t("drv.err")}</p>}
+        {linkErr && (
+          <div className="rounded-lg border border-[#f5b454]/35 bg-[#f5b454]/[0.07] px-4 py-2.5 mb-3 text-[12.5px] flex items-center gap-3">
+            <span className="text-text-dim shrink-0">{t("drv.openFail")}</span>
+            <span className="font-mono text-text truncate select-all flex-1">{linkErr}</span>
+            <button onClick={() => navigator.clipboard.writeText(linkErr).then(() => setCopied(true), () => {})} className="btn btn-ghost h-7 px-2.5 text-[12px] shrink-0">
+              {copied ? t("drv.copied") : t("drv.copy")}
+            </button>
+          </div>
+        )}
 
         {!busy && !res && (
           <div className="h-full min-h-[380px] flex flex-col items-center justify-center text-center">

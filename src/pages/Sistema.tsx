@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { motion, useSpring, useTransform } from "framer-motion";
 import {
   AreaChart, Area, ResponsiveContainer, YAxis, Tooltip,
@@ -7,6 +7,7 @@ import { getStats, getSystemInfo, runPowershell, type SysInfo } from "../lib/api
 import NeonCard from "../components/NeonCard";
 import { Page } from "../components/ui";
 import { useI18n } from "../lib/i18n";
+import { useAppVisible } from "../lib/useAppVisible";
 import { useAccent, ACCENTS } from "../lib/theme";
 
 interface Pt { t: number; v: number; }
@@ -76,25 +77,32 @@ export default function Sistema() {
   const [info, setInfo] = useState<SysInfo | null>(null);
   const [vbs, setVbs] = useState<{ vbs: boolean; hvci: boolean } | null>(null);
 
+  const visible = useAppVisible();
+  const tRef = useRef(0);
+
+  // Gráfico en vivo cada 1 s, sólo con la ventana a la vista (oculta en la bandeja se pausa).
   useEffect(() => {
-    let t = 0;
+    if (!visible) return;
     const tick = async () => {
       try {
         const s = await getStats();
         setCpuV(s.cpu); setRamV(s.ram);
+        const t = tRef.current++;
         setCpu((d) => [...d, { t, v: s.cpu }].slice(-MAX));
         setRam((d) => [...d, { t, v: s.ram }].slice(-MAX));
-        t++;
       } catch { /* sin datos esta vez: el próximo tick reintenta */ }
     };
     const id = setInterval(tick, 1000);
     tick();
+    return () => clearInterval(id);
+  }, [visible]);
+
+  useEffect(() => {
     getSystemInfo().then(setInfo).catch(() => {});
     runPowershell(VBS_PS).then((r) => {
       const m = r.output.match(/vbs=(\d+);hvci=(\d+)/);
       if (m) setVbs({ vbs: m[1] === "2", hvci: m[2] === "1" });
     }).catch(() => {});
-    return () => clearInterval(id);
   }, []);
 
   return (

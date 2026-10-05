@@ -11,7 +11,7 @@ use std::process::Command;
 
 use tauri::menu::{Menu, MenuItem};
 use tauri::tray::{MouseButton, MouseButtonState, TrayIconBuilder, TrayIconEvent};
-use tauri::{App, AppHandle, Manager, Wry};
+use tauri::{App, AppHandle, Emitter, Manager, Wry};
 
 #[cfg(windows)]
 use std::os::windows::process::CommandExt;
@@ -31,7 +31,43 @@ pub fn show_main(app: &AppHandle) {
         let _ = w.unminimize();
         let _ = w.show();
         let _ = w.set_focus();
+        // La interfaz pausa sus lecturas periódicas (temperaturas, uso) mientras está oculta.
+        let _ = w.emit("window-shown", ());
     }
+}
+
+/// "Salir" de la bandeja. Si el modo gamer quedó aplicado (se sale en pleno juego), antes se
+/// cerraba igual y el plan de energía quedaba en Alto rendimiento (y las apps de fondo en
+/// prioridad baja) hasta volver a abrir la app. Ahora la interfaz lo restaura y cierra ella;
+/// si no responde, se cierra igual a los 8 s. Sin nada que restaurar, cierra al instante.
+fn quit_app(app: &AppHandle) {
+    if !gamer_active() {
+        app.exit(0);
+        return;
+    }
+    let _ = app.emit("tray-quit", ());
+    let h = app.clone();
+    std::thread::spawn(move || {
+        std::thread::sleep(std::time::Duration::from_secs(8));
+        h.exit(0);
+    });
+}
+
+/// ¿Quedó algo del modo gamer sin restaurar? (marcas que escribe Auto Game-Mode).
+#[cfg(windows)]
+fn gamer_active() -> bool {
+    use winreg::{enums::HKEY_CURRENT_USER, RegKey};
+    RegKey::predef(HKEY_CURRENT_USER)
+        .open_subkey("Software\\GamingOptimizer")
+        .map(|k| {
+            k.get_value::<u32, _>("GmActive").map(|v| v == 1).unwrap_or(false)
+                || k.get_value::<String, _>("BgPrios").map(|s| !s.is_empty()).unwrap_or(false)
+        })
+        .unwrap_or(false)
+}
+#[cfg(not(windows))]
+fn gamer_active() -> bool {
+    false
 }
 
 pub fn setup(app: &App) -> tauri::Result<()> {
@@ -45,7 +81,7 @@ pub fn setup(app: &App) -> tauri::Result<()> {
         .show_menu_on_left_click(false)
         .on_menu_event(|app, e| match e.id.as_ref() {
             "open" => show_main(app),
-            "quit" => app.exit(0),
+            "quit" => quit_app(app),
             _ => {}
         })
         .on_tray_icon_event(|tray, e| {

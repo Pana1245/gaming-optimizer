@@ -6,6 +6,7 @@ import { applyOp, loadLedger, saveLedger } from "../lib/engine";
 import { GPU_OPS, isNvidia, isAmd, isIntegrated, getNvInfo, NV_MAXPERF, NV_RESTORE, AMD_MAXPERF, AMD_RESTORE, type NvInfo } from "../lib/gpu";
 import { notify } from "../lib/notify";
 import { useI18n } from "../lib/i18n";
+import { useAppVisible } from "../lib/useAppVisible";
 import { trLog } from "../lib/logI18n";
 
 function Metric({ label, value, unit, color }: { label: string; value: number; unit: string; color?: string }) {
@@ -69,13 +70,15 @@ export default function Graficos() {
     return () => { mounted.current = false; };
   }, []);
 
+  // Monitor NVIDIA (abre nvidia-smi en cada lectura): sólo con la ventana a la vista.
+  const visible = useAppVisible();
   useEffect(() => {
-    if (!nvidia) return;
+    if (!nvidia || !visible) return;
     const tick = () => getNvInfo().then((i) => mounted.current && i && setNv(i)).catch(() => {});
     tick();
     const id = setInterval(tick, 2500);
     return () => clearInterval(id);
-  }, [nvidia]);
+  }, [nvidia, visible]);
 
   const applyUniversal = async () => {
     const ops = GPU_OPS.filter((o) => sel[o.id]);

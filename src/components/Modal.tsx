@@ -24,7 +24,7 @@ export default function Modal({
         // "clickea"). Antes además se confirmaba: Enter con el foco en "Cancelar" o en
         // una casilla de la lista ejecutaba la acción (borrar restos, cerrar un proceso…),
         // y con el foco en el botón que abrió el modal se disparaba dos veces.
-        if ((e.target as HTMLElement | null)?.closest?.("button, input, select, textarea, a, [contenteditable]")) return;
+        if ((e.target as HTMLElement | null)?.closest?.("button, input, select, textarea, a, [contenteditable], [role=checkbox]")) return;
         e.preventDefault();
         (onConfirm ?? onClose)();
       }

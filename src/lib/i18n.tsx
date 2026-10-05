@@ -766,6 +766,11 @@ const STR: Record<string, { es: string; en: string }> = {
   "svc.group.gaming": { es: "Gaming", en: "Gaming" },
   "svc.disabled": { es: "Ya deshabilitado", en: "Already disabled" },
   "svc.hint": { es: "“Recomendados” sólo marca servicios que un jugador típico no usa (SysMain, Registro remoto, Fax, Informe de errores…). Nunca marca Búsqueda, impresión, ubicación ni Xbox: dicen qué rompen. Se muestran sólo los que existen en tu Windows. Restaurar los devuelve.", en: "“Recommended” only selects services a typical gamer doesn't use (SysMain, Remote Registry, Fax, Error Reporting…). It never selects Search, printing, location or Xbox: they say what they break. Only the ones that exist on your Windows are shown. Restore brings them back." },
+  "gml.planFail": { es: "✗ Windows no dejó cambiar el plan de energía (¿la app se abrió como administrador?)", en: "✗ Windows didn't allow changing the power plan (is the app running as administrator?)" },
+  "gml.error": { es: "✗ Error en el Modo Gamer: {e}", en: "✗ Gamer Mode error: {e}" },
+  "drv.openFail": { es: "No se pudo abrir el navegador. Copiá el enlace:", en: "Couldn't open the browser. Copy the link:" },
+  "drv.copy": { es: "Copiar", en: "Copy" },
+  "drv.copied": { es: "Copiado ✓", en: "Copied ✓" },
 };
 
 interface Ctx { lang: Lang; setLang: (l: Lang) => void; t: (k: string) => string; }
