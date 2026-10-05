@@ -259,7 +259,7 @@ const EDGE_STABLE = "{56EB18F8-B008-4CBD-B6D2-8C97FE7E9062}";
 export const EDGE_REMOVE = String.raw`$pf86 = [Environment]::GetFolderPath('ProgramFilesX86')
 $others = @()
 foreach ($root in 'HKLM:\SOFTWARE\Clients\StartMenuInternet', 'HKLM:\SOFTWARE\WOW6432Node\Clients\StartMenuInternet', 'HKCU:\SOFTWARE\Clients\StartMenuInternet') {
-  Get-ChildItem $root -ErrorAction SilentlyContinue | ForEach-Object { if ($_.PSChildName -notmatch 'Edge|IEXPLORE') { $others += $_.PSChildName } }
+  Get-ChildItem $root -ErrorAction SilentlyContinue | ForEach-Object { if ($_.PSChildName -notmatch 'Edge|IEXPLORE') { $n = $_.GetValue(''); $others += $(if ($n) { $n } else { $_.PSChildName }) } }
 }
 if (-not $others) { Write-Output "Edge NO se desinstaló: no hay otro navegador instalado (instalá Chrome, Firefox u otro primero)."; exit 1 }
 Write-Output ("Otro navegador detectado: " + (($others | Select-Object -Unique) -join ', '))

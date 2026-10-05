@@ -76,6 +76,11 @@ $keys = [ordered]@{
   'crashcontrol'      = 'HKLM\SYSTEM\CurrentControlSet\Control\CrashControl'
   'timezone'          = 'HKLM\SYSTEM\CurrentControlSet\Control\TimeZoneInformation'
   'lfsvc'             = 'HKLM\SYSTEM\CurrentControlSet\Services\lfsvc\Service\Configuration'
+  'storagesense'      = 'HKCU\Software\Microsoft\Windows\CurrentVersion\StorageSense'
+  'keyboard-default'  = 'HKU\.DEFAULT\Control Panel\Keyboard'
+  # Claves que crean los tweaks: si no existen, queda la marca .absent y Restaurar las borra.
+  'classic-menu'      = 'HKCU\Software\Classes\CLSID\{86ca1aa0-34aa-4e8b-a509-50c905bae2a2}'
+  'taskbar-endtask'   = 'HKCU\Software\Microsoft\Windows\CurrentVersion\Explorer\Advanced\TaskbarDeveloperSettings'
 }
 # MSI mode de la(s) placa(s) de video (clave por dispositivo)
 $i = 0
@@ -105,7 +110,20 @@ foreach($tp in @('\Microsoft\Windows\Application Experience\Microsoft Compatibil
   if($tt){ $taskState[$tp]="$($tt.State)" }
 }
 $timerTask=[bool](Get-ScheduledTask -TaskName 'GamingOptimizer_TimerRes' -EA SilentlyContinue)
-@{ services=$svcState; tasks=$taskState; timerTask=$timerTask } | ConvertTo-Json -Depth 4 | Set-Content -LiteralPath "$backDir\state.json" -Encoding UTF8
+# Lo que cambian los tweaks fuera del registro exportado: plan de energía, hibernación,
+# HPET (arranque y dispositivo), Teredo, LSO, IPv6, Defender en tiempo real y el archivo hosts.
+$sys=@{}
+if((powercfg /getactivescheme | Out-String) -match '[0-9a-fA-F]{8}(-[0-9a-fA-F]{4}){3}-[0-9a-fA-F]{12}'){ $sys.plan=$Matches[0] }
+$sys.hibernate=(Get-ItemProperty 'HKLM:\SYSTEM\CurrentControlSet\Control\Power' -Name HibernateEnabled -EA SilentlyContinue).HibernateEnabled
+$be=(bcdedit /enum '{current}' 2>$null | Out-String)
+foreach($e in 'useplatformclock','disabledynamictick'){ $sys[$e]=if($be -match "(?im)^$e\s+(\S+)"){ $Matches[1] } else { '' } }
+$sys.hpet=@(Get-PnpDevice -EA SilentlyContinue | Where-Object { $_.InstanceId -like 'ACPI\PNP0103*' -and $_.Status -eq 'OK' } | ForEach-Object { $_.InstanceId })
+$sys.teredo="$((Get-NetTeredoConfiguration -EA SilentlyContinue).Type)"
+$sys.lso=@(Get-NetAdapterLso -EA SilentlyContinue | ForEach-Object { @{ name=$_.Name; v4=[bool]$_.IPv4Enabled; v6=[bool]$_.IPv6Enabled } })
+$sys.ipv6=@(Get-NetAdapterBinding -ComponentID ms_tcpip6 -EA SilentlyContinue | Where-Object Enabled | ForEach-Object { $_.Name })
+$mp=Get-MpPreference -EA SilentlyContinue; if($mp){ $sys.rtOff=[bool]$mp.DisableRealtimeMonitoring }
+Copy-Item -LiteralPath "$env:windir\System32\drivers\etc\hosts" -Destination "$backDir\hosts.bak" -Force -EA SilentlyContinue
+@{ services=$svcState; tasks=$taskState; timerTask=$timerTask; system=$sys } | ConvertTo-Json -Depth 4 | Set-Content -LiteralPath "$backDir\state.json" -Encoding UTF8
 
 Write-Output "Creando punto de restauracion..."
 $srKey = "HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion\SystemRestore"

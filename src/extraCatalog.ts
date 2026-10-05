@@ -25,6 +25,9 @@ Write-Output "MSI mode activado en $n GPU(s). Reinicia para aplicar."`,
       script: String.raw`$hosts = "$env:windir\System32\drivers\etc\hosts"
 $domains = @('vortex.data.microsoft.com','telemetry.microsoft.com','watson.telemetry.microsoft.com','settings-win.data.microsoft.com','telecommand.telemetry.microsoft.com','oca.telemetry.microsoft.com','v10.events.data.microsoft.com')
 $c = Get-Content $hosts -ErrorAction SilentlyContinue
+# Si el archivo no termina en salto de línea, el primer bloqueo se pegaba a la última línea.
+$raw = if (Test-Path $hosts) { [IO.File]::ReadAllText($hosts) } else { '' }
+if ($raw.Length -and $raw[-1] -ne [char]10) { Add-Content $hosts '' }
 $add = 0
 foreach($d in $domains){ if($c -notmatch [regex]::Escape($d)){ Add-Content $hosts "0.0.0.0 $d"; $add++ } }
 Write-Output "Dominios de telemetria bloqueados: $add"`,

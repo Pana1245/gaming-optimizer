@@ -23,9 +23,34 @@ Write-Output "Restaurando backup: $name"
 $regs=@(Get-ChildItem -LiteralPath $dir -Filter *.reg)
 if(-not $regs){ Write-Output "El backup no tiene archivos .reg."; return }
 $failed=0; $removed=0
+$tmp=Join-Path $env:TEMP 'GamingOptimizer-restore'; New-Item $tmp -ItemType Directory -Force | Out-Null
+# Secciones de un .reg: [clave] → sus líneas (para comparar e importar de a una).
+function Get-RegSections($lines){
+  $h=[ordered]@{}; $k=$null
+  foreach($l in $lines){ if($l -match '^\[(.+)\]$'){ $k=$Matches[1].ToLower(); $h[$k]=New-Object 'System.Collections.Generic.List[string]' }; if($k){ $h[$k].Add($l) } }
+  $h
+}
 foreach($r in $regs){
   $out = & reg import $r.FullName 2>&1
-  if($LASTEXITCODE -ne 0){ $failed++; Write-Output ("  ERROR  " + $r.Name + ": " + ($out -join ' ')); continue }
+  if($LASTEXITCODE -ne 0){
+    # Hay subclaves que ni un administrador puede escribir (Defender con la Protección contra
+    # alteraciones, drivers de video…) y 'reg import' falla entero. Se importa sección por
+    # sección y sólo es un error si una sección CAMBIÓ desde el backup y no se pudo devolver.
+    $old=Get-RegSections @(Get-Content -LiteralPath $r.FullName -Encoding Unicode)
+    $cur=Join-Path $tmp 'now.reg'
+    reg export (@($old.Keys)[0]) $cur /y > $null 2>&1
+    $now=if($LASTEXITCODE -eq 0){ Get-RegSections @(Get-Content -LiteralPath $cur -Encoding Unicode) } else { [ordered]@{} }
+    $bad=@()
+    foreach($k in $old.Keys){
+      $txt=($old[$k] -join "\n").Trim()
+      if($now.Contains($k) -and ($now[$k] -join "\n").Trim() -ceq $txt){ continue }
+      $sec=Join-Path $tmp 'sec.reg'
+      Set-Content -LiteralPath $sec -Value (@('Windows Registry Editor Version 5.00','') + $old[$k] + @('')) -Encoding Unicode
+      reg import $sec > $null 2>&1
+      if($LASTEXITCODE -ne 0){ $bad+=$k }
+    }
+    if($bad){ $failed++; Write-Output ("  ERROR  " + $r.Name + ": " + ($out -join ' ') + " [" + ($bad -join '; ') + "]"); continue }
+  }
   Write-Output ("  OK  " + $r.Name)
   # Claves y valores que había en el backup
   $keys=@{}; $order=@(); $cur=$null
@@ -87,7 +112,43 @@ if(Test-Path -LiteralPath $stf){
     Write-Output "Tarea de Timer Resolution quitada."
   }
   Write-Output ("Servicios restaurados: " + $sv + " · tareas: " + $tk)
+  # 5) Lo que no está en el registro exportado (backups hechos desde la versión 2.5).
+  $sy=$st.system
+  if($sy){
+    $done=@()
+    if($sy.plan -and ((powercfg /getactivescheme | Out-String) -notmatch $sy.plan)){ powercfg /setactive $sy.plan 2>$null | Out-Null; if($LASTEXITCODE -eq 0){ $done+='plan' } }
+    $hib=(Get-ItemProperty 'HKLM:\SYSTEM\CurrentControlSet\Control\Power' -Name HibernateEnabled -EA SilentlyContinue).HibernateEnabled
+    if($sy.hibernate -eq 1 -and $hib -ne 1){ powercfg /hibernate on 2>$null | Out-Null; $done+='hibernate' }
+    $be=(bcdedit /enum '{current}' 2>$null | Out-String)
+    foreach($e in 'useplatformclock','disabledynamictick'){
+      $now=if($be -match "(?im)^$e\s+(\S+)"){ $Matches[1] } else { '' }
+      $want="$($sy.$e)"
+      if($now -eq $want){ continue }
+      if(-not $want){ bcdedit /deletevalue $e 2>$null | Out-Null }
+      else { bcdedit /set $e $(if($want -match '^(yes|s.|ja|oui|sim|on|true|1)$'){ 'yes' } else { 'no' }) 2>$null | Out-Null }
+      $done+=$e
+    }
+    foreach($id in @($sy.hpet)){ if($id -and (Get-PnpDevice -InstanceId $id -EA SilentlyContinue).Status -ne 'OK'){ Enable-PnpDevice -InstanceId $id -Confirm:$false -EA SilentlyContinue; $done+='hpet' } }
+    if($sy.teredo -and "$((Get-NetTeredoConfiguration -EA SilentlyContinue).Type)" -ne $sy.teredo){ Set-NetTeredoConfiguration -Type $sy.teredo -EA SilentlyContinue; $done+='teredo' }
+    foreach($l in @($sy.lso)){
+      if(-not $l.name){ continue }
+      $c=Get-NetAdapterLso -Name $l.name -EA SilentlyContinue
+      if($c -and $l.v4 -and -not $c.IPv4Enabled){ Enable-NetAdapterLso -Name $l.name -IPv4 -EA SilentlyContinue; $done+='lso' }
+      if($c -and $l.v6 -and -not $c.IPv6Enabled){ Enable-NetAdapterLso -Name $l.name -IPv6 -EA SilentlyContinue; $done+='lso' }
+    }
+    foreach($n in @($sy.ipv6)){ $b=Get-NetAdapterBinding -Name $n -ComponentID ms_tcpip6 -EA SilentlyContinue; if($b -and -not $b.Enabled){ Enable-NetAdapterBinding -Name $n -ComponentID ms_tcpip6 -EA SilentlyContinue; $done+='ipv6' } }
+    if($sy.rtOff -eq $false -and (Get-MpPreference -EA SilentlyContinue).DisableRealtimeMonitoring){ Set-MpPreference -DisableRealtimeMonitoring $false -EA SilentlyContinue; $done+='defender' }
+    if($done){ Write-Output ("Sistema restaurado: " + (($done | Select-Object -Unique) -join ', ')) }
+  }
 }
+# 6) Archivo hosts: se quitan los bloqueos de telemetría agregados después del backup.
+$hb=Join-Path $dir 'hosts.bak'; $hf="$env:windir\System32\drivers\etc\hosts"
+if(Test-Path -LiteralPath $hb){
+  $prev=@(Get-Content -LiteralPath $hb -EA SilentlyContinue); $lines=@(Get-Content -LiteralPath $hf -EA SilentlyContinue)
+  $keep=@($lines | Where-Object { -not ($_ -match '^\s*0\.0\.0\.0\s+[\w.-]+\.microsoft\.com\s*$' -and $prev -notcontains $_) })
+  if($keep.Count -lt $lines.Count){ Set-Content -LiteralPath $hf -Value $keep -Encoding Default -Force; Write-Output ("Archivo hosts: " + ($lines.Count - $keep.Count) + " bloqueos quitados") }
+}
+Remove-Item $tmp -Recurse -Force -EA SilentlyContinue
 Write-Output ("Cambios agregados después del backup que se quitaron: " + $removed)
 if($failed -gt 0){ Write-Output ("Restauración incompleta: " + $failed + " archivo(s) fallaron. Nada se marcó como restaurado por completo.") }
 else { Write-Output "Registro restaurado. Reinicia el PC para aplicar." }`;

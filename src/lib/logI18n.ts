@@ -276,6 +276,8 @@ const RX: [RegExp, string, string][] = [
   [/^Servicios restaurados: (\d+) · tareas: (\d+)$/, "Services restored: $1 · tasks: $2", "Serviços restaurados: $1 · tarefas: $2"],
   [/^Cambios agregados después del backup que se quitaron: (\d+)$/, "Changes added after the backup that were removed: $1", "Mudanças adicionadas depois do backup que foram removidas: $1"],
   [/^No se pudieron habilitar: (.+)$/, "Couldn't enable: $1", "Não foi possível habilitar: $1"],
+  [/^Sistema restaurado: (.+)$/, "System restored: $1", "Sistema restaurado: $1"],
+  [/^Archivo hosts: (\d+) bloqueos quitados$/, "Hosts file: $1 blocks removed", "Arquivo hosts: $1 bloqueios removidos"],
 ];
 
 // Prefijo que se conserva: sangría, [hora], y símbolos de estado (✓ ✗ ▸ ↩ ↪ ⚠ …).

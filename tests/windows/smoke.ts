@@ -190,7 +190,12 @@ async function main() {
     return `${n} ramas · ${backupName} · ${/creado OK/.test(o) ? "con punto de restauración" : "sin punto de restauración"}`;
   });
   for (const c of ALL_CATEGORIES) for (const tw of c.tweaks) {
-    await test(`Tweak: ${tw.name}`, async () => first(await ok(scriptOf(tw), 900)), { envOk: ENV_DEPENDENT.has(tw.name) });
+    await test(`Tweak: ${tw.name}`, async () => {
+      const line = first(await ok(scriptOf(tw), 900));
+      // La primera línea es lo que la app muestra en el log: no puede ser un error ni una tabla.
+      must(!/error occurred|^ERROR|exception|^TaskPath|^Name\s+|denied|denegado/i.test(line), `salida confusa: ${line}`);
+      return line;
+    }, { envOk: ENV_DEPENDENT.has(tw.name) });
   }
   await test("Restaurar", async () => {
     must(backupName, "no hay backup");
@@ -205,7 +210,7 @@ async function main() {
     must(!diffs.length, `${diffs.length} diferencias:\n` + diffs.slice(0, 40).join("\n"));
     return "sin diferencias";
   });
-  await test("Servicios y tareas iguales que antes", async () => {
+  await test("Servicios, tareas y sistema iguales que antes", async () => {
     const after = await ok(snapScript);
     const norm = (s: string) => s.split("\n").map((l) => l.trim().replace(/\|Running$/, "|Ready")).filter(Boolean);
     const b = new Set(norm(before)), a = norm(after);
@@ -244,11 +249,14 @@ async function main() {
 // ── Pruebas por función ─────────────────────────────────────────────────────
 async function gameModeTests() {
   const activePlan = async () => (await ok("powercfg /getactivescheme")).match(/[0-9a-f-]{36}/i)?.[0] ?? "";
-  const plan0 = await activePlan();
+  const orig = await activePlan();
+  const plan0 = "381b4222-f694-41f0-9685-ff5bb260df2e"; // Equilibrado
+  await ok(`powercfg /setactive ${plan0}`);
   const fake = path.join(os.tmpdir(), "chrome.exe");
   fs.copyFileSync(path.join(process.env.SystemRoot ?? "C:\\Windows", "System32", "PING.EXE"), fake);
   const child = spawn(fake, ["-n", "600", "127.0.0.1"], { windowsHide: true, stdio: "ignore" });
   const prio = async () => (await ok(`(Get-Process -Id ${child.pid}).PriorityClass`)).trim();
+  let prio0 = "";
   try {
     await test("Auto Game-Mode: activar (juego abierto)", async () => {
       const o = await ok(GAMER_ON);
@@ -258,6 +266,7 @@ async function gameModeTests() {
       return `${first(o)} · plan ${plan0.slice(0, 8)} → ${p.slice(0, 8)}`;
     });
     await test("Auto Game-Mode: frenar apps de fondo", async () => {
+      prio0 = await prio(); // en el runner de GitHub los procesos arrancan en BelowNormal
       const o = await ok(BG_LOWER(["chrome"]));
       must(/BG=1/.test(o), o);
       must((await prio()) === "Idle", `prioridad: ${await prio()}`);
@@ -265,8 +274,8 @@ async function gameModeTests() {
     });
     await test("Auto Game-Mode: restaurar apps de fondo", async () => {
       await ok(BG_RESTORE);
-      must((await prio()) === "Normal", `prioridad: ${await prio()}`);
-      return "chrome → Normal";
+      must((await prio()) === prio0, `prioridad: ${await prio()} (antes: ${prio0})`);
+      return `chrome → ${prio0}`;
     });
     await test("Auto Game-Mode: desactivar (juego cerrado)", async () => {
       await ok(GAMER_OFF);
@@ -274,7 +283,7 @@ async function gameModeTests() {
       must(/GM=0;BG=0/.test(await ok(RECOVER)), "quedaron marcas");
       return "plan original restaurado";
     });
-  } finally { child.kill(); }
+  } finally { child.kill(); if (orig) await ps(`powercfg /setactive ${orig}`); }
 }
 
 async function startupTests() {
@@ -301,7 +310,7 @@ async function uninstallTests() {
   const dir = "C:\\Program Files\\GO Smoke App";
   const key = "HKLM\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Uninstall\\GOSmokeApp";
   await ok(String.raw`New-Item -ItemType Directory -Force -Path '${dir}' | Out-Null
-Set-Content -LiteralPath '${dir}\uninst.cmd' -Value "@reg delete ""${key}"" /f >nul 2>&1\r\n@rd /s /q ""${dir}\data"" >nul 2>&1" -Encoding ASCII
+Set-Content -LiteralPath '${dir}\uninst.cmd' -Value @('@reg delete "${key}" /f >nul 2>&1', '@rd /s /q "${dir}\data" >nul 2>&1', '@exit /b 0') -Encoding ASCII
 New-Item -ItemType Directory -Force -Path '${dir}\data' | Out-Null
 New-Item -Force -Path 'Registry::${key}' | Out-Null
 Set-ItemProperty 'Registry::${key}' DisplayName 'GO Smoke App'
@@ -402,7 +411,17 @@ function snapshotScript() {
   const tasks = BACKUP.match(/foreach\(\$tp in (@\([^)]*\))\)/)?.[1] ?? "@()";
   return String.raw`foreach($n in ${svcs}){ $v=(Get-ItemProperty "HKLM:\SYSTEM\CurrentControlSet\Services\$n" -Name Start -EA SilentlyContinue).Start; if($null -ne $v){ "S|$n|$v" } }
 foreach($tp in ${tasks}){ $t=Get-ScheduledTask -TaskPath ((Split-Path $tp) + '\') -TaskName (Split-Path $tp -Leaf) -EA SilentlyContinue; if($t){ "T|$tp|$($t.State)" } }
-"P|TimerRes|" + [bool](Get-ScheduledTask -TaskName 'GamingOptimizer_TimerRes' -EA SilentlyContinue)`;
+"P|TimerRes|" + [bool](Get-ScheduledTask -TaskName 'GamingOptimizer_TimerRes' -EA SilentlyContinue)
+if((powercfg /getactivescheme | Out-String) -match '[0-9a-fA-F]{8}(-[0-9a-fA-F]{4}){3}-[0-9a-fA-F]{12}'){ "X|plan|" + $Matches[0] }
+"X|hibernate|" + (Get-ItemProperty 'HKLM:\SYSTEM\CurrentControlSet\Control\Power' -Name HibernateEnabled -EA SilentlyContinue).HibernateEnabled
+$be=(bcdedit /enum '{current}' 2>$null | Out-String)
+foreach($e in 'useplatformclock','disabledynamictick'){ "X|$e|" + $(if($be -match "(?im)^$e\s+(\S+)"){ $Matches[1] } else { '' }) }
+Get-PnpDevice -EA SilentlyContinue | Where-Object { $_.InstanceId -like 'ACPI\PNP0103*' } | ForEach-Object { "X|hpet|$($_.InstanceId)|$($_.Status)" }
+"X|teredo|" + (Get-NetTeredoConfiguration -EA SilentlyContinue).Type
+Get-NetAdapterLso -EA SilentlyContinue | ForEach-Object { "X|lso|$($_.Name)|$($_.IPv4Enabled)|$($_.IPv6Enabled)" }
+Get-NetAdapterBinding -ComponentID ms_tcpip6 -EA SilentlyContinue | ForEach-Object { "X|ipv6|$($_.Name)|$($_.Enabled)" }
+"X|rtOff|" + (Get-MpPreference -EA SilentlyContinue).DisableRealtimeMonitoring
+"X|hosts|" + ((@(Get-Content "$env:windir\System32\drivers\etc\hosts" -EA SilentlyContinue) | Where-Object { $_.Trim() }) -join ' / ')`;
 }
 
 // Re-exporta cada rama del backup y la compara con la copia de antes de los tweaks.

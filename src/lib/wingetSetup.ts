@@ -12,7 +12,7 @@ if ([Environment]::OSVersion.Version.Build -lt 17763) { Write-Output '@err:oldwi
 Write-Output '@step:find'
 try {
   $rel = Invoke-RestMethod 'https://api.github.com/repos/microsoft/winget-cli/releases/latest' -Headers @{ 'User-Agent' = 'GamingOptimizer' } -UseBasicParsing -ErrorAction Stop
-} catch { Write-Output '@err:net'; exit 3 }
+} catch { Write-Output '@err:net'; Write-Output ('@detail:' + ($_.Exception.Message -replace '\s+', ' ')); exit 3 }
 $url = @{}
 foreach ($x in $rel.assets) { $url[$x.name] = $x.browser_download_url }
 $bundleN = 'Microsoft.DesktopAppInstaller_8wekyb3d8bbwe.msixbundle'
@@ -60,7 +60,7 @@ try {
   $bundle = Join-Path $dir $bundleN
   Save-File $url[$bundleN] $bundle 'bundle'
   if ((Get-FileHash $bundle -Algorithm SHA256).Hash -ne (Get-OfficialHash 'Microsoft.DesktopAppInstaller_8wekyb3d8bbwe.txt')) { Write-Output '@err:hash'; exit 4 }
-} catch { Write-Output '@err:net'; exit 3 }
+} catch { Write-Output '@err:net'; Write-Output ('@detail:' + ($_.Exception.Message -replace '\s+', ' ')); exit 3 }
 
 Write-Output '@step:install'
 $arch = if ($env:PROCESSOR_ARCHITECTURE -eq 'ARM64') { 'arm64' } elseif ([Environment]::Is64BitOperatingSystem) { 'x64' } else { 'x86' }
