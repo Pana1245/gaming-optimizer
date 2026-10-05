@@ -1,7 +1,8 @@
-import { Fragment, useEffect, useMemo, useRef, useState } from "react";
+import { Fragment, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { CATEGORIES, type Tweak } from "../catalog";
 import { EXTRA_TWEAKS, EXTRA_CATEGORIES } from "../extraCatalog";
 import { BLOAT_APPS, BLOAT_MS, BLOAT_THIRD, bloatCustom } from "../bloat";
+import { PERMS, PERMS_RECOMMENDED, permsDeny } from "../perms";
 import { TWEAK_DESC } from "../tweakDesc";
 import { CATEGORY_EN, TWEAK_EN, TWEAK_DESC_EN } from "../catalogEn";
 import { CATEGORY_PT, TWEAK_PT, TWEAK_DESC_PT } from "../catalogPt";
@@ -10,6 +11,7 @@ import { notify } from "../lib/notify";
 import { useScrollMemory } from "../lib/useScrollMemory";
 import EnergyCheckbox from "../components/EnergyCheckbox";
 import BloatPicker from "../components/BloatPicker";
+import PermsPicker from "../components/PermsPicker";
 import { Page, SectionTitle, List, LogPanel, Progress } from "../components/ui";
 import Modal from "../components/Modal";
 import { useI18n, pick } from "../lib/i18n";
@@ -132,18 +134,33 @@ const MODO_GAMER: Record<string, number[]> = {
 // las casillas quedaban corridas respecto de la preselección (y de lo que se aplicaba).
 const selKey = (catId: string, tw: Tweak) => `${catId}:${tw.name}`;
 
-// Menú "Elegir apps" de bloatware: lo elegido se recuerda entre sesiones.
-const BLOAT_KEY = "bloat_sel";
-const loadBloatSel = (): string[] => {
-  try {
-    const v = JSON.parse(localStorage.getItem(BLOAT_KEY) || "[]");
-    return Array.isArray(v) ? BLOAT_APPS.map((a) => a.id).filter((id) => v.includes(id)) : [];
-  } catch { return []; }
-};
-// Presets que la lista elegida reemplaza: se desmarcan al usarla (si no, quitarían
-// igual las apps que el usuario dejó sin marcar).
+// Presets que la lista elegida de bloatware reemplaza: se desmarcan al usarla (si no,
+// quitarían igual las apps que el usuario dejó sin marcar).
 const isBloatPreset = (tw: Tweak) => tw.script === BLOAT_MS || tw.script === BLOAT_THIRD;
-const scriptOf = (tw: Tweak, bloatSel: string[]) => (tw.picker === "bloat" ? bloatCustom(bloatSel) : tw.script);
+
+// Filas con menú desplegable ("Elegir apps", "Elegir cuáles"): el script se arma con lo
+// elegido, que se recuerda entre sesiones.
+type PickerKey = NonNullable<Tweak["picker"]>;
+const PICKERS: Record<PickerKey, {
+  storage: string; ids: string[]; initial: string[]; btn: string;
+  script: (ids: string[]) => string; presets?: (tw: Tweak) => boolean;
+  Menu: (p: { selected: string[]; onChange: (ids: string[]) => void }) => ReactNode;
+}> = {
+  bloat: { storage: "bloat_sel", ids: BLOAT_APPS.map((a) => a.id), initial: [], btn: "bloat.menuBtn", script: bloatCustom, presets: isBloatPreset, Menu: BloatPicker },
+  perms: { storage: "perms_sel", ids: PERMS.map((x) => x.id), initial: PERMS_RECOMMENDED, btn: "perms.menuBtn", script: permsDeny, Menu: PermsPicker },
+};
+const loadPick = (k: PickerKey): string[] => {
+  const d = PICKERS[k];
+  try {
+    const raw = localStorage.getItem(d.storage);
+    if (raw === null) return d.initial;
+    const v = JSON.parse(raw);
+    return Array.isArray(v) ? d.ids.filter((id) => v.includes(id)) : d.initial;
+  } catch { return d.initial; }
+};
+const scriptOf = (tw: Tweak, picks: Record<PickerKey, string[]>) => (tw.picker ? PICKERS[tw.picker].script(picks[tw.picker]) : tw.script);
+// Una fila con menú y nada elegido no se marca sola (no tendría nada que aplicar).
+const defaultOn = (tw: Tweak, picks: Record<PickerKey, string[]>) => !tw.optIn && !(tw.picker && picks[tw.picker].length === 0);
 
 export default function Optimizaciones() {
   const { t, lang } = useI18n();
@@ -158,8 +175,8 @@ export default function Optimizaciones() {
   const [confirm, setConfirm] = useState(false);
   const [done, setDone] = useState<string | null>(null);
   const [canReboot, setCanReboot] = useState(false);
-  const [bloatSel, setBloatSelState] = useState<string[]>(loadBloatSel);
-  const [bloatOpen, setBloatOpen] = useState(false);
+  const [picks, setPicks] = useState<Record<PickerKey, string[]>>(() => ({ bloat: loadPick("bloat"), perms: loadPick("perms") }));
+  const [openMenu, setOpenMenu] = useState<Partial<Record<PickerKey, boolean>>>({});
   const logRef = useRef<HTMLDivElement>(null);
   const scrollRef = useScrollMemory<HTMLDivElement>("opt");
 
@@ -173,9 +190,11 @@ export default function Optimizaciones() {
 
   useEffect(() => {
     const init: Record<string, boolean> = {};
-    ALL_CATEGORIES.forEach((c) => c.tweaks.forEach((t) => (init[selKey(c.id, t)] = !t.optIn)));
+    ALL_CATEGORIES.forEach((c) => c.tweaks.forEach((t) => (init[selKey(c.id, t)] = defaultOn(t, picks))));
     setSel(init);
     getSystemInfo().then((info) => setWinVer(info.win_ver)).catch(() => {});
+    // Sólo al abrir la página (con lo elegido guardado): después cada menú marca su fila.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   useEffect(() => {
@@ -185,7 +204,7 @@ export default function Optimizaciones() {
   const addLog = (s: string) => setLog((l) => [...l, s]);
   const setAll = (v: boolean) => {
     const n: Record<string, boolean> = {};
-    cats.forEach((c) => c.tweaks.forEach((t) => (n[selKey(c.id, t)] = v && !t.optIn)));
+    cats.forEach((c) => c.tweaks.forEach((t) => (n[selKey(c.id, t)] = v && defaultOn(t, picks))));
     setSel(n);
   };
   const modoGamer = () => {
@@ -199,19 +218,20 @@ export default function Optimizaciones() {
     setSel(n);
   };
 
-  // Marca/desmarca la fila del menú de bloatware; al marcarla se desmarcan los presets.
-  const markPickerRow = (on: boolean) => setSel((s) => {
+  // Marca/desmarca la fila de un menú; al marcar la de bloatware se desmarcan sus presets.
+  const markPickerRow = (k: PickerKey, on: boolean) => setSel((s) => {
     const n = { ...s };
+    const presets = PICKERS[k].presets;
     ALL_CATEGORIES.forEach((c) => c.tweaks.forEach((tw) => {
-      if (tw.picker === "bloat") n[selKey(c.id, tw)] = on;
-      else if (on && isBloatPreset(tw)) n[selKey(c.id, tw)] = false;
+      if (tw.picker === k) n[selKey(c.id, tw)] = on;
+      else if (on && presets?.(tw)) n[selKey(c.id, tw)] = false;
     }));
     return n;
   });
-  const setBloatSel = (ids: string[]) => {
-    setBloatSelState(ids);
-    try { localStorage.setItem(BLOAT_KEY, JSON.stringify(ids)); } catch { /* sin storage: sólo esta sesión */ }
-    markPickerRow(ids.length > 0);
+  const setPick = (k: PickerKey, ids: string[]) => {
+    setPicks((p) => ({ ...p, [k]: ids }));
+    try { localStorage.setItem(PICKERS[k].storage, JSON.stringify(ids)); } catch { /* sin storage: sólo esta sesión */ }
+    markPickerRow(k, ids.length > 0);
   };
 
   const selectedList = () =>
@@ -238,7 +258,7 @@ export default function Optimizaciones() {
     // Si el punto de restauración falló Y hay tweaks que el backup del registro NO
     // revierte (servicios/BCD/AppX/tareas), avisar para no dar falsa confianza.
     const pointOk = /punto de restauracion creado ok/i.test(bk.output);
-    const risky = list.filter((x) => /Set-Service|bcdedit|Remove-AppxPackage|Register-ScheduledTask|Disable-ScheduledTask/i.test(scriptOf(x, bloatSel)));
+    const risky = list.filter((x) => /Set-Service|bcdedit|Remove-AppxPackage|Register-ScheduledTask|Disable-ScheduledTask/i.test(scriptOf(x, picks)));
     const noSafetyNet = !pointOk && risky.length > 0;
     if (noSafetyNet) {
       addLog(t("opt.noPointWarn1"));
@@ -249,12 +269,13 @@ export default function Optimizaciones() {
     let ok = 0;
     for (let i = 0; i < list.length; i++) {
       addLog(`▸ ${tn(list[i].name)}`);
-      if (list[i].picker === "bloat" && bloatSel.length === 0) {
-        addLog(`  ✗ ${t("bloat.noneChosen")}`);
+      const pk = list[i].picker;
+      if (pk && picks[pk].length === 0) {
+        addLog(`  ✗ ${t("pick.noneChosen")}`);
         setProgress((i + 1) / list.length);
         continue;
       }
-      const r = await runPowershell(scriptOf(list[i], bloatSel));
+      const r = await runPowershell(scriptOf(list[i], picks));
       // Si el usuario cambió de sección, se SIGUE aplicando: cortar acá dejaba la
       // lista a medias sin avisar (los setState sobre la página desmontada no hacen nada).
       if (r.ok) ok++;
@@ -313,21 +334,28 @@ export default function Optimizaciones() {
                       desc={td(tw.name)}
                       checked={!!sel[selKey(c.id, tw)]}
                       onChange={(v) => {
-                        if (tw.picker !== "bloat") return setSel((s) => ({ ...s, [selKey(c.id, tw)]: v }));
-                        // Sin apps elegidas, marcar la fila abre el menú para elegirlas.
-                        if (v && bloatSel.length === 0) return setBloatOpen(true);
-                        markPickerRow(v);
+                        const k = tw.picker;
+                        if (!k) return setSel((s) => ({ ...s, [selKey(c.id, tw)]: v }));
+                        // Sin nada elegido, marcar la fila abre su menú para elegir.
+                        if (v && picks[k].length === 0) return setOpenMenu((o) => ({ ...o, [k]: true }));
+                        markPickerRow(k, v);
                       }}
-                      action={tw.picker === "bloat" ? (
-                        <button onClick={() => setBloatOpen((o) => !o)} aria-expanded={bloatOpen}
-                          className={`h-7 px-2.5 rounded-md border text-[12px] flex items-center gap-1.5 transition-colors ${bloatOpen ? "border-accent/50 text-text bg-accent/[0.06]" : "border-line-2 text-text-dim hover:text-text hover:border-accent/40"}`}>
-                          {t("bloat.menuBtn")}
-                          {bloatSel.length > 0 && <span className="text-accent tabular-nums">{bloatSel.length}</span>}
-                          <svg width="10" height="10" viewBox="0 0 10 10" className={`transition-transform ${bloatOpen ? "rotate-180" : ""}`}><path d="M2 3.5 5 6.5 8 3.5" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" /></svg>
-                        </button>
-                      ) : undefined}
+                      action={tw.picker ? (() => {
+                        const k = tw.picker, open = !!openMenu[k], n = picks[k].length;
+                        return (
+                          <button onClick={() => setOpenMenu((o) => ({ ...o, [k]: !o[k] }))} aria-expanded={open}
+                            className={`h-7 px-2.5 rounded-md border text-[12px] flex items-center gap-1.5 transition-colors ${open ? "border-accent/50 text-text bg-accent/[0.06]" : "border-line-2 text-text-dim hover:text-text hover:border-accent/40"}`}>
+                            {t(PICKERS[k].btn)}
+                            {n > 0 && <span className="text-accent tabular-nums">{n}</span>}
+                            <svg width="10" height="10" viewBox="0 0 10 10" className={`transition-transform ${open ? "rotate-180" : ""}`}><path d="M2 3.5 5 6.5 8 3.5" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" /></svg>
+                          </button>
+                        );
+                      })() : undefined}
                     />
-                    {tw.picker === "bloat" && bloatOpen && <BloatPicker selected={bloatSel} onChange={setBloatSel} />}
+                    {tw.picker && openMenu[tw.picker] && (() => {
+                      const k = tw.picker, Menu = PICKERS[k].Menu;
+                      return <Menu selected={picks[k]} onChange={(ids) => setPick(k, ids)} />;
+                    })()}
                     </Fragment>
                   ))}
                 </List>

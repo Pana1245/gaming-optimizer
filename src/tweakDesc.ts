@@ -40,7 +40,7 @@ export const TWEAK_DESC: Record<string, string> = {
   "Desactivar botón Chat / Teams en barra de tareas": "Quita el botón de Chat/Teams de la barra de tareas de Windows 11.",
   "Desactivar Copilot": "Quita el botón de Copilot y lo desactiva por política.",
   "Borrar accesos directos rotos (destino inexistente)": "Borra del escritorio y del menú Inicio los accesos directos que apuntan a programas que ya no existen.",
-  "Deshabilitar permisos (excepto Cámara, Micrófono, Vídeos)": "Les quita a las apps el acceso a ubicación, contactos, calendario, archivos, Bluetooth y más. Cámara y micrófono quedan. Si una app deja de funcionar, usá Reactivar → Permisos.",
+  "Bloquear permisos de apps (elegir cuáles)": "Abrí “Elegir cuáles” para bloquear, uno por uno, a qué pueden acceder las apps: contactos, calendario, ubicación, micrófono, archivos… “Marcar recomendados” sólo marca datos personales que los juegos no usan; nunca bloquea Bluetooth, micrófono, cámara, archivos ni captura de pantalla. Para deshacerlo: Reactivar → Permisos de las aplicaciones.",
   "Deshabilitar Activación por Voz": "Las apps (como Cortana) dejan de escuchar una palabra de activación en segundo plano.",
   "Deshabilitar apps en segundo plano": "Las apps de la Store no corren cuando no las usás: menos RAM y CPU. Ojo: las de la Store (WhatsApp, Spotify…) pueden dejar de mostrar notificaciones.",
   "Deshabilitar notificaciones de apps": "Bloquea las notificaciones de las apps. Menos interrupciones mientras jugás, pero no vas a ver avisos de ninguna app.",

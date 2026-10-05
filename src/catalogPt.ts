@@ -58,7 +58,7 @@ export const TWEAK_PT: Record<string, string> = {
   "Borrar accesos directos rotos (destino inexistente)": "Apagar atalhos quebrados (destino inexistente)",
   "Quitar OneDrive por completo": "Remover o OneDrive por completo",
   // Permisos
-  "Deshabilitar permisos (excepto Cámara, Micrófono, Vídeos)": "Desativar permissões (exceto Câmera, Microfone, Vídeos)",
+  "Bloquear permisos de apps (elegir cuáles)": "Bloquear permissões de apps (escolher quais)",
   "Deshabilitar Activación por Voz": "Desativar Ativação por Voz",
   "Deshabilitar apps en segundo plano": "Desativar apps em segundo plano",
   "Deshabilitar notificaciones de apps": "Desativar notificações de apps",
@@ -137,7 +137,7 @@ export const TWEAK_DESC_PT: Record<string, string> = {
   "Desactivar botón Chat / Teams en barra de tareas": "Remove o botão de Chat/Teams da barra de tarefas do Windows 11.",
   "Desactivar Copilot": "Remove o botão do Copilot e o desativa por política.",
   "Borrar accesos directos rotos (destino inexistente)": "Apaga da área de trabalho e do menu Iniciar os atalhos que apontam para programas que não existem mais.",
-  "Deshabilitar permisos (excepto Cámara, Micrófono, Vídeos)": "Remove dos apps o acesso a localização, contatos, calendário, arquivos, Bluetooth e mais. Câmera e microfone continuam. Se um app parar de funcionar, use Reativar → Permissões.",
+  "Bloquear permisos de apps (elegir cuáles)": "Abra “Escolher quais” para bloquear, uma por uma, o que os apps podem acessar: contatos, calendário, localização, microfone, arquivos… “Marcar recomendados” só marca dados pessoais que os jogos não usam; nunca bloqueia Bluetooth, microfone, câmera, arquivos nem captura de tela. Para desfazer: Reativar → Permissões dos aplicativos.",
   "Deshabilitar Activación por Voz": "Os apps (como a Cortana) param de escutar uma palavra de ativação em segundo plano.",
   "Deshabilitar apps en segundo plano": "Os apps da Store não rodam quando você não usa: menos RAM e CPU. Atenção: apps da Store (WhatsApp, Spotify…) podem parar de mostrar notificações.",
   "Deshabilitar notificaciones de apps": "Bloqueia as notificações dos apps. Menos interrupções jogando, mas você não verá avisos de nenhum app.",

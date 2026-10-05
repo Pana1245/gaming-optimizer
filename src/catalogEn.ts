@@ -59,7 +59,7 @@ export const TWEAK_EN: Record<string, string> = {
   "Borrar accesos directos rotos (destino inexistente)": "Delete broken shortcuts (missing target)",
   "Quitar OneDrive por completo": "Remove OneDrive completely",
   // Permisos
-  "Deshabilitar permisos (excepto Cámara, Micrófono, Vídeos)": "Disable permissions (except Camera, Microphone, Videos)",
+  "Bloquear permisos de apps (elegir cuáles)": "Block app permissions (choose which)",
   "Deshabilitar Activación por Voz": "Disable Voice Activation",
   "Deshabilitar apps en segundo plano": "Disable background apps",
   "Deshabilitar notificaciones de apps": "Disable app notifications",
@@ -138,7 +138,7 @@ export const TWEAK_DESC_EN: Record<string, string> = {
   "Desactivar botón Chat / Teams en barra de tareas": "Removes the Chat/Teams button from the Windows 11 taskbar.",
   "Desactivar Copilot": "Removes the Copilot button and disables it by policy.",
   "Borrar accesos directos rotos (destino inexistente)": "Deletes desktop and Start menu shortcuts that point to programs that no longer exist.",
-  "Deshabilitar permisos (excepto Cámara, Micrófono, Vídeos)": "Removes app access to location, contacts, calendar, files, Bluetooth and more. Camera and microphone stay. If an app stops working, use Re-enable → Permissions.",
+  "Bloquear permisos de apps (elegir cuáles)": "Open “Choose which” to block, one by one, what apps can access: contacts, calendar, location, microphone, files… “Select recommended” only picks personal data games don't use; it never blocks Bluetooth, microphone, camera, files or screen capture. To undo: Re-enable → App permissions.",
   "Deshabilitar Activación por Voz": "Apps (like Cortana) stop listening for a wake word in the background.",
   "Deshabilitar apps en segundo plano": "Store apps don't run when you're not using them: less RAM and CPU. Note: Store apps (WhatsApp, Spotify…) may stop showing notifications.",
   "Deshabilitar notificaciones de apps": "Blocks app notifications. Fewer interruptions while gaming, but you won't see alerts from any app.",

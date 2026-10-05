@@ -3,8 +3,9 @@
 import { BLOAT_MS, BLOAT_THIRD, EDGE_REMOVE } from "./bloat";
 import { EXPLORER_FNS } from "./lib/shell";
 
-// picker "bloat": el script se arma con las apps elegidas en el menú (bloatCustom); `script` queda vacío.
-export interface Tweak { name: string; script: string; os?: 10 | 11; risk?: "advanced"; optIn?: boolean; picker?: "bloat"; }
+// picker: el script se arma con lo elegido en el menú desplegable de la fila (bloatware:
+// bloatCustom, permisos: permsDeny); `script` queda vacío.
+export interface Tweak { name: string; script: string; os?: 10 | 11; risk?: "advanced"; optIn?: boolean; picker?: "bloat" | "perms"; }
 export interface Category { id: string; name: string; color: string; tweaks: Tweak[]; }
 
 export const CATEGORIES: Category[] = [
@@ -118,7 +119,7 @@ try {
     name: "Permisos de Aplicaciones",
     color: "#00BCD4",
     tweaks: [
-      { name: "Deshabilitar permisos (excepto Cámara, Micrófono, Vídeos)", script: "$base = 'HKCU:\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\CapabilityAccessManager\\ConsentStore'\n$deny = @('location','userAccountInformation','contacts','appointments','phoneCall','phoneCallHistory',\n    'email','userDataTasks','chat','radios','bluetoothSync','appDiagnostics','documentsLibrary',\n    'picturesLibrary','broadFileSystemAccess','backgroundSpatialPerception','gazeInput','activity',\n    'trackerPlugin','graphicsCaptureProgrammatic','graphicsCaptureWithoutBorder')\nforeach ($p in $deny) {\n    $path = \"$base\\$p\"\n    if (!(Test-Path $path)) { New-Item -Path $path -Force | Out-Null }\n    Set-ItemProperty -Path $path -Name 'Value' -Value 'Deny' -Type String -Force\n}\nforeach ($p in @('microphone','webcam','videosLibrary')) {\n    $path = \"$base\\$p\"\n    if (!(Test-Path $path)) { New-Item -Path $path -Force | Out-Null }\n    Set-ItemProperty -Path $path -Name 'Value' -Value 'Allow' -Type String -Force\n}\nWrite-Output \"Permisos configurados (camara/microfono/videos mantenidos)\"" },
+      { name: "Bloquear permisos de apps (elegir cuáles)", picker: "perms", script: "" },
       { name: "Deshabilitar Activación por Voz", script: "$path = 'HKCU:\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\CapabilityAccessManager\\ConsentStore\\voiceActivation'\nif (!(Test-Path $path)) { New-Item -Path $path -Force | Out-Null }\nSet-ItemProperty -Path $path -Name 'Value' -Value 'Deny' -Type String -Force\n$pol = 'HKLM:\\SOFTWARE\\Policies\\Microsoft\\Windows\\AppPrivacy'\nif (!(Test-Path $pol)) { New-Item -Path $pol -Force | Out-Null }\nSet-ItemProperty -Path $pol -Name 'LetAppsActivateWithVoice' -Value 2 -Type DWord -Force\nWrite-Output \"Activacion por voz deshabilitada\"" },
       { name: "Deshabilitar apps en segundo plano", script: "$path = 'HKCU:\\Software\\Microsoft\\Windows\\CurrentVersion\\BackgroundAccessApplications'\nif (!(Test-Path $path)) { New-Item -Path $path -Force | Out-Null }\nSet-ItemProperty -Path $path -Name 'GlobalUserDisabled' -Value 1 -Type DWord -Force\nWrite-Output \"Apps en segundo plano deshabilitadas\"" },
       { name: "Deshabilitar notificaciones de apps", script: "$path = 'HKCU:\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\CapabilityAccessManager\\ConsentStore\\userNotificationListener'\nif (!(Test-Path $path)) { New-Item -Path $path -Force | Out-Null }\nSet-ItemProperty -Path $path -Name 'Value' -Value 'Deny' -Type String -Force\nWrite-Output \"Notificaciones de apps deshabilitadas\"" },
