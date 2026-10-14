@@ -108,8 +108,9 @@ foreach($k in $keys.GetEnumerator()){
   # Si la clave no existía, se anota: al restaurar se borra (la creó un tweak).
   elseif(-not (Test-Path -LiteralPath ('Registry::' + $k.Value))){ Set-Content -LiteralPath "$backDir\$($k.Name).absent" -Value $k.Value -Encoding UTF8 }
 }
-# Permisos que este Windows no tiene: "Elegir permisos" crearía su clave; Restaurar la borra.
-foreach($cap in @(${PERMS.map((x) => `'${x.id}'`).join(",")})){
+# Permisos que este Windows no tiene: "Elegir permisos" (y Activación por voz /
+# Notificaciones) crearían su clave; Restaurar la borra.
+foreach($cap in @(${[...PERMS.map((x) => x.id), "voiceActivation", "userNotificationListener"].map((id) => `'${id}'`).join(",")})){
   $ck="HKCU\SOFTWARE\Microsoft\Windows\CurrentVersion\CapabilityAccessManager\ConsentStore\$cap"
   if(-not (Test-Path -LiteralPath ('Registry::' + $ck))){ Set-Content -LiteralPath "$backDir\perm-$cap.absent" -Value $ck -Encoding UTF8 }
 }
@@ -133,6 +134,7 @@ $timerTask=[bool](Get-ScheduledTask -TaskName 'GamingOptimizer_TimerRes' -EA Sil
 # HPET (arranque y dispositivo), Teredo, LSO, IPv6, Defender en tiempo real y el archivo hosts.
 $sys=@{}
 if((powercfg /getactivescheme | Out-String) -match '[0-9a-fA-F]{8}(-[0-9a-fA-F]{4}){3}-[0-9a-fA-F]{12}'){ $sys.plan=$Matches[0] }
+$sys.plans=@([regex]::Matches((powercfg /list | Out-String), '[0-9a-fA-F]{8}(-[0-9a-fA-F]{4}){3}-[0-9a-fA-F]{12}') | ForEach-Object { $_.Value })
 $sys.hibernate=(Get-ItemProperty 'HKLM:\SYSTEM\CurrentControlSet\Control\Power' -Name HibernateEnabled -EA SilentlyContinue).HibernateEnabled
 $be=(bcdedit /enum '{current}' 2>$null | Out-String)
 foreach($e in 'useplatformclock','disabledynamictick'){ $sys[$e]=if($be -match "(?im)^$e\s+(\S+)"){ $Matches[1] } else { '' } }

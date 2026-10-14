@@ -49,7 +49,16 @@ foreach($r in $regs){
       $sec=Join-Path $tmp 'sec.reg'
       Set-Content -LiteralPath $sec -Value (@('Windows Registry Editor Version 5.00','') + $old[$k] + @('')) -Encoding Unicode
       reg import $sec > $null 2>&1
-      if($LASTEXITCODE -ne 0){ $bad+=$k }
+      if($LASTEXITCODE -ne 0){
+        # Clave que Windows protege hasta de la lectura (ej. TenantRestrictions): si un
+        # administrador no puede leerla ni escribirla, los tweaks tampoco la cambiaron.
+        $one=Join-Path $tmp 'one.reg'
+        reg export $k $one /y > $null 2>&1
+        if($LASTEXITCODE -ne 0){ continue }
+        $s1=Get-RegSections @(Get-Content -LiteralPath $one -Encoding Unicode)
+        if($s1.Contains($k) -and ($s1[$k] -join "\n").Trim() -ceq $txt){ continue }
+        $bad+=$k
+      }
     }
     # Aunque falle una subclave, se sigue: hay que quitar igual los valores que agregaron los tweaks.
     if($bad){ $failed++; Write-Output ("  ERROR  " + $r.Name + ": " + ($out -join ' ') + " [" + ($bad -join '; ') + "]") }
@@ -120,6 +129,17 @@ if(Test-Path -LiteralPath $stf){
   if($sy){
     $done=@()
     if($sy.plan -and ((powercfg /getactivescheme | Out-String) -notmatch $sy.plan)){ powercfg /setactive $sy.plan 2>$null | Out-Null; if($LASTEXITCODE -eq 0){ $done+='plan' } }
+    # El plan "Ultimate Performance (Gaming Optimizer)" que creó la app después del backup
+    # (sólo ése, por nombre; nunca un plan del usuario ni el que quedó activo).
+    if($sy.plans){
+      $act=(powercfg /getactivescheme | Out-String)
+      foreach($l in @(powercfg /list | Select-String 'Gaming Optimizer')){
+        if("$l" -match '[0-9a-fA-F]{8}(-[0-9a-fA-F]{4}){3}-[0-9a-fA-F]{12}'){
+          $g=$Matches[0]
+          if(@($sy.plans) -notcontains $g -and $act -notmatch $g){ powercfg /delete $g 2>$null | Out-Null; if($LASTEXITCODE -eq 0){ $done+='plan-extra' } }
+        }
+      }
+    }
     $hib=(Get-ItemProperty 'HKLM:\SYSTEM\CurrentControlSet\Control\Power' -Name HibernateEnabled -EA SilentlyContinue).HibernateEnabled
     if($sy.hibernate -eq 1 -and $hib -ne 1){ powercfg /hibernate on 2>$null | Out-Null; $done+='hibernate' }
     # No estaba configurada: Windows usa su valor por defecto (HibernateEnabledDefault).
