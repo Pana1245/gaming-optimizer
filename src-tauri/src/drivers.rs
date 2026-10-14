@@ -63,6 +63,42 @@ fn desktop_open(url: &str) -> windows::core::Result<()> {
     }
 }
 
+/// Comando de apertura del navegador elegido para https (ej. ChromeHTML, MSEdgeHTM, FirefoxURL-…).
+#[cfg(windows)]
+fn default_browser() -> Option<String> {
+    use winreg::enums::{HKEY_CLASSES_ROOT, HKEY_CURRENT_USER};
+    use winreg::RegKey;
+    let prog: String = RegKey::predef(HKEY_CURRENT_USER)
+        .open_subkey(r"Software\Microsoft\Windows\Shell\Associations\UrlAssociations\https\UserChoice")
+        .ok()?
+        .get_value("ProgId")
+        .ok()?;
+    RegKey::predef(HKEY_CLASSES_ROOT).open_subkey(format!(r"{prog}\shell\open\command")).ok()?.get_value("").ok()
+}
+
+/// Separa `"C:\…\chrome.exe" --single-argument %1` en (exe, argumentos con la URL).
+/// Los navegadores de la Tienda (sin .exe) devuelven None y se usa el respaldo siguiente.
+fn browser_cmd(cmd: &str, url: &str) -> Option<(String, String)> {
+    let cmd = cmd.trim();
+    let (exe, rest) = match cmd.strip_prefix('"') {
+        Some(r) => r.split_once('"')?,
+        None => match cmd.to_ascii_lowercase().find(".exe") {
+            Some(i) => cmd.split_at(i + 4),
+            None => return None,
+        },
+    };
+    if !exe.to_ascii_lowercase().ends_with(".exe") || !std::path::Path::new(exe).is_file() {
+        return None;
+    }
+    // La URL ya viene validada (sin espacios ni comillas), se puede pegar tal cual.
+    let args = if rest.contains("%1") || rest.contains("%L") {
+        rest.replace("%1", url).replace("%L", url)
+    } else {
+        format!("{rest} \"{url}\"")
+    };
+    Some((exe.to_string(), args.trim().to_string()))
+}
+
 /// Abre una página https en el navegador predeterminado, sin heredar los permisos de
 /// administrador de la app.
 #[tauri::command]
@@ -81,8 +117,16 @@ pub fn open_url(url: String) -> Result<(), String> {
             return Ok(());
         }
     }
-    // Respaldo (sin escritorio accesible, p. ej. la app abierta con otra cuenta):
-    // Explorer en algunas PCs abre una carpeta en vez del navegador, por eso va segundo.
+    // Respaldo 1 (sin escritorio accesible, p. ej. la app abierta con otra cuenta): el .exe
+    // del navegador predeterminado. Este sí hereda los permisos de administrador.
+    #[cfg(windows)]
+    if let Some((exe, args)) = default_browser().and_then(|c| browser_cmd(&c, &url)) {
+        use std::os::windows::process::CommandExt;
+        if std::process::Command::new(&exe).raw_arg(&args).spawn().is_ok() {
+            return Ok(());
+        }
+    }
+    // Respaldo 2: Explorer (en algunas PCs abre una carpeta en vez del navegador).
     std::process::Command::new("explorer.exe")
         .arg(&url)
         .spawn()
@@ -102,6 +146,32 @@ mod tests {
         assert!(r.is_err());
         assert!(open_url("https://a.com/x y".into()).is_err());
         assert!(open_url("file:///C:/Windows".into()).is_err());
+    }
+
+    #[cfg(windows)]
+    #[test]
+    fn arma_el_comando_del_navegador() {
+        let exe = r"C:\Windows\notepad.exe"; // existe en toda PC; lo que se prueba es el armado
+        let u = "https://www.gigabyte.com/Search?kw=B550M%20AORUS";
+        // Chrome / Edge
+        assert_eq!(browser_cmd(&format!(r#""{exe}" --single-argument %1"#), u), Some((exe.into(), format!("--single-argument {u}"))));
+        // Firefox
+        assert_eq!(browser_cmd(&format!(r#""{exe}" -osint -url "%1""#), u), Some((exe.into(), format!(r#"-osint -url "{u}""#))));
+        // Sin comillas y sin %1
+        assert_eq!(browser_cmd(exe, u), Some((exe.into(), format!(r#""{u}""#))));
+        // App de la Tienda / exe inexistente
+        assert_eq!(browser_cmd("", u), None);
+        assert_eq!(browser_cmd(r#""C:\no\existe.exe" %1"#, u), None);
+    }
+
+    // Lee el navegador predeterminado real de esta PC (no abre nada).
+    #[cfg(windows)]
+    #[test]
+    #[ignore]
+    fn detecta_navegador_predeterminado() {
+        let c = default_browser().expect("sin navegador predeterminado");
+        println!("comando: {c}\narmado: {:?}", browser_cmd(&c, "https://www.gigabyte.com/"));
+        assert!(browser_cmd(&c, "https://www.gigabyte.com/").is_some());
     }
 
     // Abre de verdad una pestaña en el navegador predeterminado (por el escritorio, no Explorer).
