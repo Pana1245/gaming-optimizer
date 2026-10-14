@@ -34,8 +34,37 @@ pub async fn drivers_fetch(url: String) -> Result<String, String> {
     r.text().await.map_err(|e| e.to_string())
 }
 
-/// Abre una página https en el navegador predeterminado. Se delega en Explorer para
-/// que el navegador NO herede los permisos de administrador de la app.
+/// Le pide al escritorio (el Explorer del usuario, sin permisos de administrador) que
+/// abra la URL, como un doble clic en un acceso directo: navegador predeterminado y
+/// NO elevado. Es el método documentado por Microsoft (IShellDispatch2 del escritorio).
+#[cfg(windows)]
+fn desktop_open(url: &str) -> windows::core::Result<()> {
+    use windows::core::{Interface, BSTR};
+    use windows::Win32::System::Com::*;
+    use windows::Win32::System::Variant::VARIANT;
+    use windows::Win32::UI::Shell::*;
+    unsafe {
+        let init = CoInitializeEx(None, COINIT_APARTMENTTHREADED);
+        let r = (|| {
+            let sw: IShellWindows = CoCreateInstance(&ShellWindows, None, CLSCTX_LOCAL_SERVER)?;
+            let loc = VARIANT::from(CSIDL_DESKTOP as i32);
+            let mut hwnd = 0i32;
+            let disp = sw.FindWindowSW(&loc, &VARIANT::default(), SWC_DESKTOP, &mut hwnd, SWFO_NEEDDISPATCH)?;
+            let browser: IShellBrowser = disp.cast::<IServiceProvider>()?.QueryService(&SID_STopLevelBrowser)?;
+            let view: IShellFolderViewDual = browser.QueryActiveShellView()?.GetItemObject::<IDispatch>(SVGIO_BACKGROUND)?.cast()?;
+            let shell: IShellDispatch2 = view.Application()?.cast()?;
+            let none = VARIANT::default();
+            shell.ShellExecute(&BSTR::from(url), &none, &none, &VARIANT::from(BSTR::from("open")), &VARIANT::from(1i32))
+        })();
+        if init.is_ok() {
+            CoUninitialize();
+        }
+        r
+    }
+}
+
+/// Abre una página https en el navegador predeterminado, sin heredar los permisos de
+/// administrador de la app.
 #[tauri::command]
 pub fn open_url(url: String) -> Result<(), String> {
     let ok = url.starts_with("https://")
@@ -44,6 +73,16 @@ pub fn open_url(url: String) -> Result<(), String> {
     if !ok {
         return Err("url inválida".into());
     }
+    // En su propio hilo: COM necesita su apartamento y así no se traba la ventana.
+    #[cfg(windows)]
+    {
+        let u = url.clone();
+        if std::thread::spawn(move || desktop_open(&u).is_ok()).join().unwrap_or(false) {
+            return Ok(());
+        }
+    }
+    // Respaldo (sin escritorio accesible, p. ej. la app abierta con otra cuenta):
+    // Explorer en algunas PCs abre una carpeta en vez del navegador, por eso va segundo.
     std::process::Command::new("explorer.exe")
         .arg(&url)
         .spawn()
@@ -63,6 +102,14 @@ mod tests {
         assert!(r.is_err());
         assert!(open_url("https://a.com/x y".into()).is_err());
         assert!(open_url("file:///C:/Windows".into()).is_err());
+    }
+
+    // Abre de verdad una pestaña en el navegador predeterminado (por el escritorio, no Explorer).
+    #[cfg(windows)]
+    #[test]
+    #[ignore]
+    fn abre_en_el_navegador() {
+        desktop_open("https://www.gigabyte.com/Search?kw=B550M%20AORUS%20ELITE").unwrap();
     }
 
     // Consulta real a las fuentes oficiales (requiere internet): cargo test -- --ignored
