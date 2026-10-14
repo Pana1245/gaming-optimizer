@@ -266,7 +266,7 @@ async function nvidiaLatest(gpuName: string, win11: boolean): Promise<{ version:
     const info = j?.IDS?.[0]?.downloadInfo;
     if (!info?.Version) return null;
     const dt = new Date(decodeURIComponent(info.ReleaseDateTime || ""));
-    return { version: info.Version, date: isNaN(+dt) ? "" : dt.toISOString().slice(0, 10), url: decodeURIComponent(info.DetailsURL || "") || "https://www.nvidia.com/Download/index.aspx" };
+    return { version: info.Version, date: isNaN(+dt) ? "" : dt.toISOString().slice(0, 10), url: decodeURIComponent(info.DetailsURL || "").replace(/^http:\/\//i, "https://") || "https://www.nvidia.com/Download/index.aspx" };
   } catch { return null; }
 }
 

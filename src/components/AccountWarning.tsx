@@ -7,7 +7,9 @@ import { useI18n } from "../lib/i18n";
 // se aplica a esa otra cuenta y no a la de quien usa la PC — sin ningún error visible.
 // Se compara la cuenta de la app con la dueña del escritorio (explorer.exe).
 const CHECK = String.raw`$me=[Security.Principal.WindowsIdentity]::GetCurrent()
-$ex=Get-CimInstance Win32_Process -Filter "Name='explorer.exe'" -EA SilentlyContinue | Select-Object -First 1
+# El escritorio de ESTA sesión: con cambio rápido de usuario hay un explorer.exe por usuario.
+$ses=(Get-Process -Id $PID).SessionId
+$ex=Get-CimInstance Win32_Process -Filter "Name='explorer.exe' AND SessionId=$ses" -EA SilentlyContinue | Select-Object -First 1
 if(-not $ex){ 'SAME'; exit 0 }
 $o=Invoke-CimMethod -InputObject $ex -MethodName GetOwnerSid -EA SilentlyContinue
 if(-not $o -or -not $o.Sid -or $o.Sid -eq $me.User.Value){ 'SAME'; exit 0 }

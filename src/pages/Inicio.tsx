@@ -41,7 +41,7 @@ const toggleScript = (e: Entry, enable: boolean) => {
   const name = e.name.replace(/'/g, "''");
   const appr = APPROVED[e.scope];
   const bytes = enable ? "2,0,0,0,0,0,0,0,0,0,0,0" : "3,0,0,0,0,0,0,0,0,0,0,0";
-  return `$a='${appr}'\nif(!(Test-Path $a)){ New-Item $a -Force | Out-Null }\nSet-ItemProperty -Path $a -Name '${name}' -Value ([byte[]](${bytes})) -Type Binary -Force\nWrite-Output OK`;
+  return `$a='${appr}'\nif(!(Test-Path $a)){ New-Item $a -Force | Out-Null }\nSet-ItemProperty -Path $a -Name '${name}' -Value ([byte[]](${bytes})) -Type Binary -Force -EA Stop\nWrite-Output OK`;
 };
 
 // "Recomendados": apps que no hace falta que arranquen con Windows (se abren igual
