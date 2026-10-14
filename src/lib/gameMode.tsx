@@ -60,10 +60,12 @@ const psNames = (ids: string[]) => ids.map((x) => `'${x.replace(/'/g, "''")}'`).
 const BG_LOWER = (apps: string[]) => String.raw`$bg=@(${psNames(apps)}); $p='HKCU:\Software\GamingOptimizer'; if(!(Test-Path $p)){ New-Item $p -Force | Out-Null }
 $old=@{}
 $raw=(Get-ItemProperty $p -Name BgPrios -EA SilentlyContinue).BgPrios
-if($raw){ foreach($pair in ($raw -split ';')){ $kv=$pair -split '=',2; if($kv.Count -eq 2){ $old[$kv[0]]=$kv[1] } } }
+if($raw){ foreach($pair in ($raw -split ';')){ $kv=$pair -split '=',3; if($kv.Count -ge 2){ $old[$(if($kv.Count -eq 3){ $kv[0] + '|' + $kv[2].ToLower() } else { $kv[0] })]=$kv[1] } } }
 $saved=@(); $n=0
 foreach($x in $bg){ Get-Process -Name $x -EA SilentlyContinue | ForEach-Object {
-  try{ $id=$_.Id.ToString(); $prio=if($old.ContainsKey($id)){ $old[$id] }else{ $_.PriorityClass.ToString() }; $_.PriorityClass='Idle'; $saved += ($id + '=' + $prio); $n++ }catch{}
+  try{ $id=$_.Id.ToString(); $nm=$_.ProcessName; $k=$id + '|' + $nm.ToLower()
+    $prio=if($old.ContainsKey($k)){ $old[$k] }elseif($old.ContainsKey($id)){ $old[$id] }else{ $_.PriorityClass.ToString() }
+    $_.PriorityClass='Idle'; $saved += ($id + '=' + $prio + '=' + $nm); $n++ }catch{}
 } }
 Set-ItemProperty $p BgPrios ($saved -join ';') -Force
 Write-Output ("BG=" + $n)`;
@@ -71,7 +73,9 @@ const BG_RESTORE = String.raw`$p='HKCU:\Software\GamingOptimizer'
 $raw=(Get-ItemProperty $p -Name BgPrios -EA SilentlyContinue).BgPrios
 # Sólo si sigue en Idle (la que pusimos): si el PID ya es OTRO proceso (se cerró y se
 # reusó el número, ej. tras reiniciar) o el usuario la cambió, no se toca.
-if($raw){ foreach($pair in ($raw -split ';')){ $kv=$pair -split '=',2; if($kv.Count -eq 2){ try{ $pr=Get-Process -Id ([int]$kv[0]) -EA Stop; if("$($pr.PriorityClass)" -eq 'Idle'){ $pr.PriorityClass=$kv[1] } }catch{} } } }
+# Con el nombre guardado ("pid=prioridad=nombre") se exige que sea el MISMO programa;
+# las listas viejas ("pid=prioridad") siguen funcionando como antes.
+if($raw){ foreach($pair in ($raw -split ';')){ $kv=$pair -split '=',3; if($kv.Count -ge 2){ try{ $pr=Get-Process -Id ([int]$kv[0]) -EA Stop; if(($kv.Count -lt 3 -or $pr.ProcessName -eq $kv[2]) -and "$($pr.PriorityClass)" -eq 'Idle'){ $pr.PriorityClass=$kv[1] } }catch{} } } }
 Remove-ItemProperty $p -Name BgPrios -EA SilentlyContinue
 Write-Output OK`;
 // Al abrir la app: si quedó el modo gamer aplicado de una sesión que no terminó bien,

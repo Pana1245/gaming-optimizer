@@ -331,7 +331,7 @@ export default function Desinstalar() {
         ) : (
           <List>
             {filtered.map((a) => (
-              <Row key={a.type + a.name}
+              <Row key={a.type + a.key}
                 icon={icons[a.key]
                   ? <img src={icons[a.key]} alt="" className="w-7 h-7 rounded-md object-contain" />
                   : <span className="w-7 h-7 grid place-items-center text-[9px] uppercase rounded-md border border-line bg-white/[0.03] text-text-mute">{a.type}</span>}

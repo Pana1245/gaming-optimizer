@@ -108,6 +108,11 @@ foreach($k in $keys.GetEnumerator()){
   # Si la clave no existía, se anota: al restaurar se borra (la creó un tweak).
   elseif(-not (Test-Path -LiteralPath ('Registry::' + $k.Value))){ Set-Content -LiteralPath "$backDir\$($k.Name).absent" -Value $k.Value -Encoding UTF8 }
 }
+# Permisos que este Windows no tiene: "Elegir permisos" crearía su clave; Restaurar la borra.
+foreach($cap in @(${PERMS.map((x) => `'${x.id}'`).join(",")})){
+  $ck="HKCU\SOFTWARE\Microsoft\Windows\CurrentVersion\CapabilityAccessManager\ConsentStore\$cap"
+  if(-not (Test-Path -LiteralPath ('Registry::' + $ck))){ Set-Content -LiteralPath "$backDir\perm-$cap.absent" -Value $ck -Encoding UTF8 }
+}
 Write-Output "Backup del registro: $n ramas exportadas"
 
 # Servicios y tareas que modifican los tweaks: no viven en las ramas exportadas,

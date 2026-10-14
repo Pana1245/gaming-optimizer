@@ -131,9 +131,16 @@ fn round1(x: f64) -> f64 {
     (x * 10.0).round() / 10.0
 }
 
+fn phase_mbps(seconds: f64, bytes: u64, warm: Option<(f64, u64)>) -> f64 {
+    // Si el tope se alcanza justo al terminar el warmup, medir el total en vez de 0.
+    let (start, baseline) = warm.filter(|(t, b)| seconds > *t && bytes > *b).unwrap_or((0.0, 0));
+    if seconds > start { bytes.saturating_sub(baseline) as f64 * 8.0 / (seconds - start) / 1e6 } else { 0.0 }
+}
+
 fn client() -> Option<reqwest::Client> {
     reqwest::Client::builder()
         .connect_timeout(Duration::from_secs(5))
+        .timeout(Duration::from_secs(20))
         .pool_max_idle_per_host(32)
         .user_agent("GamingOptimizer-speedtest")
         .build()
@@ -145,10 +152,8 @@ fn client() -> Option<reqwest::Client> {
 /// speed.cloudflare.com): queda la latencia de red real.
 async fn latency_once(c: &reqwest::Client) -> Option<f64> {
     let t = Instant::now();
-    let resp = tokio::time::timeout(Duration::from_secs(3), c.get(format!("{BASE}/__down?bytes=0")).send())
-        .await
-        .ok()?
-        .ok()?;
+    let resp = c.get(format!("{BASE}/__down?bytes=0")).timeout(Duration::from_secs(3)).send().await.ok()?;
+    if !resp.status().is_success() { return None; }
     let ms = t.elapsed().as_secs_f64() * 1000.0;
     // Ej: "cfSpeedEdge;dur=2, cfSpeedWorker;dur=19" → se suman todas las etapas.
     let server_ms: f64 = resp
@@ -160,7 +165,7 @@ async fn latency_once(c: &reqwest::Client) -> Option<f64> {
         .filter_map(|m| m.split(';').find_map(|p| p.trim().strip_prefix("dur=")))
         .filter_map(|d| d.trim().parse::<f64>().ok())
         .sum();
-    let _ = resp.bytes().await;
+    resp.bytes().await.ok()?;
     Some((ms - server_ms).max(0.1))
 }
 
@@ -208,7 +213,7 @@ async fn down_worker(c: reqwest::Client, url: String, counter: Arc<AtomicU64>, s
     }
 }
 
-async fn up_worker(c: reqwest::Client, counter: Arc<AtomicU64>, stop: Arc<AtomicBool>, chunk: Bytes) {
+async fn up_worker(c: reqwest::Client, counter: Arc<AtomicU64>, stop: Arc<AtomicBool>, chunk: Bytes, accepted: Arc<AtomicBool>) {
     let chunks = UP_REQ_BYTES / UP_CHUNK;
     while !stop.load(Ordering::Relaxed) && !cancelled() {
         let (cnt, st, ch) = (counter.clone(), stop.clone(), chunk.clone());
@@ -234,28 +239,33 @@ async fn up_worker(c: reqwest::Client, counter: Arc<AtomicU64>, stop: Arc<Atomic
                 UP_LIMITED.store(true, Ordering::Relaxed);
                 return;
             }
-            Ok(Ok(_)) => {}
+            Ok(Ok(r)) if r.status().is_success() => { accepted.store(true, Ordering::Relaxed); }
+            Ok(Ok(_)) => { tokio::time::sleep(Duration::from_millis(250)).await; }
             _ => tokio::time::sleep(Duration::from_millis(250)).await,
         }
     }
 }
 
+struct AbortOnDrop<T>(tauri::async_runtime::JoinHandle<T>);
+impl<T> Drop for AbortOnDrop<T> { fn drop(&mut self) { self.0.abort(); } }
+
 /// Corre una fase (bajada o subida). Devuelve (Mbps, bytes totales, latencias bajo carga).
 async fn run_phase(app: &AppHandle, phase: &'static str, streams: usize, down_url: &str, chunk: Bytes) -> (f64, u64, Vec<f64>) {
     let counter = Arc::new(AtomicU64::new(0));
+    let accepted = Arc::new(AtomicBool::new(false));
     let stop = Arc::new(AtomicBool::new(false));
     let Some(c) = client() else { return (0.0, 0, Vec::new()) };
 
     let mut workers = Vec::new();
     for _ in 0..streams {
         let (c, cnt, st) = (c.clone(), counter.clone(), stop.clone());
-        workers.push(if phase == "download" {
+        workers.push(AbortOnDrop(if phase == "download" {
             tauri::async_runtime::spawn(down_worker(c, down_url.to_string(), cnt, st))
         } else {
-            tauri::async_runtime::spawn(up_worker(c, cnt, st, chunk.clone()))
-        });
+            tauri::async_runtime::spawn(up_worker(c, cnt, st, chunk.clone(), accepted.clone()))
+        }));
     }
-    let probe = tauri::async_runtime::spawn(probe_loop(stop.clone()));
+    let mut probe = AbortOnDrop(tauri::async_runtime::spawn(probe_loop(stop.clone())));
 
     let start = Instant::now();
     let mut warm: Option<(f64, u64)> = None;
@@ -282,12 +292,10 @@ async fn run_phase(app: &AppHandle, phase: &'static str, streams: usize, down_ur
     stop.store(true, Ordering::Relaxed);
     let end_t = start.elapsed().as_secs_f64();
     let end_b = counter.load(Ordering::Relaxed);
-    for w in workers {
-        w.abort();
-    }
-    let lat = probe.await.unwrap_or_default();
-    let (wt, wb) = warm.unwrap_or((0.0, 0));
-    let mbps = if end_t > wt { (end_b.saturating_sub(wb)) as f64 * 8.0 / (end_t - wt) / 1e6 } else { 0.0 };
+    for w in &workers { w.0.abort(); }
+    for mut w in workers { let _ = (&mut w.0).await; }
+    let lat = (&mut probe.0).await.unwrap_or_default();
+    let mbps = if phase == "upload" && !accepted.load(Ordering::Relaxed) { 0.0 } else { phase_mbps(end_t, end_b, warm) };
     (mbps, end_b, lat)
 }
 
@@ -306,18 +314,18 @@ async fn nearest_vultr() -> Option<(&'static str, &'static str)> {
     let mut tasks = Vec::new();
     for &(code, name) in VULTR {
         let c = c.clone();
-        tasks.push(tauri::async_runtime::spawn(async move {
+        tasks.push(AbortOnDrop(tauri::async_runtime::spawn(async move {
             let t = Instant::now();
             let url = format!("https://{code}-ping.vultr.com/vultr.com.100MB.bin");
             match tokio::time::timeout(Duration::from_secs(3), c.head(url).send()).await {
                 Ok(Ok(r)) if r.status().is_success() => Some((t.elapsed(), code, name)),
                 _ => None,
             }
-        }));
+        })));
     }
     let mut best: Option<(Duration, &'static str, &'static str)> = None;
-    for t in tasks {
-        if let Ok(Some(x)) = t.await {
+    for mut t in tasks {
+        if let Ok(Some(x)) = (&mut t.0).await {
             if best.map_or(true, |b| x.0 < b.0) {
                 best = Some(x);
             }
@@ -338,15 +346,15 @@ async fn run(app: &AppHandle) -> SpeedResult {
     };
 
     // Servidor (colo = aeropuerto de la ubicación de Cloudflare) y país.
-    let trace = tokio::time::timeout(Duration::from_secs(6), c.get(format!("{BASE}/cdn-cgi/trace")).send()).await;
+    let trace = c.get(format!("{BASE}/cdn-cgi/trace")).timeout(Duration::from_secs(6)).send().await;
     match trace {
-        Ok(Ok(resp)) => {
+        Ok(resp) if resp.status().is_success() => {
             if let Ok(txt) = resp.text().await {
                 for l in txt.lines() {
                     if let Some(v) = l.strip_prefix("colo=") { r.colo = v.to_string(); }
                     if let Some(v) = l.strip_prefix("loc=") { r.country = v.to_string(); }
                 }
-            }
+            } else { r.error = "net.st.errConnect".into(); return r; }
         }
         _ => {
             r.error = "net.st.errConnect".into();
@@ -369,10 +377,12 @@ async fn run(app: &AppHandle) -> SpeedResult {
     let _ = app.emit("speed-progress", Progress { phase: "ping", mbps: 0.0, pct: 0.0 });
     let mut pings = Vec::new();
     for _ in 0..10 {
+        if cancelled() { r.cancelled = true; return r; }
         if let Some(ms) = latency_once(&c).await {
             pings.push(ms);
         }
     }
+    if pings.is_empty() { r.error = "net.st.errConnect".into(); return r; }
     // El primero incluye abrir la conexión (TLS): no cuenta para el jitter.
     let steady: Vec<f64> = pings.iter().skip(1).copied().collect();
     r.jitter_ms = round1(jitter(&steady));
@@ -428,9 +438,22 @@ pub fn speed_test(app: AppHandle) -> bool {
     }
     CANCEL.store(false, Ordering::SeqCst);
     tauri::async_runtime::spawn(async move {
-        let res = run(&app).await;
+        let h = app.clone();
+        let mut task = tauri::async_runtime::spawn(async move { run(&app).await });
+        let res = loop {
+            match tokio::time::timeout(Duration::from_millis(50), &mut task).await {
+                Ok(Ok(res)) => break res,
+                Ok(Err(_)) => break SpeedResult { error: "net.st.errConnect".into(), ..Default::default() },
+                Err(_) if cancelled() => {
+                    task.abort();
+                    let _ = task.await;
+                    break SpeedResult { cancelled: true, ..Default::default() };
+                }
+                Err(_) => {},
+            }
+        };
+        let _ = h.emit("speed-done", res);
         RUNNING.store(false, Ordering::SeqCst);
-        let _ = app.emit("speed-done", res);
     });
     true
 }
@@ -438,4 +461,23 @@ pub fn speed_test(app: AppHandle) -> bool {
 #[tauri::command]
 pub fn speed_cancel() {
     CANCEL.store(true, Ordering::SeqCst);
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    #[test]
+    fn megabits_and_warmup_cap() {
+        assert_eq!(phase_mbps(1.0, 125_000_000, None), 1000.0);
+        assert_eq!(phase_mbps(12.0, 150_000_000, Some((2.0, 25_000_000))), 100.0);
+        assert_eq!(phase_mbps(2.0, 1_000_000_000, Some((2.0, 1_000_000_000))), 4000.0);
+        assert_eq!(phase_mbps(0.0, 0, None), 0.0);
+    }
+    #[test]
+    fn latency_statistics() {
+        assert_eq!(median(vec![3.0, 1.0, 2.0]), 2.0);
+        assert_eq!(median(vec![4.0, 2.0]), 3.0);
+        assert_eq!(jitter(&[1.0, 4.0, 2.0]), 2.5);
+        assert_eq!(jitter(&[]), 0.0);
+    }
 }

@@ -16,24 +16,30 @@ interface Result {
 interface St {
   running: boolean; phase: string; mbps: number; pct: number;
   ping: number | null; jitter: number | null; down: number | null; up: number | null;
-  server: string; downPts: number[]; upPts: number[]; result: Result | null;
+  error: string; server: string; downPts: number[]; upPts: number[]; result: Result | null;
 }
-const EMPTY: St = { running: false, phase: "", mbps: 0, pct: 0, ping: null, jitter: null, down: null, up: null, server: "", downPts: [], upPts: [], result: null };
+const EMPTY: St = { running: false, phase: "", mbps: 0, pct: 0, ping: null, jitter: null, down: null, up: null, error: "", server: "", downPts: [], upPts: [], result: null };
 
 let st: St = EMPTY;
 const subs = new Set<(s: St) => void>();
 const set = (p: Partial<St>) => { st = { ...st, ...p }; subs.forEach((f) => f(st)); };
 // Solo en desarrollo: permite mover el velocímetro a mano para revisar el diseño.
 if (import.meta.env.DEV) (window as unknown as { __speedDemo: typeof set }).__speedDemo = set;
-let wired = false;
-const wire = () => {
-  if (wired) return;
-  wired = true;
-  listen<{ phase: string; mbps: number; pct: number }>("speed-progress", ({ payload: p }) => {
+let cancelRequested = false;
+let startCommand: Promise<boolean> | null = null;
+let wiring: Promise<void> | null = null;
+const wire = (): Promise<void> => {
+  if (wiring) return wiring;
+  wiring = (async () => {
+  const cleanup: (() => void)[] = [];
+  try {
+  cleanup.push(await listen<{ phase: string; mbps: number; pct: number }>("speed-progress", ({ payload: p }) => {
+    if (!st.running) return;
     const pts = p.phase === "download" ? { downPts: [...st.downPts, p.mbps] } : p.phase === "upload" ? { upPts: [...st.upPts, p.mbps] } : {};
-    set({ ...p, ...pts, running: true });
-  });
-  listen<{ kind: string; value: number; extra: number; text: string }>("speed-stage", ({ payload: s }) => {
+    set({ ...p, ...pts });
+  }));
+  cleanup.push(await listen<{ kind: string; value: number; extra: number; text: string }>("speed-stage", ({ payload: s }) => {
+    if (!st.running) return;
     if (s.kind === "server") {
       // "colo|país|respaldo": si Cloudflare limitó la bajada, se indica el servidor usado.
       const [colo, cc, alt] = s.text.split("|");
@@ -41,8 +47,15 @@ const wire = () => {
     }
     if (s.kind === "ping") set({ ping: s.value, jitter: s.extra });
     if (s.kind === "download") set({ down: s.value });
-  });
-  listen<Result>("speed-done", ({ payload: r }) => set({ running: false, result: r, phase: "", mbps: 0, pct: 0, up: r.ok ? r.up_mbps : st.up }));
+  }));
+  cleanup.push(await listen<Result>("speed-done", ({ payload: r }) => {
+    if (!st.running) return;
+    set({ running: false, result: r, phase: "", mbps: 0, pct: 0,
+      ...(r.ok ? { down: r.down_mbps, up: r.up_mbps, ping: r.ping_ms, jitter: r.jitter_ms } : {}) });
+  }));
+  } catch (err) { cleanup.forEach((unlisten) => unlisten()); throw err; }
+  })().catch((err) => { wiring = null; throw err; });
+  return wiring;
 };
 
 // ── Velocímetro ─────────────────────────────────────────────────────────────
@@ -162,24 +175,36 @@ export default function SpeedTest() {
   const [s, setS] = useState<St>(st);
 
   useEffect(() => {
-    wire();
+    void wire().catch((err) => set({ error: String(err) }));
     subs.add(setS);
     return () => { subs.delete(setS); };
   }, []);
 
   const start = async () => {
-    set({ ...EMPTY, running: true, phase: "ping" });
-    // false = ya había un test corriendo (sigue en curso: se ve igual). Si el invoke
-    // FALLA, antes quedaba "corriendo" para siempre: la condición miraba st.running,
-    // que se acababa de poner en true.
-    const started = await invoke<boolean>("speed_test").catch(() => null);
-    if (started === null) set({ running: false, phase: "" });
+    if (st.running) return;
+    cancelRequested = false; startCommand = null;
+    set({ ...EMPTY, running: true, phase: 'ping' });
+    try {
+      // Register all listeners before invoking; fast failures must not be lost.
+      await wire();
+      if (cancelRequested) { set({ running: false, phase: '', error: t('net.st.cancelled') }); return; }
+      startCommand = invoke<boolean>('speed_test');
+      await startCommand;
+    } catch (err) { set({ running: false, phase: '', error: String(err) }); }
   };
-  const cancel = () => { invoke("speed_cancel").catch(() => {}); };
+  const cancel = async () => {
+    cancelRequested = true;
+    try {
+      await wire();
+      if (startCommand) await startCommand;
+      if (st.running && startCommand) await invoke('speed_cancel');
+    }
+    catch (err) { set({ error: String(err) }); }
+  };
 
   const r = s.result;
   const up = s.phase === "upload";
-  const bloat = r && r.ok ? Math.max(r.down_loaded_ms, r.up_loaded_ms) - r.ping_ms : 0;
+  const bloat = r && r.ok ? Math.max(0, Math.max(r.down_loaded_ms, r.up_loaded_ms) - r.ping_ms) : 0;
   const bloatKey = bloat < 30 ? "net.st.bloatLow" : bloat < 100 ? "net.st.bloatMid" : "net.st.bloatHigh";
   const bloatColor = bloat < 30 ? "#00e676" : bloat < 100 ? "#ffd24a" : "#ff5470";
   const dash = "—";
@@ -242,6 +267,7 @@ export default function SpeedTest() {
       {!s.running && r && r.ok && r.retry_min > 0 && (
         <p className="text-[12.5px] mt-1.5 text-[#ffd24a]">▸ {t("net.st.upLimited").replace("{min}", String(r.retry_min))}</p>
       )}
+      {s.error && <p className="text-[12.5px] mt-2 text-[#ff5470]">{s.error}</p>}
       {!s.running && r && !r.ok && (
         <p className="text-[12.5px] mt-2" style={{ color: r.cancelled ? "#8a8a8f" : "#ff5470" }}>
           {r.cancelled ? t("net.st.cancelled") : t(r.error || "net.st.errNoData").replace("{min}", String(r.retry_min || 60))}

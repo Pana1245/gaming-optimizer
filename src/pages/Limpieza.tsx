@@ -32,7 +32,8 @@ const P = {
   temp: String.raw`"$env:windir\Temp", "$env:TEMP"`,
   prefetch: String.raw`"$env:windir\Prefetch"`,
   wer: String.raw`"$env:ProgramData\Microsoft\Windows\WER\ReportQueue", "$env:ProgramData\Microsoft\Windows\WER\ReportArchive"`,
-  deliv: String.raw`"$env:windir\SoftwareDistribution\DeliveryOptimization"`,
+  // Desde W10 1803 la caché vive en el perfil de NetworkService (la ruta vieja ya no existe).
+  deliv: String.raw`"$env:windir\ServiceProfiles\NetworkService\AppData\Local\Microsoft\Windows\DeliveryOptimization\Cache", "$env:windir\SoftwareDistribution\DeliveryOptimization"`,
   browsers: String.raw`"$env:LocalAppData\Google\Chrome\User Data\Default\Cache", "$env:LocalAppData\Microsoft\Edge\User Data\Default\Cache"`,
   shader: String.raw`"$env:LocalAppData\NVIDIA\DXCache", "$env:LocalAppData\D3DSCache"`,
   // Sólo carpetas de caché (no "Local Storage" ni cookies): no se pierde la sesión iniciada.

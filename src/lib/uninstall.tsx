@@ -40,7 +40,7 @@ Get-AppxPackage -EA SilentlyContinue | Where-Object { -not $_.IsFramework -and -
  if(-not $pd -or $pd -like 'ms-resource:*'){ $pd="$($_.Publisher)"; if($pd -match 'O=([^,]+)'){ $pd=$Matches[1] } elseif($pd -match 'CN=([^,]+)'){ $pd=$Matches[1] } }
  $apps+=[pscustomobject]@{name=$dn;pub=$pd;type='uwp';size=0;date='';location="$($_.InstallLocation)";key="$($_.PackageFullName)";uninstall="$($_.PackageFullName)";scope='machine';icon=''}
 }
-$apps=$apps | Sort-Object name,type -Unique
+$apps=$apps | Sort-Object name,type,key -Unique
 if($apps.Count -eq 0){'[]'}else{$apps|ConvertTo-Json -Compress -Depth 3}`;
 
 // Extrae iconos como PNG base64, localmente (sin red). win32: del DisplayIcon
@@ -56,9 +56,8 @@ foreach($it in $items){
   $b64=''
   try{
     if($it.type -eq 'win32' -and $it.icon){
-      $raw=([string]$it.icon).Trim('"').Trim()
-      $ci=$raw.LastIndexOf(',')
-      if($ci -gt 2){ $tail=$raw.Substring($ci+1); $num=($tail.Length -gt 0); foreach($c in $tail.ToCharArray()){ if($c -lt '0' -or $c -gt '9'){ $num=$false } }; if($num){ $raw=$raw.Substring(0,$ci) } }
+      $raw=[Environment]::ExpandEnvironmentVariables(([string]$it.icon).Trim()) -replace ',\s*-?\d+\s*$',''
+      $raw=$raw.Trim().Trim('"').Trim()
       if($raw -and (Test-Path -LiteralPath $raw)){
         if($raw.ToLower().EndsWith('.ico')){ $ic=New-Object System.Drawing.Icon($raw) }
         else { $ic=[System.Drawing.Icon]::ExtractAssociatedIcon($raw) }
@@ -140,7 +139,7 @@ export function UninstallProvider({ children }: { children: ReactNode }) {
   };
 
   const removeApp = (a: UApp) =>
-    setApps((l) => l.filter((x) => !(x.name === a.name && x.type === a.type)));
+    setApps((l) => l.filter((x) => !(x.key === a.key && x.type === a.type)));
 
   // Precarga al arrancar la app (en segundo plano, con un pequeño retraso para no
   // competir con el render inicial / splash). Cuando el usuario abra Desinstalar,

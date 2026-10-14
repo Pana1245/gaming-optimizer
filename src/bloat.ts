@@ -139,7 +139,7 @@ export const BLOAT_APPS: BloatApp[] = [
   app("extra", false, "Microsoft.MicrosoftStickyNotes", "Notas rápidas", "Sticky Notes", "Notas Autoadesivas"),
   app("extra", false, "Microsoft.WindowsSoundRecorder", "Grabadora de sonido", "Sound Recorder", "Gravador de Som"),
   app("extra", false, "MicrosoftCorporationII.QuickAssist", "Asistencia rápida", "Quick Assist", "Assistência Rápida"),
-  app("extra", false, "Microsoft.Paint3D", "Paint 3D"),
+  app("extra", false, "Microsoft.MSPaint", "Paint 3D"), // Paint 3D se llama Microsoft.MSPaint (el Paint clásico de W11 es Microsoft.Paint)
   app("extra", false, "Microsoft.Whiteboard", "Microsoft Whiteboard"),
   app("extra", false, "Microsoft.RemoteDesktop", "Escritorio remoto (app)", "Remote Desktop (app)", "Área de Trabalho Remota (app)"),
   app("extra", false, "Microsoft.WindowsScan", "Escáner de Windows", "Windows Scan", "Scanner do Windows"),
