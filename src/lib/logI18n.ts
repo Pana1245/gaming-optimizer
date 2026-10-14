@@ -6,6 +6,14 @@
 // y se dejan tal cual. Si una línea no está acá, se muestra sin cambios.
 
 const EXACT: Record<string, string> = {
+  "No se pudieron restaurar los cambios temporales de Edge: Backup de Edge inválido.": "Couldn't restore temporary Edge changes: Invalid Edge backup.",
+  "No se pudo completar la desinstalación de Edge: Backup de Edge inválido.": "Couldn't complete Edge uninstallation: Invalid Edge backup.",
+  "No se pudieron restaurar los cambios temporales de Edge: El archivo temporal de Edge cambió; no se borró.": "Couldn't restore temporary Edge changes: The temporary Edge file changed; it was kept.",
+  "No se pudo completar la desinstalación de Edge: El archivo temporal de Edge cambió; no se borró.": "Couldn't complete Edge uninstallation: The temporary Edge file changed; it was kept.",
+  "No se pudieron restaurar los cambios temporales de Edge: Reintentá con la misma cuenta que inició la desinstalación.": "Couldn't restore temporary Edge changes: Try again using the account that started the uninstallation.",
+  "No se pudo completar la desinstalación de Edge: Reintentá con la misma cuenta que inició la desinstalación.": "Couldn't complete Edge uninstallation: Try again using the account that started the uninstallation.",
+  "No se pudo completar la desinstalación de Edge: Edge sigue instalado después de la verificación final.": "Couldn't complete Edge uninstallation: Edge is still installed after the final verification.",
+  "Ya hay una operación de Microsoft Edge en curso.": "A Microsoft Edge operation is already in progress.",
   "Listo.": "Ready.",
   "Aceleracion del mouse deshabilitada": "Mouse acceleration disabled",
   "Activacion por voz deshabilitada": "Voice activation disabled",
@@ -138,6 +146,14 @@ const EXACT: Record<string, string> = {
 };
 
 const EXACT_PT: Record<string, string> = {
+  "No se pudieron restaurar los cambios temporales de Edge: Backup de Edge inválido.": "Não foi possível restaurar as alterações temporárias do Edge: Backup do Edge inválido.",
+  "No se pudo completar la desinstalación de Edge: Backup de Edge inválido.": "Não foi possível concluir a desinstalação do Edge: Backup do Edge inválido.",
+  "No se pudieron restaurar los cambios temporales de Edge: El archivo temporal de Edge cambió; no se borró.": "Não foi possível restaurar as alterações temporárias do Edge: O arquivo temporário do Edge mudou; ele foi mantido.",
+  "No se pudo completar la desinstalación de Edge: El archivo temporal de Edge cambió; no se borró.": "Não foi possível concluir a desinstalação do Edge: O arquivo temporário do Edge mudou; ele foi mantido.",
+  "No se pudieron restaurar los cambios temporales de Edge: Reintentá con la misma cuenta que inició la desinstalación.": "Não foi possível restaurar as alterações temporárias do Edge: Tente novamente com a conta que iniciou a desinstalação.",
+  "No se pudo completar la desinstalación de Edge: Reintentá con la misma cuenta que inició la desinstalación.": "Não foi possível concluir a desinstalação do Edge: Tente novamente com a conta que iniciou a desinstalação.",
+  "No se pudo completar la desinstalación de Edge: Edge sigue instalado después de la verificación final.": "Não foi possível concluir a desinstalação do Edge: o Edge ainda está instalado após a verificação final.",
+  "Ya hay una operación de Microsoft Edge en curso.": "Já há uma operação do Microsoft Edge em andamento.",
   "Listo.": "Pronto.",
   "Aceleracion del mouse deshabilitada": "Aceleração do mouse desativada",
   "Activacion por voz deshabilitada": "Ativação por voz desativada",
@@ -270,6 +286,11 @@ const EXACT_PT: Record<string, string> = {
 };
 
 const RX: [RegExp, string, string][] = [
+  [/^No se pudo completar la desinstalación de Edge: No se encontró setup\.exe en (.+)\.$/, "Couldn't complete Edge uninstallation: setup.exe was not found in $1.", "Não foi possível concluir a desinstalação do Edge: setup.exe não foi encontrado em $1."],
+  [/^Desinstalador de Edge: código (-?\d+)$/, "Edge uninstaller: exit code $1", "Desinstalador do Edge: código de saída $1"],
+  [/^No se pudieron restaurar los cambios temporales de Edge: ([\s\S]*)$/, "Couldn't restore temporary Edge changes: $1", "Não foi possível restaurar as alterações temporárias do Edge: $1"],
+  [/^No se pudo completar la desinstalación de Edge: ([\s\S]*)$/, "Couldn't complete Edge uninstallation: $1", "Não foi possível concluir a desinstalação do Edge: $1"],
+  [/^No se pudo completar la reinstalación de Edge: ([\s\S]*)$/, "Couldn't complete Edge reinstallation: $1", "Não foi possível concluir a reinstalação do Edge: $1"],
   [/^(NVIDIA|AMD): valores del driver restaurados \((\d+)\)\. Reinicia para que tome efecto\.$/, "$1: driver values restored ($2). Restart to take effect.", "$1: valores do driver restaurados ($2). Reinicie para ter efeito."],
   [/^Backup del registro: (\d+) ramas exportadas$/, "Registry backup: $1 branches exported", "Backup do registro: $1 ramos exportados"],
   [/^Backup en: (.+)$/, "Backup at: $1", "Backup em: $1"],
