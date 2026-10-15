@@ -174,14 +174,18 @@ function Remove-GoApps($Include, $Keep) {
     try { Remove-AppxProvisionedPackage -Online -PackageName $pp.PackageName -AllUsers -ErrorAction Stop | Out-Null; $prov++ }
     catch { try { Remove-AppxProvisionedPackage -Online -PackageName $pp.PackageName -ErrorAction Stop | Out-Null; $prov++ } catch {} }
   }
-  # Verificación real: ¿sigue instalada para algún usuario?
-  $still = @(Get-AppxPackage -AllUsers -ErrorAction SilentlyContinue | Where-Object {
-    $removed.Contains($_.Name) -and (@($_.PackageUserInformation | Where-Object { "$($_.InstallState)" -eq 'Installed' }).Count -gt 0) } | ForEach-Object { $_.Name })
-  foreach ($n in $removed) { if ($still -contains $n) { $failed.Add($n) } else { Write-Output "  - $n" } }
-  $okN = @($removed | Where-Object { $still -notcontains $_ }).Count
-  foreach ($n in ($failed | Sort-Object -Unique)) { Write-Output "  ! No se pudo quitar: $n" }
-  $script:GoRemoved += $okN
-  $script:GoFailed += @($failed | Sort-Object -Unique).Count
+  # Verificación real: ¿sigue instalada para algún usuario? Windows termina de quitar
+  # algunas apps unos segundos después (ej. Sugerencias): se reintenta antes de darla por fallada.
+  $all = @(@($removed) + @($failed) | Sort-Object -Unique)
+  for ($try = 0; $try -lt 5; $try++) {
+    $still = @(Get-AppxPackage -AllUsers -ErrorAction SilentlyContinue | Where-Object {
+      $all -contains $_.Name -and (@($_.PackageUserInformation | Where-Object { "$($_.InstallState)" -eq 'Installed' }).Count -gt 0) } | ForEach-Object { $_.Name })
+    if (-not $still) { break }
+    Start-Sleep -Seconds 2
+  }
+  foreach ($n in $all) { if ($still -contains $n) { Write-Output "  ! No se pudo quitar: $n" } else { Write-Output "  - $n" } }
+  $script:GoRemoved += @($all | Where-Object { $still -notcontains $_ }).Count
+  $script:GoFailed += @($all | Where-Object { $still -contains $_ }).Count
 }
 # Evita que Windows vuelva a instalar solo las apps "sugeridas" (Candy Crush y compañía).
 function Block-Reinstall {
