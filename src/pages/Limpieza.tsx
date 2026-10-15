@@ -47,6 +47,15 @@ if($bin){ foreach($i in $bin.Items()){ try{ $s += $i.Size }catch{} } }`;
 const THUMB_SIZE = String.raw`$d="$env:LocalAppData\Microsoft\Windows\Explorer"
 $s=if(Test-Path $d){(Get-ChildItem $d -Filter thumbcache_* -Force -EA SilentlyContinue|Measure-Object Length -Sum).Sum}else{0}`;
 
+// El servicio de Optimización de entrega tiene su caché abierta: borrar los archivos no
+// libera nada (se medían 1,5 GB y se liberaban 0,1). Se vacía con su propio comando.
+const DELIV_CLEAN = String.raw`$ps=@(${P.deliv})
+function Sz(){ $s=0; foreach($d in $ps){ if($d -and (Test-Path -LiteralPath $d)){ $s += (Get-ChildItem -LiteralPath $d -Recurse -Force -EA SilentlyContinue | Measure-Object Length -Sum).Sum } }; $s }
+$before=Sz
+Delete-DeliveryOptimizationCache -Force -EA SilentlyContinue
+$after=Sz
+Write-Output ("FREED=" + [math]::Round(($before-$after)/1MB,1))`;
+
 const ITEMS: Item[] = [
   { id: "temp", name: "Archivos temporales (Windows + usuario)", scan: sizeOnly(P.temp), clean: sizeAndClear(P.temp) },
   { id: "prefetch", name: "Prefetch (Windows lo reconstruye; puede enlentecer los primeros arranques)", scan: sizeOnly(P.prefetch), clean: sizeAndClear(P.prefetch), off: true },
@@ -55,7 +64,7 @@ const ITEMS: Item[] = [
   { id: "thumbs", name: "Caché de miniaturas", scan: `${THUMB_SIZE}\nWrite-Output ("SIZE=" + [math]::Round($s/1MB,1))`,
     clean: `${THUMB_SIZE}\n$before=$s\nif(Test-Path -LiteralPath $d){ Get-ChildItem -LiteralPath $d -Filter thumbcache_* -Force -EA SilentlyContinue | Remove-Item -Force -EA SilentlyContinue }\n$after=if(Test-Path $d){(Get-ChildItem $d -Filter thumbcache_* -Force -EA SilentlyContinue|Measure-Object Length -Sum).Sum}else{0}\nWrite-Output ("FREED=" + [math]::Round(($before-$after)/1MB,1))` },
   { id: "wer", name: "Reportes de error (WER)", scan: sizeOnly(P.wer), clean: sizeAndClear(P.wer) },
-  { id: "deliv", name: "Delivery Optimization", scan: sizeOnly(P.deliv), clean: sizeAndClear(P.deliv) },
+  { id: "deliv", name: "Delivery Optimization", scan: sizeOnly(P.deliv), clean: DELIV_CLEAN },
   { id: "browsers", name: "Caché de navegadores (Chrome/Edge)", scan: sizeOnly(P.browsers), clean: sizeAndClear(P.browsers) },
   { id: "shader", name: "Shader cache (NVIDIA / DirectX)", scan: sizeOnly(P.shader), clean: sizeAndClear(P.shader) },
   { id: "launchers", name: "Caché de launchers (Steam, Epic, Discord)", scan: sizeOnly(P.launchers), clean: sizeAndClear(P.launchers) },

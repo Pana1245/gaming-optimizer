@@ -136,7 +136,7 @@ $folderTerms = @($leaf,$clean,$pub) | Where-Object { $_ -and $_.Length -gt 2 -an
 $appTerms = @($leaf,$clean) | Where-Object { $_ -and $_.Length -gt 2 -and ($bad -notcontains $_.ToLower()) } | Select-Object -Unique
 $found=@()
 if(SafeFolder $loc){ $found += [pscustomobject]@{type='folder'; label='folder'; path=$loc} }
-if($key){ $found += [pscustomobject]@{type='regkey'; label='uninstallKey'; path=('Registry::'+$key)} }
+if($key -and (Test-Path -LiteralPath ('Registry::'+$key))){ $found += [pscustomobject]@{type='regkey'; label='uninstallKey'; path=('Registry::'+$key)} }
 foreach($root in @($env:APPDATA,$env:LOCALAPPDATA,$env:ProgramData,$env:ProgramFiles,[Environment]::GetEnvironmentVariable('ProgramFiles(x86)'))){
   if(!$root){ continue }
   foreach($t in $folderTerms){
