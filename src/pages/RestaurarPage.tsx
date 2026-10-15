@@ -56,7 +56,9 @@ foreach($r in $regs){
         reg export $k $one /y > $null 2>&1
         if($LASTEXITCODE -ne 0){ continue }
         $s1=Get-RegSections @(Get-Content -LiteralPath $one -Encoding Unicode)
-        if($s1.Contains($k) -and ($s1[$k] -join "\n").Trim() -ceq $txt){ continue }
+        # Se comparan sólo los valores: reg export devuelve el nombre de la clave con la
+        # mayúscula/minúscula con que se la pidió, no la original.
+        if($s1.Contains($k) -and (($s1[$k] | Select-Object -Skip 1) -join "\n").Trim() -ceq (($old[$k] | Select-Object -Skip 1) -join "\n").Trim()){ continue }
         $bad+=$k
       }
     }
