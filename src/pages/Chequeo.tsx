@@ -65,7 +65,41 @@ public class GoDisp {
 }
 '@`;
 
-const SCAN = DISP_CS + "\n" + String.raw`$o = [ordered]@{}
+// Registro de salud NVMe (página 0x02, 512 bytes), leído del disco con
+// IOCTL_STORAGE_QUERY_PROPERTY como documenta Microsoft ("Working with NVMe drives").
+// Windows no informa por los contadores de confiabilidad ni la vida usada ni las horas
+// de muchos NVMe: sin esto la salud y las horas del disco del sistema quedaban en blanco.
+const NVME_CS = String.raw`Add-Type -TypeDefinition @'
+using System; using System.Runtime.InteropServices; using Microsoft.Win32.SafeHandles;
+public static class GoNvme {
+  [DllImport("kernel32.dll", SetLastError=true, CharSet=CharSet.Unicode)]
+  static extern SafeFileHandle CreateFile(string n, uint a, uint s, IntPtr sa, uint c, uint f, IntPtr t);
+  [DllImport("kernel32.dll", SetLastError=true)]
+  static extern bool DeviceIoControl(SafeFileHandle h, uint code, byte[] inb, int inl, byte[] outb, int outl, out int ret, IntPtr ov);
+  public static byte[] Health(int disk) {
+    using (SafeFileHandle h = CreateFile("\\\\.\\PhysicalDrive" + disk, 0xC0000000, 3, IntPtr.Zero, 3, 0, IntPtr.Zero)) {
+      if (h.IsInvalid) return null;
+      // STORAGE_PROPERTY_QUERY (8) + STORAGE_PROTOCOL_SPECIFIC_DATA (40) + datos (512)
+      byte[] b = new byte[8 + 40 + 512];
+      BitConverter.GetBytes(50).CopyTo(b, 0);   // StorageDeviceProtocolSpecificProperty
+      BitConverter.GetBytes(0).CopyTo(b, 4);    // PropertyStandardQuery
+      BitConverter.GetBytes(3).CopyTo(b, 8);    // ProtocolTypeNvme
+      BitConverter.GetBytes(2).CopyTo(b, 12);   // NVMeDataTypeLogPage
+      BitConverter.GetBytes(2).CopyTo(b, 16);   // NVME_LOG_PAGE_HEALTH_INFO
+      BitConverter.GetBytes(40).CopyTo(b, 24);  // ProtocolDataOffset
+      BitConverter.GetBytes(512).CopyTo(b, 28); // ProtocolDataLength
+      int ret;
+      if (!DeviceIoControl(h, 0x2D1400, b, b.Length, b, b.Length, out ret, IntPtr.Zero)) return null;
+      // Respuesta: STORAGE_PROTOCOL_DATA_DESCRIPTOR = Version, Size y los mismos 40 bytes.
+      int off = BitConverter.ToInt32(b, 24), len = BitConverter.ToInt32(b, 28);
+      if (len < 512 || 8 + off + 512 > b.Length) return null;
+      byte[] r = new byte[512]; Array.Copy(b, 8 + off, r, 0, 512); return r;
+    }
+  }
+}
+'@ -ErrorAction SilentlyContinue`;
+
+const SCAN = DISP_CS + "\n" + NVME_CS + "\n" + String.raw`$o = [ordered]@{}
 $o.displays = @(foreach ($l in [GoDisp]::List()) { $p = $l -split '\|'; [ordered]@{ dev=$p[0]; name=$p[1]; res=$p[2]; hz=[int]$p[3]; max=[int]$p[4] } })
 $mods = @(Get-CimInstance Win32_PhysicalMemory -EA SilentlyContinue)
 $o.ram = [ordered]@{
@@ -85,17 +119,18 @@ $o.ram = [ordered]@{
 $smart = @{}
 try {
   foreach ($s in @(Get-CimInstance -Namespace root\wmi -ClassName MSStorageDriver_FailurePredictStatus -EA Stop)) {
-    $smart[($s.InstanceName -replace '_\d+$', '').ToUpper()] = @{ predict = [bool]$s.PredictFailure; attrs = @{} }
+    $smart[($s.InstanceName -replace '_\d+$', '').ToUpper()] = @{ predict = [bool]$s.PredictFailure; attrs = @{}; cur = @{} }
   }
   foreach ($d in @(Get-CimInstance -Namespace root\wmi -ClassName MSStorageDriver_FailurePredictData -EA SilentlyContinue)) {
     $k = ($d.InstanceName -replace '_\d+$', '').ToUpper()
-    if (-not $smart.ContainsKey($k)) { $smart[$k] = @{ predict = $false; attrs = @{} } }
+    if (-not $smart.ContainsKey($k)) { $smart[$k] = @{ predict = $false; attrs = @{}; cur = @{} } }
     $v = $d.VendorSpecific
     # 2 bytes de versión y después entradas de 12 bytes: id, flags(2), actual, peor, crudo(6), reservado.
     for ($i = 2; $i + 12 -le $v.Length; $i += 12) {
       $id = [int]$v[$i]; if ($id -eq 0) { continue }
       $raw = [uint64]0; for ($b = 5; $b -ge 0; $b--) { $raw = ($raw -shl 8) + [uint64]$v[$i + 5 + $b] }
       $smart[$k].attrs["$id"] = $raw
+      $smart[$k].cur["$id"] = [int]$v[$i + 3]
     }
   }
 } catch {}
@@ -105,19 +140,46 @@ $o.disks = @(foreach ($pd in @(Get-PhysicalDisk -EA SilentlyContinue | Where-Obj
   $r = $pd | Get-StorageReliabilityCounter -EA SilentlyContinue
   $sm = $smart[$pnp["$($pd.DeviceId)"]]
   $a = if ($sm) { $sm.attrs } else { @{} }
+  $c = if ($sm) { $sm.cur } else { @{} }
   $num = { param($x) if ($x -ne $null) { [int64]$x } else { -1 } }
-  $hours = & $num $r.PowerOnHours; if ($hours -lt 0 -and $a.ContainsKey('9')) { $hours = [int64]($a['9'] -band 0xFFFFFFFF) }
-  $temp = & $num $r.Temperature; if ($temp -le 0 -and $a.ContainsKey('194')) { $temp = [int64]($a['194'] -band 0xFF) }
+  $raw32 = { param($id) if ($a.ContainsKey($id)) { [int64]($a[$id] -band 0xFFFFFFFF) } else { -1 } }
+  # NVMe: registro de salud del propio disco (vida usada, horas, encendidos, errores…).
+  $nv = $null
+  if ("$($pd.BusType)" -eq 'NVMe') { try { $nv = [GoNvme]::Health([int]$pd.DeviceId) } catch {} }
+  $u64 = { param($o) [int64][BitConverter]::ToUInt64($nv, $o) }
+  $hours = & $num $r.PowerOnHours
+  if ($nv) { $hours = & $u64 128 } elseif ($hours -lt 0 -and $a.ContainsKey('9')) { $hours = & $raw32 '9' }
+  $temp = & $num $r.Temperature
+  if ($nv -and [BitConverter]::ToUInt16($nv, 1) -gt 0) { $temp = [int64][BitConverter]::ToUInt16($nv, 1) - 273 }
+  elseif ($temp -le 0 -and $a.ContainsKey('194')) { $temp = [int64]($a['194'] -band 0xFF) }
+  # Vida útil restante de SSD, como CrystalDiskInfo: cada marca la informa en otro atributo
+  # (y el mismo número significa otra cosa en otra marca: el E9 de Kingston es lo escrito).
+  $model = "$($pd.FriendlyName)"; $life = -1
+  if ("$($pd.MediaType)" -ne 'HDD') {
+    if ($nv) { $life = [math]::Max(0, 100 - [int]$nv[5]) }
+    elseif ($c.ContainsKey('231')) { $life = $c['231'] }                                         # SSD Life Left (Kingston, Phison, SandForce…)
+    elseif ($model -match 'Samsung' -and $c.ContainsKey('177')) { $life = $c['177'] }             # Wear Leveling Count
+    elseif ($model -match 'Intel' -and $c.ContainsKey('233')) { $life = $c['233'] }               # Media Wearout Indicator
+    elseif ($model -match 'Crucial|Micron|^CT\d' -and $a.ContainsKey('202')) { $life = [math]::Max(0, 100 - (& $raw32 '202')) } # Percent Lifetime Used
+    elseif ($c.ContainsKey('169')) { $life = $c['169'] }                                         # Remaining Life
+    elseif ((& $num $r.Wear) -gt 0) { $life = 100 - [int]$r.Wear }
+  }
   [ordered]@{
-    id = "$($pd.DeviceId)"; name = "$($pd.FriendlyName)".Trim(); media = "$($pd.MediaType)"; bus = "$($pd.BusType)"
-    sizeGb = [math]::Round($pd.Size / 1GB); health = "$($pd.HealthStatus)"; system = ("$($pd.DeviceId)" -eq "$sysDisk")
-    wear = & $num $r.Wear; temp = $temp; hours = $hours
+    id = "$($pd.DeviceId)"; name = $model.Trim(); media = "$($pd.MediaType)"; bus = "$($pd.BusType)"
+    # GB como el fabricante y CrystalDiskInfo (1000 GB, no 932 GiB).
+    sizeGb = [math]::Round($pd.Size / 1e9); health = "$($pd.HealthStatus)"; system = ("$($pd.DeviceId)" -eq "$sysDisk")
+    life = $life; temp = $temp; hours = $hours
+    cycles = if ($nv) { & $u64 112 } else { & $raw32 '12' }
     readErr = & $num $r.ReadErrorsUncorrected; writeErr = & $num $r.WriteErrorsUncorrected
     predict = [bool]($sm -and $sm.predict)
-    realloc = if ($a.ContainsKey('5')) { [int64]($a['5'] -band 0xFFFFFFFF) } else { -1 }
-    pending = if ($a.ContainsKey('197')) { [int64]($a['197'] -band 0xFFFFFFFF) } else { -1 }
-    uncorrect = if ($a.ContainsKey('198')) { [int64]($a['198'] -band 0xFFFFFFFF) } else { -1 }
-    smart = [bool]$sm
+    realloc = & $raw32 '5'; pending = & $raw32 '197'; uncorrect = & $raw32 '198'
+    crc = & $raw32 '199'
+    nvCrit = if ($nv) { [int]$nv[0] } else { -1 }
+    nvMedia = if ($nv) { & $u64 160 } else { -1 }
+    nvUnsafe = if ($nv) { & $u64 144 } else { -1 }
+    # Unidades de 512.000 bytes; en GiB, el mismo número que muestra CrystalDiskInfo.
+    writtenGb = if ($nv) { [int64][math]::Round((& $u64 48) * 512000 / 1GB) } else { -1 }
+    smart = [bool]($sm -or $nv)
   }
 })
 $ld = Get-CimInstance Win32_LogicalDisk -Filter "DeviceID='$($env:SystemDrive)'" -EA SilentlyContinue
@@ -166,8 +228,9 @@ interface Scan {
 }
 interface Disk {
   id: string; name: string; media: string; bus: string; sizeGb: number; health: string; system: boolean;
-  wear: number; temp: number; hours: number; readErr: number; writeErr: number;
-  predict: boolean; realloc: number; pending: number; uncorrect: number; smart: boolean;
+  life: number; temp: number; hours: number; cycles: number; readErr: number; writeErr: number;
+  predict: boolean; realloc: number; pending: number; uncorrect: number; crc: number; smart: boolean;
+  nvCrit: number; nvMedia: number; nvUnsafe: number; writtenGb: number;   // -1 si no es NVMe
 }
 type Status = "bad" | "warn" | "info" | "ok";
 interface Item {
@@ -253,22 +316,29 @@ export default function Chequeo({ onNavigate }: { onNavigate: (page: string) => 
       const bad: string[] = [], warn: string[] = [];
       if (dk.health === "Unhealthy") bad.push(fill(t("hc.dk.r.health"), { v: dk.health }));
       else if (dk.health && dk.health !== "Healthy") warn.push(fill(t("hc.dk.r.health"), { v: dk.health }));
+      // Como CrystalDiskInfo: "Malo" sólo si el propio disco (o Windows) lo da por fallando;
+      // sectores dañados, pendientes o incorregibles son "Precaución".
       if (dk.predict) bad.push(t("hc.dk.r.predict"));
-      if (dk.pending > 0) bad.push(fill(t("hc.dk.r.pending"), { n: dk.pending }));
-      if (dk.uncorrect > 0) bad.push(fill(t("hc.dk.r.uncorrect"), { n: dk.uncorrect }));
-      if (dk.realloc >= 50) bad.push(fill(t("hc.dk.r.realloc"), { n: dk.realloc }));
-      else if (dk.realloc > 0) warn.push(fill(t("hc.dk.r.realloc"), { n: dk.realloc }));
+      // NVMe, aviso crítico del disco: bit 1 = temperatura (precaución); el resto (repuesto
+      // agotado, confiabilidad degradada, sólo lectura…) es falla.
+      if (dk.nvCrit > 0 && (dk.nvCrit & ~2)) bad.push(t("hc.dk.r.crit"));
+      else if (dk.nvCrit > 0) warn.push(t("hc.dk.r.crit"));
+      if (dk.pending > 0) warn.push(fill(t("hc.dk.r.pending"), { n: dk.pending }));
+      if (dk.uncorrect > 0) warn.push(fill(t("hc.dk.r.uncorrect"), { n: dk.uncorrect }));
+      if (dk.realloc > 0) warn.push(fill(t("hc.dk.r.realloc"), { n: dk.realloc }));
+      if (dk.nvMedia > 0) warn.push(fill(t("hc.dk.r.media"), { n: dk.nvMedia }));
       if (dk.readErr > 0) warn.push(fill(t("hc.dk.r.readErr"), { n: dk.readErr }));
-      if (!hdd && dk.wear >= 90) bad.push(fill(t("hc.dk.r.wear"), { n: dk.wear }));
-      else if (!hdd && dk.wear >= 70) warn.push(fill(t("hc.dk.r.wear"), { n: dk.wear }));
+      if (dk.life >= 0 && dk.life <= 10) bad.push(fill(t("hc.dk.r.life"), { n: dk.life }));
+      else if (dk.life >= 0 && dk.life <= 30) warn.push(fill(t("hc.dk.r.life"), { n: dk.life }));
       if (dk.temp >= (hdd ? 55 : 70)) warn.push(fill(t("hc.dk.r.hot"), { n: dk.temp }));
-      // Datos que sí hay (el desgaste sólo si es > 0: muchos SSD SATA informan 0 siempre).
       const facts = [kind, `${dk.sizeGb} GB`];
       if (dk.system) facts.push(t("hc.dk.sys"));
+      if (dk.life >= 0) facts.push(fill(t("hc.dk.lifeF"), { n: dk.life }));
       if (dk.hours >= 0) facts.push(fill(t("hc.dk.hours"), { n: nf.format(dk.hours) }));
+      if (dk.cycles >= 0) facts.push(fill(t("hc.dk.cycles"), { n: nf.format(dk.cycles) }));
       if (dk.temp > 0) facts.push(`${dk.temp} °C`);
-      if (!hdd && dk.wear > 0) facts.push(fill(t("hc.dk.wearF"), { n: dk.wear }));
-      if (dk.smart && dk.realloc === 0 && dk.pending <= 0 && dk.uncorrect <= 0) facts.push(t("hc.dk.smartOk"));
+      if (dk.writtenGb >= 0) facts.push(fill(t("hc.dk.written"), { n: nf.format(dk.writtenGb) }));
+      if (dk.smart && dk.realloc <= 0 && dk.pending <= 0 && dk.uncorrect <= 0 && dk.nvCrit <= 0 && dk.nvMedia <= 0) facts.push(t("hc.dk.smartOk"));
       const v = { name: dk.name || kind };
       const id = `disk-${dk.id}`;
       if (bad.length) items.push({ id, status: "bad", title: fill(t("hc.dk.bad.t"), v), detail: `${[...bad, ...warn].join(" · ")}. ${t("hc.dk.bad.d")}` });
@@ -276,6 +346,9 @@ export default function Chequeo({ onNavigate }: { onNavigate: (page: string) => 
       else if (hdd && dk.hours > 35000) items.push({ id, status: "info", title: fill(t("hc.dk.old.t"), v), detail: `${facts.join(" · ")}. ${t("hc.dk.old.d")}` });
       else items.push({ id, status: "ok", title: fill(t("hc.dk.ok.t"), v), detail: facts.join(" · ") });
       if (dk.system && hdd) items.push({ id: "disk-hdd", status: "warn", title: t("hc.disk.hdd.t"), detail: t("hc.disk.hdd.d") });
+      // Errores CRC (SMART 199): no es el disco sino la conexión (cable SATA o conector).
+      // Es un contador histórico: se informa, sin marcar el disco como dañado.
+      if (dk.crc > 0) items.push({ id: `${id}-crc`, status: "info", title: fill(t("hc.dk.crc.t"), v), detail: fill(t("hc.dk.crc.d"), { n: nf.format(dk.crc) }) });
     }
     const sy = scan.sys;
     if (sy.freeGb >= 0 && (sy.freeGb < 15 || sy.freeGb < sy.sizeGb * 0.1))
