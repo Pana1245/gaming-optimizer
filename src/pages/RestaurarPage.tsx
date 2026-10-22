@@ -5,6 +5,7 @@ import { IconReset, IconShieldCheck, IconLifeRing } from "../components/icons";
 import { Spinner, IndeterminateBar } from "../components/Feedback";
 import { useI18n } from "../lib/i18n";
 import { trLog } from "../lib/logI18n";
+import { SECURE_BACKUP_ROOT } from "../lib/backupAcl";
 
 const b64utf8 = (s: string) => btoa(String.fromCharCode(...new TextEncoder().encode(s || "")));
 
@@ -15,10 +16,13 @@ const b64utf8 = (s: string) => btoa(String.fromCharCode(...new TextEncoder().enc
 //  - en ramas de POLÍTICAS se borran también las subclaves nuevas (las crean los tweaks;
 //    en ramas del sistema, como las interfaces de red, Windows crea claves solo → no se tocan);
 //  - las ramas que no existían al hacer el backup (.absent) se borran.
-const restoreScript = (name: string) => String.raw`$root="$env:SystemDrive\OptimizacionBackup"
+const restoreScript = (name: string) => String.raw`${SECURE_BACKUP_ROOT}
+$root="$env:SystemDrive\OptimizacionBackup"
 $name=[Text.Encoding]::UTF8.GetString([Convert]::FromBase64String('${b64utf8(name)}'))
 $dir=Join-Path $root $name
 if(-not $name -or -not (Test-Path -LiteralPath $dir)){ Write-Output "No hay backups disponibles."; return }
+# Un enlace (junction) en lugar de la carpeta del backup apuntaría a archivos ajenos.
+if((Get-Item -LiteralPath $dir -Force).Attributes -band [IO.FileAttributes]::ReparsePoint){ Write-Output "No hay backups disponibles."; return }
 Write-Output "Restaurando backup: $name"
 $regs=@(Get-ChildItem -LiteralPath $dir -Filter *.reg)
 if(-not $regs){ Write-Output "El backup no tiene archivos .reg."; return }
