@@ -193,6 +193,9 @@ if(Test-Path -LiteralPath $stf){
     if($done){ Write-Output ("Sistema restaurado: " + (($done | Select-Object -Unique) -join ', ')) }
   }
 }
+# Core Parking viejo fijaba el rango permitido de CPMINCORES en 100..100 para todos los planes.
+$cpr='HKLM:\SYSTEM\CurrentControlSet\Control\Power\PowerSettings\54533251-82be-4824-96c1-47b60b740d00\0cc5b647-c1df-4637-891a-dec35c318583'
+if((Get-ItemProperty $cpr -Name ValueMin -EA SilentlyContinue).ValueMin -eq 100){ Set-ItemProperty $cpr -Name ValueMin -Value 0 -Type DWord -Force -EA SilentlyContinue; Write-Output "Rango de Core Parking restaurado (0-100%)" }
 # 6) Archivo hosts: se quitan los bloqueos de telemetría agregados después del backup.
 $hb=Join-Path $dir 'hosts.bak'; $hf="$env:windir\System32\drivers\etc\hosts"
 if(Test-Path -LiteralPath $hb){

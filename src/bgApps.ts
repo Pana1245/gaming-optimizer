@@ -3,7 +3,8 @@
 // (sin .exe), como lo usa Get-Process. Bajar la prioridad no cierra nada: la app sigue
 // andando, sólo cede la CPU al juego.
 //
-// RECOMENDADO = las 12 que se frenaban siempre (por defecto no cambia nada) + Vivaldi.
+// RECOMENDADO: navegadores, Slack, Epic y sincronización. Spotify (en Inactiva el audio
+// se corta) y steamwebhelper (dibuja el overlay de Steam dentro del juego) quedan opcionales.
 // No se recomiendan apps con llamadas (Teams, WhatsApp, Telegram: el audio se entrecorta)
 // ni launchers que algunos juegos necesitan activos (EA, Ubisoft, Battle.net: su overlay
 // puede trabarse). Discord NO está: frenarlo corta la voz.
@@ -19,13 +20,13 @@ export const BG_CATALOG: BgApp[] = [
   a("browsers", true, "opera", "Opera / Opera GX"),
   a("browsers", true, "brave", "Brave"),
   a("browsers", true, "vivaldi", "Vivaldi"),
-  a("apps", true, "spotify", "Spotify"),
+  a("apps", false, "spotify", "Spotify"),
   a("apps", true, "slack", "Slack"),
   a("apps", false, "whatsapp", "WhatsApp"),
   a("apps", false, "telegram", "Telegram"),
   a("apps", false, "ms-teams", "Microsoft Teams"),
   a("apps", false, "ccxprocess", "Adobe Creative Cloud"),
-  a("launchers", true, "steamwebhelper", "Steam (tienda y chat)", "Steam (store & chat)", "Steam (loja e chat)"),
+  a("launchers", false, "steamwebhelper", "Steam (tienda y chat)", "Steam (store & chat)", "Steam (loja e chat)"),
   a("launchers", true, "epicgameslauncher", "Epic Games Launcher"),
   a("launchers", false, "eadesktop", "EA app"),
   a("launchers", false, "upc", "Ubisoft Connect"),

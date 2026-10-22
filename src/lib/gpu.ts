@@ -1,5 +1,5 @@
 import type { RegOp } from "../engineTweaks";
-import { runPowershell } from "./api";
+import { nvQuery } from "./api";
 
 const GFX = String.raw`HKLM:\SYSTEM\CurrentControlSet\Control\GraphicsDrivers`;
 const DWM = String.raw`HKLM:\SOFTWARE\Microsoft\Windows\Dwm`;
@@ -27,16 +27,9 @@ export const isIntegrated = (gpu: string) =>
 // ---- NVIDIA: monitor en vivo (nvidia-smi) -----------------------------------
 export interface NvInfo { name: string; temp: number; util: number; clock: number; power: number; memUsed: number; memTotal: number; }
 
-const NV_INFO = String.raw`$smi=Get-Command nvidia-smi -EA SilentlyContinue
-if(-not $smi){ Write-Output 'NONV' } else {
-  $q=& nvidia-smi --query-gpu=name,temperature.gpu,utilization.gpu,clocks.gr,power.draw,memory.used,memory.total --format=csv,noheader,nounits 2>$null | Select-Object -First 1
-  if($q){ Write-Output $q } else { Write-Output 'NONV' }
-}`;
-
 export async function getNvInfo(): Promise<NvInfo | null> {
-  const r = await runPowershell(NV_INFO);
-  const line = r.output.trim();
-  if (!line || line === "NONV") return null;
+  const line = await nvQuery();
+  if (!line) return null;
   const p = line.split(",").map((s) => s.trim());
   if (p.length < 7) return null;
   const num = (s: string) => { const n = parseFloat(s); return Number.isFinite(n) ? n : 0; };

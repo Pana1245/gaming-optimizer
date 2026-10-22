@@ -52,7 +52,7 @@ export default function Graficos({ onNavigate }: { onNavigate?: (page: string) =
     return () => { mounted.current = false; };
   }, []);
 
-  // Monitor NVIDIA (abre nvidia-smi en cada lectura): sólo con la ventana a la vista.
+  // Monitor NVIDIA (nvidia-smi en cada lectura): sólo con la ventana a la vista.
   const visible = useAppVisible();
   useEffect(() => {
     if (!nvidia || !visible) return;

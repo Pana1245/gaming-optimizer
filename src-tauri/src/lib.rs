@@ -549,6 +549,25 @@ fn ledger_write(content: String) -> bool {
     std::fs::rename(&tmp, &f).is_ok()
 }
 
+// ---- Monitor NVIDIA: nvidia-smi directo (antes abría un PowerShell en cada lectura) ---
+/// Una línea CSV de nvidia-smi (name,temp,util,clock,power,memUsed,memTotal) o "" si no hay.
+#[tauri::command(async)]
+fn nv_query() -> String {
+    let mut cands = vec![sys_exe("nvidia-smi.exe", false)];
+    if let Ok(pf) = std::env::var("ProgramFiles") {
+        cands.push(std::path::Path::new(&pf).join(r"NVIDIA Corporation\NVSMI\nvidia-smi.exe"));
+    }
+    let Some(exe) = cands.into_iter().find(|p| p.exists()) else { return String::new() };
+    let mut c = Command::new(exe);
+    c.args(["--query-gpu=name,temperature.gpu,utilization.gpu,clocks.gr,power.draw,memory.used,memory.total", "--format=csv,noheader,nounits"]);
+    #[cfg(windows)]
+    c.creation_flags(CREATE_NO_WINDOW);
+    match c.output() {
+        Ok(o) if o.status.success() => String::from_utf8_lossy(&o.stdout).lines().next().unwrap_or("").trim().to_string(),
+        _ => String::new(),
+    }
+}
+
 // ---- RAM Booster: baja el uso real de RAM (working sets + cache + standby) ---
 /// Libera RAM como los "memory cleaners": vacia el working set de cada proceso,
 /// descarga la cache de archivos del sistema y purga la standby list. Requiere admin.
@@ -645,7 +664,7 @@ fn clear_standby_ram(lang: String) -> RunResult {
             " (standby: requiere admin)"
         };
         RunResult {
-            ok: true,
+            ok: purge_ok || freed_mb > 0,
             output: format!("{} {} MB · RAM {}% → {}%{}", freed_word, freed_mb, load_before, load_after, suffix),
         }
     }
@@ -862,7 +881,7 @@ pub fn run() {
         .invoke_handler(tauri::generate_handler![
             run_powershell, run_powershell_stream, stats, system_info,
             ledger_read, ledger_write, start_game_watch, stop_game_watch,
-            clear_standby_ram, reg_apply, reg_undo,
+            clear_standby_ram, nv_query, reg_apply, reg_undo,
             speedtest::speed_test, speedtest::speed_cancel,
             tray::tray_labels, tray::autostart_get, tray::autostart_set,
             drivers::drivers_fetch, drivers::open_url

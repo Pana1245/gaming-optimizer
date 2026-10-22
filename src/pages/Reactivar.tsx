@@ -160,7 +160,8 @@ Write-Output ("Permisos devueltos a como estaban: " + $n)`,
       en: "✓ Balanced power plan activated.",
       pt: "✓ Plano de energia Equilibrado ativado.",
     },
-    script: String.raw`powercfg /setactive SCHEME_BALANCED; Write-Output OK`,
+    script: String.raw`$cpr='HKLM:\SYSTEM\CurrentControlSet\Control\Power\PowerSettings\54533251-82be-4824-96c1-47b60b740d00\0cc5b647-c1df-4637-891a-dec35c318583'; if((Get-ItemProperty $cpr -Name ValueMin -EA SilentlyContinue).ValueMin -eq 100){ Set-ItemProperty $cpr -Name ValueMin -Value 0 -Type DWord -Force -EA SilentlyContinue }
+powercfg /setactive SCHEME_BALANCED; Write-Output OK`,
   },
   {
     id: "xbox",

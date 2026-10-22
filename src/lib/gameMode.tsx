@@ -1,7 +1,7 @@
 import { createContext, useContext, useEffect, useRef, useState, type ReactNode } from "react";
 import { listen, type UnlistenFn } from "@tauri-apps/api/event";
 import { exit } from "@tauri-apps/plugin-process";
-import { startGameWatch, stopGameWatch, runPowershell, clearStandbyRam } from "./api";
+import { startGameWatch, stopGameWatch, runPowershell } from "./api";
 import { ensureNotify, notify } from "./notify";
 import { useI18n } from "./i18n";
 import { BG_CATALOG, BG_RECOMMENDED } from "../bgApps";
@@ -211,12 +211,10 @@ export function GameModeProvider({ children }: { children: ReactNode }) {
           await runPowershell(prioScript(g));
           // Sin apps elegidas no se toca nada (BG_LOWER guardaría una lista vacía igual).
           const bg = bgRef.current.length ? await runPowershell(BG_LOWER(bgRef.current)) : { ok: true, output: "BG=0" };
-          // Marcar YA: prioScript y BG_LOWER ya modificaron procesos, así que
-          // game-off debe restaurar aunque lo que sigue (clearStandbyRam) falle.
           appliedProRef.current = true;
-          const ram = await clearStandbyRam(localStorage.getItem("lang") || "es");
+          // Sin purgar RAM acá: vaciaría el working set y la caché del juego que recién abrió (tirones al cargar).
           const bgN = bg.output.match(/BG=(\d+)/)?.[1] ?? "0";
-          addLog((tt) => tt("gml.pro").replace("{n}", bgN).replace("{ram}", tt(ram.ok ? "gml.ramFreed" : "gml.ramSame")));
+          addLog((tt) => tt("gml.pro").replace("{n}", bgN));
         }
       });
     }).then(keep);

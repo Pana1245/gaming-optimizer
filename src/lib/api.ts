@@ -37,6 +37,7 @@ export const startGameWatch = (games: string[]) => invoke("start_game_watch", { 
 export const stopGameWatch = () => invoke("stop_game_watch");
 
 export const clearStandbyRam = (lang: string) => invoke<RunResult>("clear_standby_ram", { lang });
+export const nvQuery = () => invoke<string>("nv_query");
 
 export interface StreamDone { ok: boolean; code: number; }
 
