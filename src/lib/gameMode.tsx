@@ -5,10 +5,11 @@ import { startGameWatch, stopGameWatch, runPowershell } from "./api";
 import { ensureNotify, notify } from "./notify";
 import { useI18n } from "./i18n";
 import { BG_CATALOG, BG_RECOMMENDED } from "../bgApps";
+import { MAX_PLAN } from "./powerDedupe";
 
-// Guarda el plan de energía y SystemResponsiveness previos para restaurarlos al salir.
 const GUID_RX = String.raw`([0-9a-fA-F]{8}-([0-9a-fA-F]{4}-){3}[0-9a-fA-F]{12})`;
 
+// Guarda el plan de energía y SystemResponsiveness previos para restaurarlos al salir.
 // GmActive=1 mientras el modo gamer está aplicado. Si la app se cerraba en pleno juego
 // ("Salir" en la bandeja, cuelgue, apagado), el próximo juego guardaba como "previo" el
 // plan de ALTO RENDIMIENTO y el plan original del usuario se perdía para siempre. Con la
@@ -23,14 +24,7 @@ if((Get-ItemProperty $p -Name GmActive -EA SilentlyContinue).GmActive -ne 1){
   Set-ItemProperty $p PrevResp $cr -Force
   Set-ItemProperty $p GmActive 1 -Type DWord -Force
 }
-# Por prioridad: primero Máximo rendimiento (Ultimate) en cualquier idioma, después Alto rendimiento.
-# Antes se tomaba la primera línea que coincidía: en Windows en español "Máximo rendimiento" no
-# coincidía con 'Ultimate' y siempre terminaba activando "Alto rendimiento".
-$list=powercfg -list; $hp=$null
-foreach($rx in 'Gaming Optimizer|Ultimate|M.ximo rendimiento|Desempenho M.ximo|Ultimative Leistung|Performances optimales','High performance|Alto rendimiento|Alto desempenho|H.chstleistung|Performances .lev.es'){
-  $hp=$list | Select-String $rx | Select-Object -First 1; if($hp){ break }
-}
-if($hp -and "$hp" -match '${GUID_RX}'){ powercfg /setactive $matches[1] } else { powercfg /setactive SCHEME_MAX }
+${MAX_PLAN}
 $pc=$LASTEXITCODE
 Set-ItemProperty $sysp SystemResponsiveness 0 -Type DWord -Force -EA SilentlyContinue
 # Si powercfg falló, se avisa (antes el registro decía "activado" igual).

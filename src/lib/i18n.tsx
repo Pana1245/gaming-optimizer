@@ -209,6 +209,7 @@ const STR: Record<string, { es: string; en: string }> = {
   "repair.net.title": { es: "Resetear la red", en: "Reset network" },
   "repair.net.desc": { es: "Winsock + IP + caché DNS. Soluciona problemas de conexión.", en: "Winsock + IP + DNS cache. Fixes connection issues." },
   "repair.net.btn": { es: "Resetear red", en: "Reset network" },
+  "repair.net.confirm": { es: "Se corta internet unos segundos y se borra la configuración manual de red (IP fija, DNS a mano, algunas VPN). Después hay que reiniciar la PC. ¿Seguir?", en: "Internet drops for a few seconds and manual network settings are cleared (static IP, manual DNS, some VPNs). You'll need to restart the PC afterwards. Continue?" },
   "repair.explorer.title": { es: "Reiniciar el Explorador", en: "Restart Explorer" },
   "repair.explorer.desc": { es: "Refresca la barra de tareas y el escritorio si quedaron colgados.", en: "Refreshes the taskbar and desktop if they froze." },
   "repair.explorer.btn": { es: "Reiniciar Explorer", en: "Restart Explorer" },

@@ -129,6 +129,7 @@ if(Test-Path -LiteralPath $stf){
   } }
   # La tarea de Timer Resolution la crea un tweak: si no existía, se quita (con su script).
   if(-not $st.timerTask -and (Get-ScheduledTask -TaskName 'GamingOptimizer_TimerRes' -EA SilentlyContinue)){
+    Stop-ScheduledTask -TaskName 'GamingOptimizer_TimerRes' -EA SilentlyContinue
     Unregister-ScheduledTask -TaskName 'GamingOptimizer_TimerRes' -Confirm:$false -EA SilentlyContinue
     Remove-Item -LiteralPath "$env:ProgramData\GamingOptimizer\SetTimerRes.ps1" -Force -EA SilentlyContinue
     Write-Output "Tarea de Timer Resolution quitada."

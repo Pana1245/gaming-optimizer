@@ -12,6 +12,8 @@ interface Fix {
   desc: { es: string; en: string; pt: string };
   btn: { es: string; en: string; pt: string };
   done: { es: string; en: string; pt: string };
+  // Si el script imprime ACTIVO: ya quedó funcionando (sin reiniciar).
+  doneNow?: { es: string; en: string; pt: string };
   script: string;
 }
 
@@ -96,6 +98,11 @@ Write-Output OK`,
       en: "✓ Antivirus re-enabled. Restart the PC so Windows Defender fully turns on.",
       pt: "✓ Antivírus reativado. Reinicie o PC para o Windows Defender ligar por completo.",
     },
+    doneNow: {
+      es: "✓ Antivirus activo: la protección en tiempo real está encendida.",
+      en: "✓ Antivirus active: real-time protection is on.",
+      pt: "✓ Antivírus ativo: a proteção em tempo real está ligada.",
+    },
     script: String.raw`# 1) Quitar SOLO los valores de politica que apagan Defender (no toda la rama,
 #    que puede tener politicas legitimas de empresa u otras configuraciones).
 $pol='HKLM:\SOFTWARE\Policies\Microsoft\Windows Defender'
@@ -111,7 +118,11 @@ Set-MpPreference -DisableRealtimeMonitoring $false -EA SilentlyContinue
 Set-MpPreference -DisableBehaviorMonitoring $false -EA SilentlyContinue
 # 4) Volver a habilitar las tareas programadas de Defender.
 foreach($t in '\Microsoft\Windows\Windows Defender\Windows Defender Cache Maintenance','\Microsoft\Windows\Windows Defender\Windows Defender Cleanup','\Microsoft\Windows\Windows Defender\Windows Defender Scheduled Scan','\Microsoft\Windows\Windows Defender\Windows Defender Verification'){ Enable-ScheduledTask -TaskPath (Split-Path $t) -TaskName (Split-Path $t -Leaf) -EA SilentlyContinue | Out-Null }
-Write-Output OK`,
+# 5) Comprobar de verdad cómo quedó.
+$st=Get-MpComputerStatus -EA SilentlyContinue
+if($st -and $st.AntivirusEnabled -and $st.RealTimeProtectionEnabled){ Write-Output ACTIVO }
+elseif($st -and "$($st.AMRunningMode)" -match 'Passive'){ Write-Output 'Hay otro antivirus instalado: Windows Defender queda en modo pasivo.'; exit 1 }
+else { Write-Output REINICIAR }`,
   },
   {
     id: "permisos",
@@ -238,7 +249,7 @@ export default function Reactivar() {
       setResult((r) => ({
         ...r,
         [f.id]: res.ok
-          ? f.done[lang]
+          ? (f.doneNow && /^ACTIVO$/m.test(res.output) ? f.doneNow : f.done)[lang]
           : `✗ ${t("react.fail")}: ${(res.output || "").slice(0, 120)}`,
       }));
     } catch (err) {

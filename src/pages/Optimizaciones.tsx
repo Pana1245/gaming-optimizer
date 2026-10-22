@@ -83,6 +83,7 @@ $keys = [ordered]@{
   'sm-power'          = 'HKLM\SYSTEM\CurrentControlSet\Control\Session Manager\Power'
   'directx-user'      = 'HKCU\Software\Microsoft\DirectX\UserGpuPreferences'
   'powerthrottling'   = 'HKLM\SYSTEM\CurrentControlSet\Control\Power\PowerThrottling'
+  'pushnotif'         = 'HKCU\Software\Microsoft\Windows\CurrentVersion\PushNotifications'
   # Claves que crean los tweaks: si no existen, queda la marca .absent y Restaurar las borra.
   'classic-menu'      = 'HKCU\Software\Classes\CLSID\{86ca1aa0-34aa-4e8b-a509-50c905bae2a2}'
   'taskbar-endtask'   = 'HKCU\Software\Microsoft\Windows\CurrentVersion\Explorer\Advanced\TaskbarDeveloperSettings'
@@ -94,7 +95,7 @@ foreach($g in @(Get-CimInstance Win32_VideoController -EA SilentlyContinue | Whe
 }
 # De estas sólo se guardan los valores de la clave: los tweaks no tocan sus subclaves y
 # algunas (drivers de video) ni un administrador las puede escribir al restaurar.
-$flat = @('graphicsdrivers','sessionmanager','crashcontrol','timezone','sm-power')
+$flat = @('graphicsdrivers','sessionmanager','crashcontrol','timezone','sm-power','pushnotif')
 $n = 0
 foreach($k in $keys.GetEnumerator()){
   $f = "$backDir\$($k.Name).reg"

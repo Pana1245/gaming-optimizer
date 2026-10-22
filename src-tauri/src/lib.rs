@@ -507,7 +507,14 @@ fn secure_data_dir(dir: &std::path::Path) {
     c.creation_flags(CREATE_NO_WINDOW);
     let _ = c.status();
     let mut c = Command::new(sys_exe("icacls.exe", false));
-    c.args([d.as_str(), "/inheritance:r", "/grant:r", "*S-1-5-18:(OI)(CI)F", "*S-1-5-32-544:(OI)(CI)F", "*S-1-5-32-545:(OI)(CI)RX", "/T", "/C", "/Q"]);
+    // Sólo la carpeta: con /T, a los archivos se les sacaba lo heredado y los permisos (OI)(CI)
+    // no se aplican a archivos → quedaban SIN permisos y el ledger no se podía leer ni reemplazar.
+    c.args([d.as_str(), "/inheritance:r", "/grant:r", "*S-1-5-18:(OI)(CI)F", "*S-1-5-32-544:(OI)(CI)F", "*S-1-5-32-545:(OI)(CI)RX", "/C", "/Q"]);
+    c.creation_flags(CREATE_NO_WINDOW);
+    let _ = c.status();
+    // El contenido hereda de la carpeta (también repara archivos que quedaron sin permisos).
+    let mut c = Command::new(sys_exe("icacls.exe", false));
+    c.args([dir.join("*").to_string_lossy().as_ref(), "/reset", "/T", "/C", "/Q"]);
     c.creation_flags(CREATE_NO_WINDOW);
     let _ = c.status();
 }

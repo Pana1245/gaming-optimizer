@@ -14,14 +14,57 @@ export const CATEGORIES: Category[] = [
     name: "Gaming Performance",
     color: "#FF6B35",
     tweaks: [
-      { name: "Plan de energía: Máximo rendimiento", script: "# Reutiliza el plan Ultimate Performance si ya existe (antes se creaba UNA COPIA NUEVA\n# cada vez que se aplicaba); si no existe lo crea una sola vez; si la edicion de Windows\n# no lo soporta, usa Alto rendimiento.\n# La copia se renombra con un nombre fijo: asi se reconoce en Windows de cualquier idioma\n# (antes, en aleman/portugues/etc. el nombre no coincidia y se duplicaba en cada uso).\n$ult = powercfg /list | Select-String 'Gaming Optimizer|Ultimate Performance|M.ximo rendimiento' | Select-Object -First 1\n$new = $false\nif (-not $ult) { $ult = powercfg -duplicatescheme e9a42b02-d5df-448d-aa00-03f14749eb61 2>$null; $new = $true }\nif (\"$ult\" -match '([0-9a-fA-F]{8}-([0-9a-fA-F]{4}-){3}[0-9a-fA-F]{12})') {\n  $g = $matches[1]\n  if ($new) { powercfg /changename $g 'Ultimate Performance (Gaming Optimizer)' 2>$null | Out-Null }\n  powercfg /setactive $g\n  if ($LASTEXITCODE -eq 0) { Write-Output 'Plan de energia: Maximo rendimiento (Ultimate Performance)'; exit 0 }\n}\npowercfg /setactive SCHEME_MAX\nif ($LASTEXITCODE -eq 0) { Write-Output 'Plan de energia: Alto rendimiento' } else { Write-Output 'No se pudo cambiar el plan de energia'; exit 1 }" },
+      { name: "Plan de energía: Máximo rendimiento", script: "# Reutiliza el plan Ultimate Performance si ya existe (antes se creaba UNA COPIA NUEVA\n# cada vez que se aplicaba); si no existe lo crea una sola vez; si la edicion de Windows\n# no lo soporta, usa Alto rendimiento.\n# La copia se renombra con un nombre fijo: asi se reconoce en Windows de cualquier idioma\n# (antes, en aleman/portugues/etc. el nombre no coincidia y se duplicaba en cada uso).\n$ult = powercfg /list | Select-String 'Gaming Optimizer|Ultimate Performance|M.ximo rendimiento' | Select-Object -First 1\n$new = $false\nif (-not $ult) { $ult = powercfg -duplicatescheme e9a42b02-d5df-448d-aa00-03f14749eb61 2>$null; $new = $true }\nif (\"$ult\" -match '([0-9a-fA-F]{8}-([0-9a-fA-F]{4}-){3}[0-9a-fA-F]{12})') {\n  $g = $matches[1]\n  if ($new) { powercfg /changename $g 'Ultimate Performance (Gaming Optimizer)' 2>$null | Out-Null }\n  powercfg /setactive $g\n  if ($LASTEXITCODE -eq 0) { Write-Output 'Plan de energia: Maximo rendimiento (Ultimate Performance)'; exit 0 }\n}\n# Alto rendimiento por GUID (el alias SCHEME_MAX es Ahorro de energia).\npowercfg /setactive 8c5e7fda-e8bf-4a96-9a85-a6e23a8c635c\nif ($LASTEXITCODE -eq 0) { Write-Output 'Plan de energia: Alto rendimiento' } else { Write-Output 'No se pudo cambiar el plan de energia'; exit 1 }" },
       { name: "Habilitar Game Mode de Windows", script: "$path = 'HKCU:\\Software\\Microsoft\\GameBar'\nif (!(Test-Path $path)) { New-Item -Path $path -Force | Out-Null }\nSet-ItemProperty -Path $path -Name 'AutoGameModeEnabled' -Value 1 -Type DWord -Force\nWrite-Output \"Game Mode habilitado\"" },
       { name: "Deshabilitar Xbox Game Bar y DVR", script: "$p1 = 'HKCU:\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\GameDVR'\n$p2 = 'HKCU:\\System\\GameConfigStore'\nforeach ($p in @($p1,$p2)) { if (!(Test-Path $p)) { New-Item -Path $p -Force | Out-Null } }\nSet-ItemProperty -Path $p1 -Name 'AppCaptureEnabled' -Value 0 -Type DWord -Force\nSet-ItemProperty -Path $p2 -Name 'GameDVR_Enabled'   -Value 0 -Type DWord -Force\nGet-AppxPackage 'Microsoft.XboxGamingOverlay' -AllUsers -ErrorAction SilentlyContinue | ForEach-Object { $pkg = $_; try { Remove-AppxPackage -Package $pkg.PackageFullName -AllUsers -ErrorAction Stop } catch { Remove-AppxPackage -Package $pkg.PackageFullName -ErrorAction SilentlyContinue } }\nGet-AppxProvisionedPackage -Online -ErrorAction SilentlyContinue | Where-Object DisplayName -eq 'Microsoft.XboxGamingOverlay' | ForEach-Object { Remove-AppxProvisionedPackage -Online -PackageName $_.PackageName -ErrorAction SilentlyContinue | Out-Null }\nWrite-Output \"Xbox Game Bar deshabilitado\"" },
       { name: "Hardware Accelerated GPU Scheduling (HAGS)", script: "Set-ItemProperty -Path 'HKLM:\\SYSTEM\\CurrentControlSet\\Control\\GraphicsDrivers' -Name 'HwSchMode' -Value 2 -Type DWord -Force\nWrite-Output \"HAGS habilitado\"" },
       { name: "Prioridad CPU máxima para juegos", script: "$path = 'HKLM:\\SOFTWARE\\Microsoft\\Windows NT\\CurrentVersion\\Multimedia\\SystemProfile\\Tasks\\Games'\nif (!(Test-Path $path)) { New-Item -Path $path -Force | Out-Null }\nSet-ItemProperty -Path $path -Name 'Priority'            -Value 6      -Type DWord  -Force\nSet-ItemProperty -Path $path -Name 'Scheduling Category' -Value 'High' -Type String -Force\nSet-ItemProperty -Path $path -Name 'SFIO Priority'       -Value 'High' -Type String -Force\nSet-ItemProperty -Path $path -Name 'GPU Priority'        -Value 8      -Type DWord  -Force\n$sys = 'HKLM:\\SOFTWARE\\Microsoft\\Windows NT\\CurrentVersion\\Multimedia\\SystemProfile'\nSet-ItemProperty -Path $sys -Name 'SystemResponsiveness' -Value 0 -Type DWord -Force\nWrite-Output \"Prioridad CPU configurada\"" },
       { name: "Deshabilitar Full-Screen Optimization (FSO)", script: "$path = 'HKCU:\\System\\GameConfigStore'\nif (!(Test-Path $path)) { New-Item -Path $path -Force | Out-Null }\nSet-ItemProperty -Path $path -Name 'GameDVR_DXGIHonorFSEWindowsCompatible' -Value 1 -Type DWord -Force\nSet-ItemProperty -Path $path -Name 'GameDVR_FSEBehavior'                    -Value 2 -Type DWord -Force\nWrite-Output \"FSO deshabilitado\"" },
       { name: "Deshabilitar aceleración del mouse", script: "Set-ItemProperty -Path 'HKCU:\\Control Panel\\Mouse' -Name 'MouseSpeed'      -Value '0' -Type String -Force\nSet-ItemProperty -Path 'HKCU:\\Control Panel\\Mouse' -Name 'MouseThreshold1' -Value '0' -Type String -Force\nSet-ItemProperty -Path 'HKCU:\\Control Panel\\Mouse' -Name 'MouseThreshold2' -Value '0' -Type String -Force\nWrite-Output \"Aceleracion del mouse deshabilitada\"" },
-      { name: "Timer Resolution — 1ms (reduce micro-stutters)", script: "# Activar solicitudes globales de alta resolucion de temporizador (Windows 10/11)\n$path = 'HKLM:\\SYSTEM\\CurrentControlSet\\Control\\Session Manager\\kernel'\nif (!(Test-Path $path)) { New-Item -Path $path -Force | Out-Null }\nSet-ItemProperty -Path $path -Name 'GlobalTimerResolutionRequests' -Value 1 -Type DWord -Force\n\n# Crear tarea de inicio que fuerza 1ms via NtSetTimerResolution\n$taskScript = @'\nAdd-Type -TypeDefinition @\"\nusing System; using System.Runtime.InteropServices;\npublic class NtTimer {\n    [DllImport(\"ntdll.dll\")] public static extern int NtSetTimerResolution(uint r, bool set, ref uint cur);\n}\n\"@\n$cur = 0u\n[NtTimer]::NtSetTimerResolution(10000, $true, [ref]$cur)\n'@\n$scriptPath = \"$env:ProgramData\\GamingOptimizer\\SetTimerRes.ps1\"\nNew-Item -ItemType Directory -Path \"$env:ProgramData\\GamingOptimizer\" -Force | Out-Null\n# Permisos seguros: este script corre con privilegios máximos al iniciar sesión; un usuario\n# estándar no debe poder reemplazarlo (dueño Administradores, Usuarios solo lectura).\nicacls \"$env:ProgramData\\GamingOptimizer\" /setowner *S-1-5-32-544 /T /C /Q 2>$null | Out-Null\nicacls \"$env:ProgramData\\GamingOptimizer\" /inheritance:r /grant:r '*S-1-5-18:(OI)(CI)F' '*S-1-5-32-544:(OI)(CI)F' '*S-1-5-32-545:(OI)(CI)RX' /T /C /Q 2>$null | Out-Null\n$taskScript | Out-File $scriptPath -Encoding utf8 -Force\n\n$action  = New-ScheduledTaskAction -Execute 'powershell.exe' -Argument \"-WindowStyle Hidden -NoProfile -ExecutionPolicy Bypass -File `\"$scriptPath`\"\"\n$trigger = New-ScheduledTaskTrigger -AtLogOn\n$settings = New-ScheduledTaskSettingsSet -Hidden\nRegister-ScheduledTask -TaskName 'GamingOptimizer_TimerRes' -Action $action -Trigger $trigger -Settings $settings -RunLevel Highest -Force -ErrorAction SilentlyContinue | Out-Null\n\n# Aplicar ahora mismo en esta sesion\ntry {\nAdd-Type -TypeDefinition @\"\nusing System; using System.Runtime.InteropServices;\npublic class NtTimer2 { [DllImport(\"ntdll.dll\")] public static extern int NtSetTimerResolution(uint r, bool set, ref uint cur); }\n\"@\n$cur2 = 0u\n[NtTimer2]::NtSetTimerResolution(10000, $true, [ref]$cur2)\nWrite-Output \"Timer Resolution: $([math]::Round($cur2/10000.0,2))ms (objetivo: 1ms)\"\n} catch { Write-Output \"Timer Resolution configurado (activo al reiniciar)\" }" },
+      { name: "Timer Resolution — 1ms (reduce micro-stutters)", script: String.raw`# Pedidos de resolución de timer globales (Windows 11; en 10 ya son globales).
+$path = 'HKLM:\SYSTEM\CurrentControlSet\Control\Session Manager\kernel'
+if (!(Test-Path $path)) { New-Item -Path $path -Force | Out-Null }
+Set-ItemProperty -Path $path -Name 'GlobalTimerResolutionRequests' -Value 1 -Type DWord -Force
+
+# La resolución vale mientras viva el proceso que la pidió: la tarea queda corriendo oculta.
+$taskScript = @'
+Add-Type -TypeDefinition @"
+using System; using System.Runtime.InteropServices;
+public class NtTimer {
+    [DllImport("ntdll.dll")] public static extern int NtSetTimerResolution(uint r, bool set, ref uint cur);
+}
+"@
+$cur = [uint32]0
+[void][NtTimer]::NtSetTimerResolution(10000, $true, [ref]$cur)
+while ($true) { Start-Sleep -Seconds 3600 }
+'@
+$dir = "$env:ProgramData\GamingOptimizer"; $scriptPath = "$dir\SetTimerRes.ps1"
+New-Item -ItemType Directory -Path $dir -Force | Out-Null
+# Permisos seguros: este script corre con privilegios máximos al iniciar sesión; un usuario
+# estándar no debe poder reemplazarlo (dueño Administradores, Usuarios solo lectura).
+icacls $dir /setowner *S-1-5-32-544 /T /C /Q 2>$null | Out-Null
+icacls $dir /inheritance:r /grant:r '*S-1-5-18:(OI)(CI)F' '*S-1-5-32-544:(OI)(CI)F' '*S-1-5-32-545:(OI)(CI)RX' /C /Q 2>$null | Out-Null
+# Sin /T arriba: a los archivos les sacaba lo heredado y quedaban sin permisos. El contenido hereda de la carpeta.
+icacls "$dir\*" /reset /T /C /Q 2>$null | Out-Null
+# Si ya corre (se aplica de nuevo), su proceso tiene el script abierto: frenarla antes de reescribirlo.
+Stop-ScheduledTask -TaskName 'GamingOptimizer_TimerRes' -ErrorAction SilentlyContinue
+$taskScript | Out-File $scriptPath -Encoding utf8 -Force
+
+$action = New-ScheduledTaskAction -Execute "$env:windir\System32\WindowsPowerShell\v1.0\powershell.exe" -Argument ('-WindowStyle Hidden -NoProfile -ExecutionPolicy Bypass -File "' + $scriptPath + '"')
+$trigger = New-ScheduledTaskTrigger -AtLogOn
+# Sin límite de tiempo (por defecto la corta a las 72 h) y también con batería.
+$settings = New-ScheduledTaskSettingsSet -Hidden -ExecutionTimeLimit ([TimeSpan]::Zero) -AllowStartIfOnBatteries -DontStopIfGoingOnBatteries
+Register-ScheduledTask -TaskName 'GamingOptimizer_TimerRes' -Action $action -Trigger $trigger -Settings $settings -RunLevel Highest -Force -ErrorAction SilentlyContinue | Out-Null
+Start-ScheduledTask -TaskName 'GamingOptimizer_TimerRes' -ErrorAction SilentlyContinue
+Start-Sleep -Seconds 3
+Add-Type -TypeDefinition @"
+using System; using System.Runtime.InteropServices;
+public class NtTimerQ { [DllImport("ntdll.dll")] public static extern int NtQueryTimerResolution(out uint min, out uint max, out uint cur); }
+"@
+$mn = [uint32]0; $mx = [uint32]0; $cu = [uint32]0
+[void][NtTimerQ]::NtQueryTimerResolution([ref]$mn, [ref]$mx, [ref]$cu)
+if ($cu -le 10500) { Write-Output "Timer Resolution: $([math]::Round($cu/10000.0,2))ms (activa en segundo plano)" }
+else { Write-Output "Timer Resolution configurada (se activa al iniciar sesión)" }` },
       { name: "Core Parking OFF — todos los núcleos activos", script: "$as = powercfg /getactivescheme\n$scheme = if ($as -match '([0-9a-fA-F]{8}-([0-9a-fA-F]{4}-){3}[0-9a-fA-F]{12})') { $matches[1] } else { 'SCHEME_CURRENT' }\n# Minimo y maximo de nucleos activos al 100%\npowercfg /setacvalueindex $scheme SUB_PROCESSOR CPMINCORES 100 2>$null\npowercfg /setdcvalueindex $scheme SUB_PROCESSOR CPMINCORES 100 2>$null\npowercfg /setacvalueindex $scheme SUB_PROCESSOR CPMAXCORES 100 2>$null\npowercfg /setdcvalueindex $scheme SUB_PROCESSOR CPMAXCORES 100 2>$null\n# Frecuencia minima del procesador al 100% (sin throttling)\npowercfg /setacvalueindex $scheme SUB_PROCESSOR PROCTHROTTLEMIN 100 2>$null\npowercfg /setacvalueindex $scheme SUB_PROCESSOR PROCTHROTTLEMAX 100 2>$null\npowercfg /setactive $scheme 2>$null\nWrite-Output \"Core Parking deshabilitado — todos los nucleos activos\"" },
       { name: "Desactivar HPET (timer de alta precisión)", optIn: true, risk: "advanced", script: "# HPET puede agregar latencia de entrada en algunos equipos; desactivarlo es un tweak gamer clasico.\nbcdedit /deletevalue useplatformclock 2>$null | Out-Null\nbcdedit /set disabledynamictick yes 2>$null | Out-Null\n# Por ID de hardware (ACPI\\PNP0103): el nombre del dispositivo cambia según el idioma de Windows.\n$h = Get-PnpDevice -ErrorAction SilentlyContinue | Where-Object { $_.InstanceId -like 'ACPI\\PNP0103*' }\nif ($h) { $h | Disable-PnpDevice -Confirm:$false -ErrorAction SilentlyContinue }\nWrite-Output \"HPET desactivado (reinicia para aplicar)\"" },
     ],
@@ -55,8 +98,8 @@ export const CATEGORIES: Category[] = [
     name: "Privacidad y Telemetría",
     color: "#9C27B0",
     tweaks: [
-      { name: "Deshabilitar telemetría de Windows", script: "$paths = @('HKLM:\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Policies\\DataCollection',\n           'HKLM:\\SOFTWARE\\Policies\\Microsoft\\Windows\\DataCollection',\n           'HKLM:\\SOFTWARE\\Wow6432Node\\Microsoft\\Windows\\CurrentVersion\\Policies\\DataCollection')\nforeach ($p in $paths) {\n    if (!(Test-Path $p)) { New-Item -Path $p -Force | Out-Null }\n    Set-ItemProperty -Path $p -Name 'AllowTelemetry' -Value 0 -Type DWord -Force\n}\nStop-Service 'DiagTrack' -ErrorAction SilentlyContinue; Set-Service 'DiagTrack' -StartupType Disabled -ErrorAction SilentlyContinue\nStop-Service 'dmwappushservice' -ErrorAction SilentlyContinue; Set-Service 'dmwappushservice' -StartupType Disabled -ErrorAction SilentlyContinue\nWrite-Output \"Telemetria deshabilitada\"" },
-      { name: "Deshabilitar tareas programadas de telemetría", script: "$tasks = @(\n    '\\Microsoft\\Windows\\Application Experience\\Microsoft Compatibility Appraiser',\n    '\\Microsoft\\Windows\\Application Experience\\ProgramDataUpdater',\n    '\\Microsoft\\Windows\\Autochk\\Proxy',\n    '\\Microsoft\\Windows\\Customer Experience Improvement Program\\Consolidator',\n    '\\Microsoft\\Windows\\Customer Experience Improvement Program\\UsbCeip',\n    '\\Microsoft\\Windows\\DiskDiagnostic\\Microsoft-Windows-DiskDiagnosticDataCollector',\n    '\\Microsoft\\Windows\\Feedback\\Siuf\\DmClient',\n    '\\Microsoft\\Windows\\Windows Error Reporting\\QueueReporting',\n    '\\Microsoft\\Windows\\Xbox\\XblGameSaveTask'\n)\nforeach ($t in $tasks) { Disable-ScheduledTask -TaskPath ((Split-Path $t) + '\\') -TaskName (Split-Path $t -Leaf) -ErrorAction SilentlyContinue | Out-Null }\nWrite-Output \"Tareas de telemetria deshabilitadas\"" },
+      { name: "Deshabilitar telemetría de Windows", script: "$paths = @('HKLM:\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Policies\\DataCollection',\n           'HKLM:\\SOFTWARE\\Policies\\Microsoft\\Windows\\DataCollection',\n           'HKLM:\\SOFTWARE\\Wow6432Node\\Microsoft\\Windows\\CurrentVersion\\Policies\\DataCollection')\nforeach ($p in $paths) {\n    if (!(Test-Path $p)) { New-Item -Path $p -Force | Out-Null }\n    Set-ItemProperty -Path $p -Name 'AllowTelemetry' -Value 0 -Type DWord -Force\n}\nStop-Service 'DiagTrack' -ErrorAction SilentlyContinue; Set-Service 'DiagTrack' -StartupType Disabled -ErrorAction SilentlyContinue\nStop-Service 'dmwappushservice' -ErrorAction SilentlyContinue; Set-Service 'dmwappushservice' -StartupType Disabled -ErrorAction SilentlyContinue\n# Sólo Enterprise/Education/Server respetan el nivel 0; Home y Pro lo tratan como 1 (obligatorio).\nif ((Get-CimInstance Win32_OperatingSystem).Caption -match 'Enterprise|Education|Server') { Write-Output \"Telemetria deshabilitada\" }\nelse { Write-Output \"Telemetria reducida al minimo (Home/Pro no permite apagarla del todo)\" }" },
+      { name: "Deshabilitar tareas programadas de telemetría", script: "$tasks = @(\n    '\\Microsoft\\Windows\\Application Experience\\Microsoft Compatibility Appraiser',\n    '\\Microsoft\\Windows\\Application Experience\\ProgramDataUpdater',\n    '\\Microsoft\\Windows\\Autochk\\Proxy',\n    '\\Microsoft\\Windows\\Customer Experience Improvement Program\\Consolidator',\n    '\\Microsoft\\Windows\\Customer Experience Improvement Program\\UsbCeip',\n    '\\Microsoft\\Windows\\DiskDiagnostic\\Microsoft-Windows-DiskDiagnosticDataCollector',\n    '\\Microsoft\\Windows\\Feedback\\Siuf\\DmClient',\n    '\\Microsoft\\Windows\\Windows Error Reporting\\QueueReporting'\n)\nforeach ($t in $tasks) { Disable-ScheduledTask -TaskPath ((Split-Path $t) + '\\') -TaskName (Split-Path $t -Leaf) -ErrorAction SilentlyContinue | Out-Null }\nWrite-Output \"Tareas de telemetria deshabilitadas\"" },
       { name: "Deshabilitar ID publicitario y Cortana", script: "$adPath = 'HKCU:\\Software\\Microsoft\\Windows\\CurrentVersion\\AdvertisingInfo'\nif (!(Test-Path $adPath)) { New-Item -Path $adPath -Force | Out-Null }\nSet-ItemProperty -Path $adPath -Name 'Enabled' -Value 0 -Type DWord -Force\n$cortanaPath = 'HKLM:\\SOFTWARE\\Policies\\Microsoft\\Windows\\Windows Search'\nif (!(Test-Path $cortanaPath)) { New-Item -Path $cortanaPath -Force | Out-Null }\nSet-ItemProperty -Path $cortanaPath -Name 'AllowCortana'         -Value 0 -Type DWord -Force\nSet-ItemProperty -Path $cortanaPath -Name 'DisableWebSearch'     -Value 1 -Type DWord -Force\nSet-ItemProperty -Path $cortanaPath -Name 'ConnectedSearchUseWeb'-Value 0 -Type DWord -Force\nWrite-Output \"ID publicitario y Cortana deshabilitados\"" },
       { name: "Deshabilitar Activity History y Timeline", script: "$path = 'HKLM:\\SOFTWARE\\Policies\\Microsoft\\Windows\\System'\nif (!(Test-Path $path)) { New-Item -Path $path -Force | Out-Null }\nSet-ItemProperty -Path $path -Name 'EnableActivityFeed'    -Value 0 -Type DWord -Force\nSet-ItemProperty -Path $path -Name 'PublishUserActivities' -Value 0 -Type DWord -Force\nSet-ItemProperty -Path $path -Name 'UploadUserActivities'  -Value 0 -Type DWord -Force\nWrite-Output \"Activity History deshabilitado\"" },
     ],
@@ -78,36 +121,36 @@ export const CATEGORIES: Category[] = [
     tweaks: [
       { name: "Activar Modo Oscuro (apps y sistema)", script: "$path = 'HKCU:\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Themes\\Personalize'\nif (!(Test-Path $path)) { New-Item -Path $path -Force | Out-Null }\nSet-ItemProperty -Path $path -Name 'AppsUseLightTheme'    -Value 0 -Type DWord -Force\nSet-ItemProperty -Path $path -Name 'SystemUsesLightTheme' -Value 0 -Type DWord -Force\nWrite-Output \"Modo oscuro activado\"" },
       { name: "Simplificar barra de tareas (conservar buscador)", script: "$adv = 'HKCU:\\Software\\Microsoft\\Windows\\CurrentVersion\\Explorer\\Advanced'\n# Ocultar boton Task View\nSet-ItemProperty -Path $adv -Name 'ShowTaskViewButton' -Value 0 -Type DWord -Force -ErrorAction SilentlyContinue\n# Ocultar boton Cortana\nSet-ItemProperty -Path $adv -Name 'ShowCortanaButton'  -Value 0 -Type DWord -Force -ErrorAction SilentlyContinue\n# Ocultar icono People (contactos)\nSet-ItemProperty -Path $adv -Name 'PeopleBand'          -Value 0 -Type DWord -Force -ErrorAction SilentlyContinue\n# Ocultar Noticias y tiempo (widgets Windows 10)\nSet-ItemProperty -Path $adv -Name 'TaskbarDa'           -Value 0 -Type DWord -Force -ErrorAction SilentlyContinue\n# Ocultar Meet Now (camara rapida)\n$pol = 'HKCU:\\Software\\Microsoft\\Windows\\CurrentVersion\\Policies\\Explorer'\nif (!(Test-Path $pol)) { New-Item -Path $pol -Force | Out-Null }\nSet-ItemProperty -Path $pol -Name 'HideSCAMeetNow'      -Value 1 -Type DWord -Force\n# Mantener buscador visible (modo barra completa = 2, solo icono = 1)\nSet-ItemProperty -Path $adv -Name 'SearchboxTaskbarMode' -Value 1 -Type DWord -Force -ErrorAction SilentlyContinue\nWrite-Output \"Barra de tareas simplificada (buscador conservado)\"" },
-      { name: "Desanclar todas las apps del menu Inicio", script: String.raw`${EXPLORER_FNS}
+      { name: "Desanclar todas las apps del menu Inicio", os: 10, optIn: true, script: String.raw`${EXPLORER_FNS}
 $blankLayout = @'
-<LayoutModificationTemplate
-    xmlns="http://schemas.microsoft.com/Start/2014/LayoutModification"
-    xmlns:defaultlayout="http://schemas.microsoft.com/Start/2014/FullDefaultLayout"
-    xmlns:start="http://schemas.microsoft.com/Start/2014/StartLayout"
-    Version="1">
-  <LayoutOptions StartTileGroupsColumnCount="4" />
+<LayoutModificationTemplate xmlns:defaultlayout="http://schemas.microsoft.com/Start/2014/FullDefaultLayout" xmlns:start="http://schemas.microsoft.com/Start/2014/StartLayout" Version="1" xmlns="http://schemas.microsoft.com/Start/2014/LayoutModification">
+  <LayoutOptions StartTileGroupCellWidth="6" />
   <DefaultLayoutOverride>
     <StartLayoutCollection>
-      <defaultlayout:StartLayout GroupCellWidth="4" />
+      <defaultlayout:StartLayout GroupCellWidth="6" />
     </StartLayoutCollection>
   </DefaultLayoutOverride>
 </LayoutModificationTemplate>
 '@
-$layoutFile = "$env:TEMP\BlankStart.xml"
+$layoutFile = "$env:TEMP\GoBlankStart.xml"
 $blankLayout | Out-File $layoutFile -Encoding utf8 -Force
-try {
-    Import-StartLayout -LayoutPath $layoutFile -MountPath "$env:SystemDrive\" -ErrorAction Stop
-    Write-Output "Apps del Inicio desancladas (reinicia para ver los cambios)"
-} catch {
-    # Metodo alternativo: borrar base de datos de tiles
-    $db = "$env:LOCALAPPDATA\TileDataLayer\Database"
-    if (Test-Path $db) {
-        Stop-GoExplorer
-        Remove-Item $db -Recurse -Force -ErrorAction SilentlyContinue
-        Start-GoExplorer
-    }
-    Write-Output "Apps del Inicio desancladas (metodo alternativo)"
-}` },
+# Import-StartLayout sólo cambia el perfil por defecto (usuarios nuevos). Para la cuenta actual:
+# diseño vacío bloqueado por política -> Explorer lo aplica -> se suelta la política y quedan
+# los mosaicos vacíos pero editables.
+$pol = 'HKCU:\Software\Policies\Microsoft\Windows\Explorer'
+$had = Test-Path $pol
+if (!$had) { New-Item -Path $pol -Force | Out-Null }
+Set-ItemProperty -Path $pol -Name 'LockedStartLayout' -Value 1 -Type DWord -Force
+Set-ItemProperty -Path $pol -Name 'StartLayoutFile' -Value $layoutFile -Type ExpandString -Force
+Stop-GoExplorer; Start-GoExplorer
+Start-Sleep -Seconds 5
+# Abrir el Inicio una vez hace que cargue el diseño nuevo.
+try { (New-Object -ComObject WScript.Shell).SendKeys('^{ESCAPE}'); Start-Sleep -Seconds 3; (New-Object -ComObject WScript.Shell).SendKeys('{ESCAPE}') } catch {}
+Remove-ItemProperty -Path $pol -Name 'LockedStartLayout','StartLayoutFile' -Force -ErrorAction SilentlyContinue
+if (!$had -and -not (Get-Item $pol).Property) { Remove-Item $pol -Force -ErrorAction SilentlyContinue }
+Stop-GoExplorer; Start-GoExplorer
+Remove-Item $layoutFile -Force -ErrorAction SilentlyContinue
+Write-Output "Apps del Inicio desancladas"` },
       { name: "Desactivar panel de Widgets", script: "$path = 'HKCU:\\Software\\Microsoft\\Windows\\CurrentVersion\\Explorer\\Advanced'\nSet-ItemProperty -Path $path -Name 'TaskbarDa' -Value 0 -Type DWord -Force -ErrorAction SilentlyContinue\n$pol = 'HKLM:\\SOFTWARE\\Policies\\Microsoft\\Dsh'\nif (!(Test-Path $pol)) { New-Item -Path $pol -Force | Out-Null }\nSet-ItemProperty -Path $pol -Name 'AllowNewsAndInterests' -Value 0 -Type DWord -Force -ErrorAction SilentlyContinue\nWrite-Output \"Panel de Widgets desactivado\"", os: 11 },
       { name: "Desactivar botón Chat / Teams en barra de tareas", script: "$path = 'HKCU:\\Software\\Microsoft\\Windows\\CurrentVersion\\Explorer\\Advanced'\nSet-ItemProperty -Path $path -Name 'TaskbarMn' -Value 0 -Type DWord -Force -ErrorAction SilentlyContinue\nWrite-Output \"Boton Chat/Teams eliminado de la barra de tareas\"", os: 11 },
       { name: "Desactivar Copilot", script: "$adv = 'HKCU:\\Software\\Microsoft\\Windows\\CurrentVersion\\Explorer\\Advanced'\nSet-ItemProperty -Path $adv -Name 'ShowCopilotButton' -Value 0 -Type DWord -Force -ErrorAction SilentlyContinue\n$pol = 'HKCU:\\Software\\Policies\\Microsoft\\Windows\\WindowsCopilot'\nif (!(Test-Path $pol)) { New-Item -Path $pol -Force | Out-Null }\nSet-ItemProperty -Path $pol -Name 'TurnOffWindowsCopilot' -Value 1 -Type DWord -Force -ErrorAction SilentlyContinue\nWrite-Output \"Copilot desactivado\"", os: 11 },
@@ -122,7 +165,11 @@ try {
       { name: "Bloquear permisos de apps (elegir cuáles)", picker: "perms", script: "" },
       { name: "Deshabilitar Activación por Voz", script: "$path = 'HKCU:\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\CapabilityAccessManager\\ConsentStore\\voiceActivation'\nif (!(Test-Path $path)) { New-Item -Path $path -Force | Out-Null }\nSet-ItemProperty -Path $path -Name 'Value' -Value 'Deny' -Type String -Force\n$pol = 'HKLM:\\SOFTWARE\\Policies\\Microsoft\\Windows\\AppPrivacy'\nif (!(Test-Path $pol)) { New-Item -Path $pol -Force | Out-Null }\nSet-ItemProperty -Path $pol -Name 'LetAppsActivateWithVoice' -Value 2 -Type DWord -Force\nWrite-Output \"Activacion por voz deshabilitada\"" },
       { name: "Deshabilitar apps en segundo plano", script: "$path = 'HKCU:\\Software\\Microsoft\\Windows\\CurrentVersion\\BackgroundAccessApplications'\nif (!(Test-Path $path)) { New-Item -Path $path -Force | Out-Null }\nSet-ItemProperty -Path $path -Name 'GlobalUserDisabled' -Value 1 -Type DWord -Force\nWrite-Output \"Apps en segundo plano deshabilitadas\"" },
-      { name: "Deshabilitar notificaciones de apps", script: "$path = 'HKCU:\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\CapabilityAccessManager\\ConsentStore\\userNotificationListener'\nif (!(Test-Path $path)) { New-Item -Path $path -Force | Out-Null }\nSet-ItemProperty -Path $path -Name 'Value' -Value 'Deny' -Type String -Force\nWrite-Output \"Notificaciones de apps deshabilitadas\"" },
+      { name: "Deshabilitar notificaciones de apps", script: String.raw`# El interruptor "Recibir notificaciones de aplicaciones" de Configuración.
+$path = 'HKCU:\Software\Microsoft\Windows\CurrentVersion\PushNotifications'
+if (!(Test-Path $path)) { New-Item -Path $path -Force | Out-Null }
+Set-ItemProperty -Path $path -Name 'ToastEnabled' -Value 0 -Type DWord -Force
+Write-Output "Notificaciones de apps deshabilitadas"` },
     ],
   },
   {

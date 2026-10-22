@@ -6,6 +6,7 @@ import { Spinner, IndeterminateBar } from "../components/Feedback";
 import { useI18n } from "../lib/i18n";
 import { trLog } from "../lib/logI18n";
 import { EXPLORER_FNS } from "../lib/shell";
+import Modal from "../components/Modal";
 
 // sfc escribe su salida en UTF-16 cuando no va a una consola: leída como texto normal
 // llegaba con un NUL entre cada letra, así que nunca se reconocía el resultado ("no
@@ -23,7 +24,15 @@ const ACTIONS = [
   { id: "dism", title: "Reparar imagen de Windows (DISM)", desc: "Restaura la salud de la imagen del sistema. Requiere internet.",
     btn: "Ejecutar DISM", script: String.raw`DISM /Online /Cleanup-Image /RestoreHealth 2>&1; exit $LASTEXITCODE` },
   { id: "net", title: "Resetear la red", desc: "Winsock + IP + caché DNS. Soluciona problemas de conexión.",
-    btn: "Resetear red", script: String.raw`netsh winsock reset | Out-Null; netsh int ip reset | Out-Null; ipconfig /flushdns | Out-Null; ipconfig /release | Out-Null; ipconfig /renew | Out-Null; Write-Output "Red reseteada. Reinicia para aplicar."` },
+    btn: "Resetear red", script: String.raw`$fail=@()
+netsh winsock reset | Out-Null; if($LASTEXITCODE -ne 0){ $fail+='winsock' }
+# int ip reset devuelve 1 casi siempre (una clave protegida da "Acceso denegado") aunque resetee todo lo demás.
+$ipr = netsh int ip reset | Out-String; if($ipr -notmatch 'correctamente|xito|success|OK!'){ $fail+='ip' }
+ipconfig /flushdns | Out-Null; if($LASTEXITCODE -ne 0){ $fail+='dns' }
+ipconfig /release | Out-Null
+ipconfig /renew | Out-Null; if($LASTEXITCODE -ne 0){ Write-Output 'No se pudo renovar la IP ahora: se renueva al reiniciar.' }
+if($fail){ Write-Output ('Fallaron: ' + ($fail -join ', ')); exit 1 }
+Write-Output "Red reseteada. Reinicia para aplicar."` },
   { id: "explorer", title: "Reiniciar el Explorador", desc: "Refresca la barra de tareas y el escritorio si quedaron colgados.",
     btn: "Reiniciar Explorer", script: String.raw`${EXPLORER_FNS}
 Stop-GoExplorer; Start-GoExplorer; Write-Output "Explorador reiniciado"` },
@@ -39,6 +48,7 @@ const REPAIR_ICONS: Record<string, ReactNode> = {
 export default function Reparar() {
   const { t, lang } = useI18n();
   const [busy, setBusy] = useState<string | null>(null);
+  const [ask, setAsk] = useState<typeof ACTIONS[number] | null>(null);
   const [log, setLog] = useState<string[]>(() => [t("common.ready")]);
   const logRef = useRef<HTMLDivElement>(null);
 
@@ -87,7 +97,7 @@ export default function Reparar() {
         <div className="space-y-3 overflow-y-auto pr-3 -mr-3 pb-2">
           {ACTIONS.map((a) => (
             <ActionCard key={a.id} icon={REPAIR_ICONS[a.id]} title={t(`repair.${a.id}.title`)} desc={t(`repair.${a.id}.desc`)}
-              action={<button onClick={() => run(a)} disabled={!!busy} className="btn btn-ghost">
+              action={<button onClick={() => (a.id === "net" ? setAsk(a) : run(a))} disabled={!!busy} className="btn btn-ghost">
                 {busy === a.id ? t("repair.running") : t(`repair.${a.id}.btn`)}
               </button>} />
           ))}
@@ -96,6 +106,10 @@ export default function Reparar() {
           {trLog(log.join("\n"), lang)}
         </LogPanel>
       </div>
+      <Modal open={!!ask} title={t("repair.net.title")} onClose={() => setAsk(null)}
+        onConfirm={() => { const a = ask; setAsk(null); if (a) void run(a); }} confirmText={t("repair.net.btn")} closeText={t("common.cancel")}>
+        {t("repair.net.confirm")}
+      </Modal>
     </Page>
   );
 }

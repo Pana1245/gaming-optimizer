@@ -1,4 +1,5 @@
 import type { RegOp } from "./engineTweaks";
+import { MAX_PLAN } from "./lib/powerDedupe";
 
 // Perfiles 1-clic: bundles curados de operaciones del Motor (reversibles desde
 // el Historial) + un paso extra de plan de energía (no-registro, se informa aparte).
@@ -36,15 +37,15 @@ const op = (id: string, name: string, key: string, prop: string, value: number, 
 
 // Terminan con `exit $LASTEXITCODE` (el de powercfg) para que el frontend sepa si
 // el plan se aplicó de verdad — powercfg es nativo y su fallo no altera `ok` solo.
-const PLAN_MAX = String.raw`$hp=powercfg -list | Select-String 'Ultimate|High performance|Alto rendimiento' | Select-Object -First 1
-if($hp -and "$hp" -match '([0-9a-fA-F]{8}-([0-9a-fA-F]{4}-){3}[0-9a-fA-F]{12})'){ powercfg /setactive $matches[1]; Write-Output 'Plan: maximo rendimiento' } else { powercfg /setactive SCHEME_MAX; Write-Output 'Plan: alto rendimiento' }
-exit $LASTEXITCODE`;
+const PLAN_MAX = String.raw`${MAX_PLAN}
+$pc=$LASTEXITCODE; Write-Output 'Plan: maximo rendimiento'
+exit $pc`;
 // Rango de núcleos de Core Parking (versiones viejas lo dejaban fijo en 100% para todos los planes).
 const CP_RANGE = String.raw`$cpr='HKLM:\SYSTEM\CurrentControlSet\Control\Power\PowerSettings\54533251-82be-4824-96c1-47b60b740d00\0cc5b647-c1df-4637-891a-dec35c318583'; if((Get-ItemProperty $cpr -Name ValueMin -EA SilentlyContinue).ValueMin -eq 100){ Set-ItemProperty $cpr -Name ValueMin -Value 0 -Type DWord -Force -EA SilentlyContinue }`;
 const PLAN_BAL = String.raw`${CP_RANGE}
 powercfg /setactive SCHEME_BALANCED; Write-Output 'Plan: equilibrado'; exit $LASTEXITCODE`;
 const PLAN_SAVE = String.raw`${CP_RANGE}
-powercfg /setactive SCHEME_MIN; Write-Output 'Plan: ahorro de energia'; exit $LASTEXITCODE`;
+powercfg /setactive a1841308-3541-4fab-bc81-f71556f20b4a; Write-Output 'Plan: ahorro de energia'; exit $LASTEXITCODE`;
 
 export const PROFILES: Profile[] = [
   {

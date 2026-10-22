@@ -177,6 +177,7 @@ export const PT: Record<string, string> = {
   "repair.net.title": "Redefinir a rede",
   "repair.net.desc": "Winsock + IP + cache DNS. Resolve problemas de conexão.",
   "repair.net.btn": "Redefinir rede",
+  "repair.net.confirm": "A internet cai por alguns segundos e a configuração manual de rede é apagada (IP fixo, DNS manual, algumas VPNs). Depois é preciso reiniciar o PC. Continuar?",
   "repair.explorer.title": "Reiniciar o Explorer",
   "repair.explorer.desc": "Atualiza a barra de tarefas e a área de trabalho se travaram.",
   "repair.explorer.btn": "Reiniciar Explorer",

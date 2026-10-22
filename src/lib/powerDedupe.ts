@@ -1,5 +1,15 @@
 import { runPowershell } from "./api";
 
+// Activa el plan más rápido que haya. Por prioridad: primero Máximo rendimiento (Ultimate) en
+// cualquier idioma, después Alto rendimiento (antes, en español "Máximo rendimiento" no coincidía
+// con 'Ultimate' y siempre terminaba en "Alto rendimiento"). Deja el código de powercfg en $LASTEXITCODE.
+// Los planes de fábrica van por GUID: el alias SCHEME_MAX es "máximo ahorro" (Ahorro de energía).
+export const MAX_PLAN = String.raw`$list=powercfg -list; $hp=$null
+foreach($rx in 'Gaming Optimizer|Ultimate|M.ximo rendimiento|Desempenho M.ximo|Ultimative Leistung|Performances optimales','High performance|Alto rendimiento|Alto desempenho|H.chstleistung|Performances .lev.es'){
+  $hp=$list | Select-String $rx | Select-Object -First 1; if($hp){ break }
+}
+if($hp -and "$hp" -match '([0-9a-fA-F]{8}-([0-9a-fA-F]{4}-){3}[0-9a-fA-F]{12})'){ powercfg /setactive $matches[1] } else { powercfg /setactive 8c5e7fda-e8bf-4a96-9a85-a6e23a8c635c }`;
+
 // Limpieza única de planes de energía duplicados. Versiones viejas creaban una copia
 // NUEVA de "Máximo rendimiento" (Ultimate Performance) cada vez que se aplicaba el
 // tweak — y en Windows en otros idiomas, en cada uso. Se deja una sola: la activa
