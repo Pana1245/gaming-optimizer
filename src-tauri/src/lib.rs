@@ -525,10 +525,22 @@ fn ledger_bak() -> std::path::PathBuf { ledger_file().with_extension("json.bak")
 
 fn valid_json(s: &str) -> bool { serde_json::from_str::<serde_json::Value>(s).is_ok() }
 
+/// Carpeta del ledger con permisos seguros, una vez por sesión (exista o no de antes: un usuario
+/// estándar pudo crearla primero). También antes de LEER: versiones 2.4.3–2.5.1 dejaban el ledger
+/// sin permisos y la lectura daba "[]", con lo que el siguiente guardado pisaba el historial real.
+fn ensure_data_dir() {
+    if let Some(dir) = ledger_file().parent() {
+        let _ = std::fs::create_dir_all(dir);
+        static SECURED: std::sync::atomic::AtomicBool = std::sync::atomic::AtomicBool::new(false);
+        if !SECURED.swap(true, std::sync::atomic::Ordering::SeqCst) { secure_data_dir(dir); }
+    }
+}
+
 /// Lee el ledger de cambios (JSON). Si está dañado (ej. corte de luz mientras se
 /// escribía), usa la copia de respaldo. Devuelve "[]" si no hay ninguno válido.
 #[tauri::command]
 fn ledger_read() -> String {
+    ensure_data_dir();
     for f in [ledger_file(), ledger_bak()] {
         if let Ok(s) = std::fs::read_to_string(&f) {
             if valid_json(&s) { return s; }
@@ -543,13 +555,8 @@ fn ledger_read() -> String {
 #[tauri::command]
 fn ledger_write(content: String) -> bool {
     if !valid_json(&content) { return false; }
+    ensure_data_dir();
     let f = ledger_file();
-    if let Some(dir) = f.parent() {
-        let _ = std::fs::create_dir_all(dir);
-        // Una vez por sesión, exista o no de antes (un usuario estándar pudo crearla primero).
-        static SECURED: std::sync::atomic::AtomicBool = std::sync::atomic::AtomicBool::new(false);
-        if !SECURED.swap(true, std::sync::atomic::Ordering::SeqCst) { secure_data_dir(dir); }
-    }
     let tmp = f.with_extension("json.tmp");
     if std::fs::write(&tmp, &content).is_err() { return false; }
     if f.exists() { let _ = std::fs::copy(&f, ledger_bak()); }
