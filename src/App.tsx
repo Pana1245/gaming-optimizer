@@ -12,6 +12,7 @@ import TitleBar from "./components/TitleBar";
 import AccountWarning from "./components/AccountWarning";
 import { ensureNotify } from "./lib/notify";
 import { dedupePowerPlansOnce } from "./lib/powerDedupe";
+import { removeWinRing0Once } from "./lib/winring0";
 // Cada sección se carga recién cuando se abre: antes todo iba en un solo archivo de
 // ~1,2 MB que se procesaba entero al arrancar (gráficos, test de velocidad, guía…).
 const Optimizaciones = lazy(() => import("./pages/Optimizaciones"));
@@ -102,6 +103,8 @@ export default function App() {
   useEffect(() => { ensureNotify(); }, []);
   // Limpieza única de planes de energía duplicados que dejaban versiones viejas.
   useEffect(() => { dedupePowerPlansOnce(); }, []);
+  // Quita el driver vulnerable WinRing0 que instalaban las versiones anteriores.
+  useEffect(() => { removeWinRing0Once(); }, []);
   // Menú de la bandeja en el idioma de la interfaz.
   useEffect(() => {
     invoke("tray_labels", { open: t("tray.open"), quit: t("tray.quit"), tooltip: t("tray.tooltip") }).catch(() => {});

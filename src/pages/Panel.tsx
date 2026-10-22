@@ -56,10 +56,10 @@ function Meter({ label, value, color, spark }: { label: string; value: number; c
   );
 }
 
-function Temp({ label, value }: { label: string; value: number | null }) {
+function Temp({ label, value, naText }: { label: string; value: number | null; naText?: string }) {
   const { t } = useI18n();
   const color = value === null ? "#6c6c75" : value < 70 ? "#ededef" : value < 85 ? "#ffd24a" : "#ff5470";
-  const status = value === null ? t("panel.tempNA") : value < 70 ? t("panel.tempHealthy") : value < 85 ? t("panel.tempWarm") : t("panel.tempHot");
+  const status = value === null ? (naText ?? t("panel.tempNA")) : value < 70 ? t("panel.tempHealthy") : value < 85 ? t("panel.tempWarm") : t("panel.tempHot");
   return (
     <div className="flex-1 min-w-0">
       <div className="text-[12px] text-text-mute">{label}</div>
@@ -98,7 +98,7 @@ const RamIcon = () => (
 
 export default function Panel({ onNavigate }: { onNavigate: (page: string) => void }) {
   const [score, setScore] = useState<ScoreResult | null>(null);
-  const [temps, setTemps] = useState<Temps>({ cpu: null, gpu: null });
+  const [temps, setTemps] = useState<Temps>({ cpu: null, gpu: null, pawn: true });
   const [stats, setStats] = useState<Stats>({ cpu: 0, ram: 0, disk: 0 });
   const [sys, setSys] = useState("");
   const [ramMsg, setRamMsg] = useState<string | null>(null);
@@ -198,7 +198,7 @@ export default function Panel({ onNavigate }: { onNavigate: (page: string) => vo
               <Meter label={t("panel.disk")} value={stats.disk} color="#3b9eff" />
             </div>
             <div className="flex gap-4 mt-4 pt-4 border-t border-line">
-              <Temp label={t("panel.cpuTemp")} value={temps.cpu} />
+              <Temp label={t("panel.cpuTemp")} value={temps.cpu} naText={temps.pawn ? undefined : t("panel.needPawn")} />
               <Temp label={t("panel.gpuTemp")} value={temps.gpu} />
             </div>
           </NeonCard>

@@ -81,6 +81,7 @@ const STR: Record<string, { es: string; en: string }> = {
   "panel.scoreHint": { es: "Se mide leyendo el estado real del registro (Gaming + Privacidad). Aplicalos desde Optimizaciones o el Motor.", en: "Measured from the actual registry state (Gaming + Privacy). Apply them from Optimizations or the Engine." },
   "panel.na": { es: "N/D", en: "N/A" },
   "panel.tempNA": { es: "sensor no disponible", en: "sensor unavailable" },
+  "panel.needPawn": { es: "requiere el driver PawnIO", en: "needs the PawnIO driver" },
   "panel.tempHealthy": { es: "temperatura sana", en: "healthy temperature" },
   "panel.tempWarm": { es: "caliente bajo carga", en: "warm under load" },
   "panel.tempHot": { es: "¡muy caliente!", en: "very hot!" },

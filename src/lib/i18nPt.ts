@@ -63,6 +63,7 @@ export const PT: Record<string, string> = {
   "panel.scoreHint": "Medido lendo o estado real do registro (Gaming + Privacidade). Aplique pelas Otimizações ou pelo Motor.",
   "panel.na": "N/D",
   "panel.tempNA": "sensor indisponível",
+  "panel.needPawn": "requer o driver PawnIO",
   "panel.tempHealthy": "temperatura saudável",
   "panel.tempWarm": "quente sob carga",
   "panel.tempHot": "muito quente!",

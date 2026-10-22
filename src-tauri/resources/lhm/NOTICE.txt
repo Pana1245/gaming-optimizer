@@ -1,0 +1,44 @@
+Componentes de terceros incluidos para leer temperaturas (CPU/GPU)
+=================================================================
+
+Se usan sin modificar, tal como se publican en nuget.org (paquetes verificados con el
+SHA-512 del catálogo oficial). La lectura de sensores de la CPU usa el driver PawnIO
+SOLO si ya está instalado en la PC: Gaming Optimizer no instala ningún driver.
+
+LibreHardwareMonitorLib 0.9.6 (net472, win-x64)
+  https://github.com/LibreHardwareMonitor/LibreHardwareMonitor
+  Licencia: Mozilla Public License 2.0 (MPL-2.0) — https://mozilla.org/MPL/2.0/
+  El código fuente está disponible en el repositorio indicado.
+
+DiskInfoToolkit 1.1.2, RAMSPDToolkit-NDD 1.4.2, BlackSharp.Core 1.0.7
+  https://github.com/Blacktempel/DiskInfoToolkit
+  https://github.com/Blacktempel/RAMSPDToolkit
+  https://github.com/Blacktempel/BlackSharp
+  Licencia: Mozilla Public License 2.0 (MPL-2.0) — https://mozilla.org/MPL/2.0/
+
+HidSharp 2.6.4
+  https://software.seekye.com/hidsharp
+  Licencia: ver HidSharp-LICENSE.txt (Apache License 2.0)
+
+System.Buffers 4.6.1, System.CodeDom 10.0.2, System.Memory 4.6.3,
+System.Numerics.Vectors 4.6.1, System.Runtime.CompilerServices.Unsafe 6.1.2,
+System.Security.AccessControl 6.0.0, System.Security.Principal.Windows 5.0.0,
+System.Threading.AccessControl 10.0.3
+  Copyright (c) .NET Foundation and Contributors. https://github.com/dotnet
+  Licencia MIT:
+
+  Permission is hereby granted, free of charge, to any person obtaining a copy of this
+  software and associated documentation files (the "Software"), to deal in the Software
+  without restriction, including without limitation the rights to use, copy, modify, merge,
+  publish, distribute, sublicense, and/or sell copies of the Software, and to permit persons
+  to whom the Software is furnished to do so, subject to the following conditions:
+
+  The above copyright notice and this permission notice shall be included in all copies or
+  substantial portions of the Software.
+
+  THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED,
+  INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR
+  PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE
+  FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR
+  OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
+  DEALINGS IN THE SOFTWARE.

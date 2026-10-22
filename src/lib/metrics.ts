@@ -23,19 +23,24 @@ export async function readScore(): Promise<ScoreResult> {
 }
 
 // ---- Temperaturas CPU/GPU (mejor esfuerzo: depende del hardware/driver) ------
-export interface Temps { cpu: number | null; gpu: number | null; }
+// pawn: ¿está instalado el driver PawnIO? Sin él la CPU no tiene temperatura (N/D).
+export interface Temps { cpu: number | null; gpu: number | null; pawn: boolean; }
 
-// Temp REAL de CPU/GPU vía LibreHardwareMonitorLib (bundleada). Lee los sensores
-// por hardware (el driver de kernel lo carga la propia lib; la app corre elevada).
-// No se llama Close() a propósito: deja el driver cargado para que las lecturas
-// siguientes sean rápidas y no se reinstale el servicio en cada poll. Si falla
-// (o no hay admin), cae a nvidia-smi para GPU y N/D para CPU — nunca el valor ACPI.
+// Temp REAL de CPU/GPU vía LibreHardwareMonitorLib 0.9.6 (bundleada en resources/lhm).
+// Las versiones ≤0.9.4 instalaban el driver WinRing0 (vulnerable, CVE-2020-14979: Defender
+// lo marca y los anti-cheat como Vanguard lo rechazan). La 0.9.6 usa PawnIO (firmado) sólo
+// si YA está instalado: la app no instala drivers. La GPU no necesita driver (NVAPI/ADL).
+// Si no hay sensor, cae a nvidia-smi para GPU y N/D para CPU — nunca el valor ACPI.
 // CPU: Intel informa "CPU Package"; AMD Ryzen NO tiene ese sensor ("Core (Tctl/Tdie)",
-// "Core (Tdie)", "Core (Tctl)" o "Package"): antes en AMD la temperatura de CPU salía
-// siempre "N/D". Se toma el primero que exista según esta prioridad.
+// "Core (Tdie)", "Core (Tctl)" o "Package"): se toma el primero que exista.
 const TEMP_SCRIPT = (dll: string) => String.raw`$cpu=$null; $gpu=$null
 $cpuNames=@('CPU Package','Core (Tctl/Tdie)','Core (Tdie)','Core (Tctl)','Package','Tdie','Tctl')
 $cpuRank=99
+$lhmDir=Split-Path '${dll.replace(/'/g, "''")}'
+# Dependencias (System.Memory, HidSharp…) desde la misma carpeta, sin importar la versión pedida.
+$null=[AppDomain]::CurrentDomain.add_AssemblyResolve({ param($s,$e)
+  $p=Join-Path $lhmDir ((New-Object Reflection.AssemblyName($e.Name)).Name + '.dll')
+  if(Test-Path -LiteralPath $p){ [Reflection.Assembly]::LoadFrom($p) } else { $null } })
 try{
   Add-Type -Path '${dll.replace(/'/g, "''")}' -EA Stop
   $c=New-Object LibreHardwareMonitor.Hardware.Computer
@@ -52,12 +57,14 @@ try{
       }
     }
   }
+  $c.Close()
 }catch{}
+$pawn=[int][bool](Get-Service -Name 'PawnIO' -EA SilentlyContinue)
 if($null -eq $gpu){ try{ $smi=Get-Command nvidia-smi -EA SilentlyContinue
   if($smi){ $g=& nvidia-smi --query-gpu=temperature.gpu --format=csv,noheader 2>$null | Select-Object -First 1
     if($g -match '^\d+$'){ $gpu=[int]$g } } }catch{} }
 if($null -eq $cpu){ $cpu='N' }; if($null -eq $gpu){ $gpu='N' }
-Write-Output "CPU=$cpu"; Write-Output "GPU=$gpu"`;
+Write-Output "CPU=$cpu"; Write-Output "GPU=$gpu"; Write-Output "PAWN=$pawn"`;
 
 // Ruta de la DLL bundleada (se resuelve una vez y se cachea).
 let _dllPath: string | null | undefined;
@@ -65,14 +72,14 @@ async function lhmDll(): Promise<string | null> {
   if (_dllPath !== undefined) return _dllPath;
   try {
     const { resolveResource } = await import("@tauri-apps/api/path");
-    _dllPath = await resolveResource("resources/LibreHardwareMonitorLib.dll");
+    _dllPath = await resolveResource("resources/lhm/LibreHardwareMonitorLib.dll");
   } catch { _dllPath = null; }
   return _dllPath;
 }
 
 export async function readTemps(): Promise<Temps> {
   const dll = await lhmDll();
-  if (!dll) return { cpu: null, gpu: null };
+  if (!dll) return { cpu: null, gpu: null, pawn: false };
   const r = await runPowershell(TEMP_SCRIPT(dll));
   const grab = (tag: string): number | null => {
     const m = r.output.match(new RegExp(`${tag}=(-?\\d+)`));
@@ -80,5 +87,5 @@ export async function readTemps(): Promise<Temps> {
     const v = parseInt(m[1], 10);
     return v > 0 && v < 120 ? v : null;
   };
-  return { cpu: grab("CPU"), gpu: grab("GPU") };
+  return { cpu: grab("CPU"), gpu: grab("GPU"), pawn: /PAWN=1/.test(r.output) };
 }
