@@ -85,7 +85,7 @@ const prioScript = (exe: string) => {
 
 export const DEFAULT_GAMES = [
   "valorant.exe", "valorant-win64-shipping.exe", "cs2.exe", "csgo.exe",
-  "leagueclient.exe", "league of legends.exe", "fortniteclient-win64-shipping.exe",
+  "league of legends.exe", "fortniteclient-win64-shipping.exe",
   "gta5.exe", "rainbowsix.exe", "overwatch.exe", "r5apex.exe", "dota2.exe",
   "eldenring.exe", "cyberpunk2077.exe", "rocketleague.exe",
 ];

@@ -7,22 +7,23 @@ import { trLog } from "../lib/logI18n";
 import { IndeterminateBar } from "../components/Feedback";
 import SpeedTest from "../components/SpeedTest";
 
-interface Dns { id: string; name: string; nameEn?: string; namePt?: string; primary: string; secondary: string; note: string; noteEn: string; notePt: string; }
+interface Dns { id: string; name: string; nameEn?: string; namePt?: string; primary: string; secondary: string; v6?: [string, string]; note: string; noteEn: string; notePt: string; }
 
-// Lista curada de resolutores públicos confiables.
+// Lista curada de resolutores públicos confiables. `v6`: sus direcciones IPv6 (sin ellas, con IPv6
+// Windows sigue preguntándole al DNS del router). Comodo, Level3 y DNS.Watch no tienen (verificadas).
 const DNS_LIST: Dns[] = [
-  { id: "cloudflare", name: "Cloudflare", primary: "1.1.1.1", secondary: "1.0.0.1", note: "El más rápido en general", noteEn: "Fastest overall", notePt: "O mais rápido em geral" },
-  { id: "cloudflare-sec", name: "Cloudflare Seguro", nameEn: "Cloudflare Secure", namePt: "Cloudflare Seguro", primary: "1.1.1.2", secondary: "1.0.0.2", note: "Bloquea malware", noteEn: "Blocks malware", notePt: "Bloqueia malware" },
-  { id: "google", name: "Google", primary: "8.8.8.8", secondary: "8.8.4.4", note: "Muy estable y conocido", noteEn: "Very stable and well-known", notePt: "Muito estável e conhecido" },
-  { id: "quad9", name: "Quad9", primary: "9.9.9.9", secondary: "149.112.112.112", note: "Bloquea sitios maliciosos", noteEn: "Blocks malicious sites", notePt: "Bloqueia sites maliciosos" },
-  { id: "opendns", name: "OpenDNS (Cisco)", primary: "208.67.222.222", secondary: "208.67.220.220", note: "Con filtros opcionales", noteEn: "With optional filters", notePt: "Com filtros opcionais" },
-  { id: "adguard", name: "AdGuard", primary: "94.140.14.14", secondary: "94.140.15.15", note: "Bloquea publicidad y rastreadores", noteEn: "Blocks ads and trackers", notePt: "Bloqueia anúncios e rastreadores" },
-  { id: "adguard-clean", name: "AdGuard sin filtro", nameEn: "AdGuard no filter", namePt: "AdGuard sem filtro", primary: "94.140.14.140", secondary: "94.140.14.141", note: "Sin bloqueos", noteEn: "No blocking", notePt: "Sem bloqueios" },
-  { id: "quad9-open", name: "Quad9 sin filtro", nameEn: "Quad9 no filter", namePt: "Quad9 sem filtro", primary: "9.9.9.10", secondary: "149.112.112.10", note: "Sin bloqueos", noteEn: "No blocking", notePt: "Sem bloqueios" },
+  { id: "cloudflare", name: "Cloudflare", primary: "1.1.1.1", secondary: "1.0.0.1", v6: ["2606:4700:4700::1111", "2606:4700:4700::1001"], note: "El más rápido en general", noteEn: "Fastest overall", notePt: "O mais rápido em geral" },
+  { id: "cloudflare-sec", name: "Cloudflare Seguro", nameEn: "Cloudflare Secure", namePt: "Cloudflare Seguro", primary: "1.1.1.2", secondary: "1.0.0.2", v6: ["2606:4700:4700::1112", "2606:4700:4700::1002"], note: "Bloquea malware", noteEn: "Blocks malware", notePt: "Bloqueia malware" },
+  { id: "google", name: "Google", primary: "8.8.8.8", secondary: "8.8.4.4", v6: ["2001:4860:4860::8888", "2001:4860:4860::8844"], note: "Muy estable y conocido", noteEn: "Very stable and well-known", notePt: "Muito estável e conhecido" },
+  { id: "quad9", name: "Quad9", primary: "9.9.9.9", secondary: "149.112.112.112", v6: ["2620:fe::fe", "2620:fe::9"], note: "Bloquea sitios maliciosos", noteEn: "Blocks malicious sites", notePt: "Bloqueia sites maliciosos" },
+  { id: "opendns", name: "OpenDNS (Cisco)", primary: "208.67.222.222", secondary: "208.67.220.220", v6: ["2620:119:35::35", "2620:119:53::53"], note: "Con filtros opcionales", noteEn: "With optional filters", notePt: "Com filtros opcionais" },
+  { id: "adguard", name: "AdGuard", primary: "94.140.14.14", secondary: "94.140.15.15", v6: ["2a10:50c0::ad1:ff", "2a10:50c0::ad2:ff"], note: "Bloquea publicidad y rastreadores", noteEn: "Blocks ads and trackers", notePt: "Bloqueia anúncios e rastreadores" },
+  { id: "adguard-clean", name: "AdGuard sin filtro", nameEn: "AdGuard no filter", namePt: "AdGuard sem filtro", primary: "94.140.14.140", secondary: "94.140.14.141", v6: ["2a10:50c0::1:ff", "2a10:50c0::2:ff"], note: "Sin bloqueos", noteEn: "No blocking", notePt: "Sem bloqueios" },
+  { id: "quad9-open", name: "Quad9 sin filtro", nameEn: "Quad9 no filter", namePt: "Quad9 sem filtro", primary: "9.9.9.10", secondary: "149.112.112.10", v6: ["2620:fe::10", "2620:fe::fe:10"], note: "Sin bloqueos", noteEn: "No blocking", notePt: "Sem bloqueios" },
   { id: "comodo", name: "Comodo Secure", primary: "8.26.56.26", secondary: "8.20.247.20", note: "Enfocado en seguridad", noteEn: "Security-focused", notePt: "Focado em segurança" },
   { id: "level3", name: "Level3", primary: "4.2.2.1", secondary: "4.2.2.2", note: "Clásico, suele ser rápido", noteEn: "Classic, usually fast", notePt: "Clássico, costuma ser rápido" },
   { id: "dnswatch", name: "DNS.Watch", primary: "84.200.69.80", secondary: "84.200.70.40", note: "Sin censura ni logs", noteEn: "No censorship or logs", notePt: "Sem censura nem logs" },
-  { id: "controld", name: "Control D", primary: "76.76.2.0", secondary: "76.76.10.0", note: "Personalizable", noteEn: "Customizable", notePt: "Personalizável" },
+  { id: "controld", name: "Control D", primary: "76.76.2.0", secondary: "76.76.10.0", v6: ["2606:1a40::", "2606:1a40:1::"], note: "Personalizable", noteEn: "Customizable", notePt: "Personalizável" },
 ];
 
 const ipsArg = DNS_LIST.map((d) => `'${d.primary}'`).join(",");
@@ -62,7 +63,8 @@ const SAVE_DNS_PREV = String.raw`$store='HKCU:\Software\GamingOptimizer'; if(!(T
 if((Get-ItemProperty $store -Name DnsPrev -EA SilentlyContinue).DnsPrev){ Write-Output 'HASSAVED'; return }
 $saved=@()
 Get-NetAdapter -Physical -EA SilentlyContinue | Where-Object Status -eq 'Up' | ForEach-Object {
-  $ns=(Get-ItemProperty "HKLM:\SYSTEM\CurrentControlSet\Services\Tcpip\Parameters\Interfaces\$($_.InterfaceGuid)" -Name NameServer -EA SilentlyContinue).NameServer
+  $g=$_.InterfaceGuid
+  $ns=@('Tcpip','Tcpip6' | ForEach-Object { (Get-ItemProperty "HKLM:\SYSTEM\CurrentControlSet\Services\$_\Parameters\Interfaces\$g" -Name NameServer -EA SilentlyContinue).NameServer } | Where-Object { $_ }) -join ','
   if($ns){ $addrs=(($ns -split '[,\s]+') | Where-Object { $_ }) -join ','; if($addrs){ $saved += ("$($_.InterfaceGuid)"+'='+$addrs) } }
 }
 if($saved.Count -gt 0){ Set-ItemProperty $store -Name DnsPrev -Value ($saved -join ';') -Force; Write-Output 'SAVED' } else { Write-Output 'NONE' }`;
@@ -75,7 +77,8 @@ foreach($pair in ($raw -split ';')){
   $kv=$pair -split '=',2; if($kv.Count -ne 2){ continue }
   # Formato viejo: índice de interfaz; nuevo: GUID de la placa.
   $idx = if($kv[0] -match '^\d+$'){ [int]$kv[0] } else { (Get-NetAdapter -EA SilentlyContinue | Where-Object { "$($_.InterfaceGuid)" -eq $kv[0] } | Select-Object -First 1).ifIndex }
-  if($idx){ try{ Set-DnsClientServerAddress -InterfaceIndex $idx -ServerAddresses ($kv[1] -split ',') -EA Stop; $ok++ }catch{} }
+  # A automático primero: si antes no había DNS manual de IPv6, no tiene que quedar el que pusimos.
+  if($idx){ try{ Set-DnsClientServerAddress -InterfaceIndex $idx -ResetServerAddresses -EA SilentlyContinue; Set-DnsClientServerAddress -InterfaceIndex $idx -ServerAddresses ($kv[1] -split ',') -EA Stop; $ok++ }catch{} }
 }
 Clear-DnsClientCache
 # Antes se borraba el respaldo y se informaba éxito aunque no se hubiera restaurado nada.
@@ -266,7 +269,7 @@ export default function Red() {
       // Al aplicar un preset, guardar (una vez) el DNS manual que el usuario tenía,
       // para poder devolvérselo con "Restaurar los míos".
       if (d) { const s = await runPowershell(SAVE_DNS_PREV); if (s.output.includes("SAVED")) setHasSaved(true); }
-      const r = await runPowershell(dnsScript(d ? [d.primary, d.secondary] : null));
+      const r = await runPowershell(dnsScript(d ? [d.primary, d.secondary, ...(d.v6 ?? [])] : null));
       if (!mounted.current) return;
       const label = d ? pick(lang, d.name, d.nameEn, d.namePt) : t("net.autoDns");
       setMsg(r.ok ? `✓ ${label} ${t("net.applied")}` : `✗ ${r.output}`);

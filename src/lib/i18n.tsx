@@ -145,7 +145,9 @@ const STR: Record<string, { es: string; en: string }> = {
   "common.ready": { es: "Listo.", en: "Ready." },
 
   // ── Inicio ──
-  "startup.scope": { es: "Apps de inicio del Registro (claves Run). No incluye la carpeta de Inicio, tareas programadas ni servicios.", en: "Registry startup apps (Run keys). It doesn't include the Startup folder, scheduled tasks or services." },
+  "startup.scope": { es: "Registro (claves Run), carpeta de Inicio y apps de la Store. No incluye tareas programadas ni servicios.", en: "Registry (Run keys), Startup folder and Store apps. It doesn't include scheduled tasks or services." },
+  "startup.folder": { es: "Carpeta Inicio", en: "Startup folder" },
+  "startup.folderAll": { es: "Carpeta Inicio (todos)", en: "Startup folder (all users)" },
   "startup.active": { es: "activos", en: "enabled" },
   "startup.total": { es: "en total", en: "total" },
   "startup.loading": { es: "Cargando…", en: "Loading…" },

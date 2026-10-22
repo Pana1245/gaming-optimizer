@@ -9,12 +9,16 @@ import { trLog } from "../lib/logI18n";
 // HKLM32 = clave Run de las apps de 32 bits (WOW6432Node), donde escriben la mayoría de
 // los instaladores de 32 bits: antes no se listaban (el Administrador de tareas sí las
 // muestra). Su estado va en StartupApproved\Run32.
-interface Entry { name: string; cmd: string; scope: "HKCU" | "HKLM" | "HKLM32"; enabled: boolean; }
+// FolderCU/FolderLM = carpeta Inicio del usuario / de todos (estado en StartupApproved\StartupFolder).
+// Store = apps de la Store con tarea de inicio (`key` = su clave en AppModel\SystemAppData, valor State).
+interface Entry { name: string; cmd: string; scope: "HKCU" | "HKLM" | "HKLM32" | "FolderCU" | "FolderLM" | "Store"; enabled: boolean; key?: string; }
 
-const APPROVED: Record<Entry["scope"], string> = {
+const APPROVED: Record<Exclude<Entry["scope"], "Store">, string> = {
   HKCU: String.raw`HKCU:\Software\Microsoft\Windows\CurrentVersion\Explorer\StartupApproved\Run`,
   HKLM: String.raw`HKLM:\Software\Microsoft\Windows\CurrentVersion\Explorer\StartupApproved\Run`,
   HKLM32: String.raw`HKLM:\Software\Microsoft\Windows\CurrentVersion\Explorer\StartupApproved\Run32`,
+  FolderCU: String.raw`HKCU:\Software\Microsoft\Windows\CurrentVersion\Explorer\StartupApproved\StartupFolder`,
+  FolderLM: String.raw`HKLM:\Software\Microsoft\Windows\CurrentVersion\Explorer\StartupApproved\StartupFolder`,
 };
 
 // Estado en StartupApproved: primer byte par = activado (02, 06…), impar = desactivado
@@ -25,19 +29,42 @@ $keys=@(
  @{p='HKLM:\Software\Microsoft\Windows\CurrentVersion\Run'; a='${APPROVED.HKLM}'; s='HKLM'},
  @{p='HKLM:\Software\WOW6432Node\Microsoft\Windows\CurrentVersion\Run'; a='${APPROVED.HKLM32}'; s='HKLM32'}
 )
+function Approved($a, $name){ if(Test-Path $a){ $b=(Get-ItemProperty -Path $a -Name $name -EA SilentlyContinue).$name; if($b){ return (($b[0] -band 1) -eq 0) } }; $true }
 foreach($k in $keys){
  if(Test-Path $k.p){
-  foreach($name in (Get-Item $k.p).Property){
-   $cmd=(Get-ItemProperty $k.p).$name
-   $enabled=$true
-   if(Test-Path $k.a){ $b=(Get-ItemProperty -Path $k.a -Name $name -EA SilentlyContinue).$name; if($b){ $enabled = (($b[0] -band 1) -eq 0) } }
-   $out += [pscustomobject]@{name=$name; cmd="$cmd"; scope=$k.s; enabled=$enabled}
+  $rk=Get-Item $k.p
+  # GetValueNames y no .Property: el valor "(predeterminado)" aparecía como una app fantasma.
+  foreach($name in @($rk.GetValueNames() | Where-Object { $_ })){
+   $out += [pscustomobject]@{name=$name; cmd="$($rk.GetValue($name))"; scope=$k.s; enabled=(Approved $k.a $name)}
+  }
+ }
+}
+foreach($f in @(@{p=[Environment]::GetFolderPath('Startup'); a='${APPROVED.FolderCU}'; s='FolderCU'}, @{p=[Environment]::GetFolderPath('CommonStartup'); a='${APPROVED.FolderLM}'; s='FolderLM'})){
+ if(-not $f.p -or -not (Test-Path -LiteralPath $f.p)){ continue }
+ foreach($it in @(Get-ChildItem -LiteralPath $f.p -File -EA SilentlyContinue | Where-Object { $_.Name -ne 'desktop.ini' })){
+  $cmd=$it.FullName
+  if($it.Extension -eq '.lnk'){ try{ $sc=(New-Object -ComObject WScript.Shell).CreateShortcut($it.FullName); if($sc.TargetPath){ $cmd=("$($sc.TargetPath) $($sc.Arguments)").Trim() } }catch{} }
+  $out += [pscustomobject]@{name=$it.Name; cmd=$cmd; scope=$f.s; enabled=(Approved $f.a $it.Name)}
+ }
+}
+# Apps de la Store: State 2/4 = activada, 0/1 = desactivada (3/4 = por política).
+$sad='HKCU:\Software\Classes\Local Settings\Software\Microsoft\Windows\CurrentVersion\AppModel\SystemAppData'
+if(Test-Path $sad){
+ foreach($pk in @(Get-ChildItem $sad -EA SilentlyContinue)){
+  foreach($tk in @(Get-ChildItem $pk.PSPath -EA SilentlyContinue)){
+   $st=$tk.GetValue('State'); if($null -eq $st){ continue }
+   $out += [pscustomobject]@{name=(($pk.PSChildName -split '_')[0] -split '\.')[-1]; cmd=$pk.PSChildName + '!' + $tk.PSChildName; scope='Store'; enabled=($st -eq 2 -or $st -eq 4); key=$tk.Name}
   }
  }
 }
 if($out.Count -eq 0){ '[]' } else { $out | ConvertTo-Json -Compress -Depth 3 }`;
 
 const toggleScript = (e: Entry, enable: boolean) => {
+  if (e.scope === "Store") {
+    // 1 = desactivada por el usuario (como el interruptor de Configuración > Inicio).
+    const key = (e.key ?? "").replace(/'/g, "''");
+    return `$k='Registry::${key}'\nif(!(Test-Path -LiteralPath $k)){ exit 1 }\nSet-ItemProperty -LiteralPath $k -Name State -Value ${enable ? 2 : 1} -Type DWord -Force -EA Stop\nWrite-Output OK`;
+  }
   const name = e.name.replace(/'/g, "''");
   const appr = APPROVED[e.scope];
   const bytes = enable ? "2,0,0,0,0,0,0,0,0,0,0,0" : "3,0,0,0,0,0,0,0,0,0,0,0";
@@ -177,7 +204,7 @@ export default function Inicio() {
                 desc={<span className="font-mono">{e.cmd}</span>}
                 right={<>
                   {e.enabled && isSuggested(e) && <span title={t("startup.recBadge")} aria-label={t("startup.recBadge")} className="text-accent text-[12px]">★</span>}
-                  <Badge>{e.scope === "HKLM32" ? "HKLM 32-bit" : e.scope}</Badge>
+                  <Badge>{e.scope === "HKLM32" ? "HKLM 32-bit" : e.scope === "Store" ? "Store" : e.scope.startsWith("Folder") ? t(e.scope === "FolderLM" ? "startup.folderAll" : "startup.folder") : e.scope}</Badge>
                   <Switch on={e.enabled} onChange={() => toggle(e)} disabled={busy === e.name || busy === "__rec__"} label={e.name} />
                 </>} />
             ))}
