@@ -15,7 +15,7 @@
 const psList = (xs: string[]) => "@(" + xs.map((x) => `'${x.replace(/'/g, "''")}'`).join(",") + ")";
 
 // Protegidas SIEMPRE (patrones -like).
-const KEEP_CORE = [
+export const KEEP_CORE = [
   // Tienda, instalador de apps y compras
   "Microsoft.WindowsStore", "Microsoft.StorePurchaseApp", "Microsoft.DesktopAppInstaller", "Microsoft.Winget.*",
   // Xbox / Game Pass (sin Gaming Services no abren los juegos de Game Pass)
@@ -149,8 +149,10 @@ export const BLOAT_APPS: BloatApp[] = [
 
 export const BLOAT_RECOMMENDED = BLOAT_APPS.filter((a) => a.rec).map((a) => a.id);
 
-const patternsOf = (g: BloatGroup) => BLOAT_APPS.filter((a) => a.group === g).flatMap((a) => a.patterns);
-// Presets de Optimizaciones ("Eliminar apps Microsoft innecesarias" / "…de terceros").
+// Presets de Optimizaciones ("Eliminar apps Microsoft innecesarias" / "…de terceros"): sólo
+// las RECOMENDADAS. Antes tomaban el grupo entero y, marcados por defecto, quitaban Outlook,
+// Teams, Reloj, Spotify, Netflix, Instagram… que el menú "Elegir apps" deja al usuario.
+const patternsOf = (g: BloatGroup) => BLOAT_APPS.filter((a) => a.group === g && a.rec).flatMap((a) => a.patterns);
 const MS_APPS = patternsOf("ms");
 const THIRD_PARTY = patternsOf("third");
 
@@ -250,6 +252,10 @@ export function bloatInstalled(names: string[]): Set<string> {
   }
   return out;
 }
+
+const KEEP_RX = KEEP_CORE.map(likeRx);
+/** ¿Es un paquete que la app protege (Store, Game Pass, runtimes, códecs, paneles de drivers…)? */
+export const isKeptPackage = (pkgName: string) => KEEP_RX.some((r) => r.test(pkgName));
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Microsoft Edge. Solo se desinstala si hay OTRO navegador instalado (para no dejar

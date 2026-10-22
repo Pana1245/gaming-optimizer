@@ -66,7 +66,9 @@ const ITEMS: Item[] = [
   { id: "wer", name: "Reportes de error (WER)", scan: sizeOnly(P.wer), clean: sizeAndClear(P.wer) },
   { id: "deliv", name: "Delivery Optimization", scan: sizeOnly(P.deliv), clean: DELIV_CLEAN },
   { id: "browsers", name: "Caché de navegadores (Chrome/Edge)", scan: sizeOnly(P.browsers), clean: sizeAndClear(P.browsers) },
-  { id: "shader", name: "Shader cache (NVIDIA / DirectX)", scan: sizeOnly(P.shader), clean: sizeAndClear(P.shader) },
+  // Desmarcada: vaciarla hace que los juegos recompilen shaders y den tirones las primeras
+  // partidas (y Gráficos la deja "ilimitada" en el driver de NVIDIA).
+  { id: "shader", name: "Shader cache (NVIDIA / DirectX)", scan: sizeOnly(P.shader), clean: sizeAndClear(P.shader), off: true },
   { id: "launchers", name: "Caché de launchers (Steam, Epic, Discord)", scan: sizeOnly(P.launchers), clean: sizeAndClear(P.launchers) },
   { id: "recycle", name: "Papelera de reciclaje", scan: `${RECYCLE_SIZE}\nWrite-Output ("SIZE=" + [math]::Round($s/1MB,1))`,
     clean: `${RECYCLE_SIZE}\n$before=$s\nClear-RecycleBin -Force -EA SilentlyContinue\n$sh2=New-Object -ComObject Shell.Application; $bin2=$sh2.Namespace(10); $after=0\nif($bin2){ foreach($i in $bin2.Items()){ try{ $after += $i.Size }catch{} } }\nWrite-Output ("FREED=" + [math]::Round(($before-$after)/1MB,1))` },

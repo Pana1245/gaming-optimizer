@@ -1,7 +1,8 @@
 import { useMemo, useState } from "react";
 import { runPowershell } from "../lib/api";
 import { useScrollMemory } from "../lib/useScrollMemory";
-import { Page, List, Row, Empty } from "../components/ui";
+import { Page, List, Row, Empty, Badge } from "../components/ui";
+import { isKeptPackage } from "../bloat";
 import Modal from "../components/Modal";
 import { Spinner, IndeterminateBar } from "../components/Feedback";
 import { useI18n } from "../lib/i18n";
@@ -34,6 +35,13 @@ const b64utf16 = (s: string) => {
 // UWP: `name` es el nombre visible; el nombre real del paquete sale del PackageFullName
 // (Nombre_Versión_Arq_Recurso_IdEditor), que va en `key`.
 const pkgName = (a: App) => a.key.split("_")[0];
+
+// Lo que el resto de la app protege: quitarlo rompe la Store, Game Pass, juegos o drivers.
+// Sin "Forzar" y con confirmación extra. La propia app ni se lista ("Forzar" sobre sí misma
+// corría su desinstalador abierta y después cerraba sus propios procesos).
+const RUNTIMES = /visual (c\+\+|basic).*(redistributable|runtime)|c\+\+ redistributables|microsoft \.net|\.net (desktop )?runtime|windows desktop runtime|asp\.net core|directx|xna framework|gameinput|physx|webview2|^microsoft edge$|update health tools|nvidia (controlador de gr.ficos|graphics driver|controlador de audio hd|hd audio driver)|vanguard|easy ?anti-?cheat|battleye|faceit ac/i;
+const isProtected = (a: App) => (a.type === "uwp" ? isKeptPackage(pkgName(a)) : RUNTIMES.test(a.name));
+const isSelf = (a: App) => /^gamingoptimizer\b/i.test(a.name.trim());
 
 // UWP: se quita para el usuario; si Windows no lo deja, para todos. Se verifica al
 // final y se devuelve el error real (antes se ocultaba y la fila se borraba igual).
@@ -107,6 +115,32 @@ Write-Output 'Desinstalador ejecutado (modo usuario)'`;
 
 interface Leftover { type: "folder" | "regkey"; label: string; path: string; }
 
+// Carpetas de instalación de los DEMÁS programas ($key = la app que se quita). Una
+// carpeta que es (o contiene) la de otro programa no es un resto: es compartida.
+// Ej.: "Program Files\NVIDIA Corporation" tiene NVIDIA App, NvContainer, FrameView…
+// InstallLocation a veces viene entre comillas: se quitan antes de comparar.
+const OTHER_LOCS = String.raw`$others=@(foreach($r in 'HKLM:\Software\Microsoft\Windows\CurrentVersion\Uninstall','HKLM:\Software\Wow6432Node\Microsoft\Windows\CurrentVersion\Uninstall','HKCU:\Software\Microsoft\Windows\CurrentVersion\Uninstall'){
+  Get-ChildItem $r -EA SilentlyContinue | Where-Object { $_.Name -ne $key } | ForEach-Object {
+    $l="$((Get-ItemProperty $_.PSPath -EA SilentlyContinue).InstallLocation)".Trim().Trim('"').TrimEnd('\')
+    if($l.Length -gt 3){ $l.ToLower() }
+  }
+})
+# Los juegos de Epic, Steam y Riot no figuran en Uninstall: sin esto, "Forzar" sobre Epic
+# Games Launcher ofrecía borrar "Program Files\Epic Games", con Fortnite adentro.
+foreach($f in @(Get-ChildItem "$env:ProgramData\Epic\EpicGamesLauncher\Data\Manifests" -Filter *.item -EA SilentlyContinue)){
+  try { $l="$((Get-Content -LiteralPath $f.FullName -Raw | ConvertFrom-Json).InstallLocation)".TrimEnd('\'); if($l.Length -gt 3){ $others+=$l.ToLower() } } catch {}
+}
+$sp=(Get-ItemProperty 'HKCU:\Software\Valve\Steam' -EA SilentlyContinue).SteamPath
+if($sp){
+  $others+=(($sp -replace '/','\').TrimEnd('\') + '\steamapps').ToLower()
+  $vdf=Join-Path $sp 'steamapps\libraryfolders.vdf'
+  if(Test-Path -LiteralPath $vdf){ foreach($ln in (Get-Content -LiteralPath $vdf)){ if($ln -match '"path"\s+"(.+?)"'){ $others+=(($Matches[1] -replace '\\\\','\').TrimEnd('\') + '\steamapps').ToLower() } } }
+}
+foreach($y in @(Get-ChildItem "$env:ProgramData\Riot Games\Metadata" -Recurse -Filter *.product_settings.yaml -EA SilentlyContinue)){
+  foreach($ln in (Get-Content -LiteralPath $y.FullName)){ if($ln -match 'product_install_full_path:\s*"(.+?)"'){ $others+=(($Matches[1] -replace '/','\').TrimEnd('\')).ToLower() } }
+}
+function Shared($p){ $t=$p.TrimEnd('\').ToLower(); foreach($o in $others){ if($o -eq $t -or $o.StartsWith($t+'\')){ return $true } }; return $false }`;
+
 // UWP: quitar el paquete de todos los usuarios (no deja restos del registro clásico).
 const forceUwp = (a: App) => uwpRemove(a, true);
 
@@ -120,28 +154,51 @@ if($k -and (Test-Path -LiteralPath ('Registry::' + $k))){ 'STILL' } else { 'GONE
 // pasan en base64 y se usan sólo como -LiteralPath, nunca como código. Nunca
 // ofrece rutas protegidas ni claves de editor "peladas" (Software\<editor>) — eso
 // evita borrar ramas compartidas como Software\Microsoft o %AppData%\Google.
+// Tampoco ofrece carpetas que contengan la instalación de OTRO programa (OTHER_LOCS).
+// La carpeta con el nombre del EDITOR sólo se busca en AppData y llega desmarcada
+// ('pubData'): suele ser compartida por todas las apps de ese editor.
 const scanLeftovers = (a: App) => String.raw`$name=[Text.Encoding]::UTF8.GetString([Convert]::FromBase64String('${b64utf8(a.name)}'))
 $pub=[Text.Encoding]::UTF8.GetString([Convert]::FromBase64String('${b64utf8(a.pub)}'))
 $loc=[Text.Encoding]::UTF8.GetString([Convert]::FromBase64String('${b64utf8(a.location)}'))
 $key=[Text.Encoding]::UTF8.GetString([Convert]::FromBase64String('${b64utf8(a.key)}'))
+# Algunos instaladores guardan InstallLocation entre comillas ("C:\...\App"): Test-Path
+# la rechazaba ("caracteres no válidos") y no se encontraba la carpeta de instalación.
+$loc=$loc.Trim().Trim('"').TrimEnd('\')
 $bad=@('microsoft','windows','google','common files','intel','nvidia','amd','realtek','adobe','oracle','mozilla','system','program files','program files (x86)','programdata','users','appdata','local','roaming','temp','default','wow6432node','classes','clients','policies')
 $prot=@($env:ProgramFiles,[Environment]::GetEnvironmentVariable('ProgramFiles(x86)'),$env:ProgramData,$env:windir,$env:APPDATA,$env:LOCALAPPDATA,$env:SystemDrive,'C:\Windows','C:\Users') | ForEach-Object { if($_){ $_.TrimEnd('\').ToLower() } }
-function SafeFolder($p){ if(!$p){return $false}; $t=$p.TrimEnd('\'); if($t.Length -le 12){return $false}; if($prot -contains $t.ToLower()){return $false}; return (Test-Path -LiteralPath $p) }
+${OTHER_LOCS}
+function PathOk($p){ try { Test-Path -LiteralPath $p -ErrorAction Stop } catch { $false } }
+function SafeFolder($p){ if(!$p){return $false}; $t=$p.TrimEnd('\'); if($t.Length -le 12){return $false}; if($prot -contains $t.ToLower()){return $false}; if(Shared $t){return $false}; return (PathOk $p) }
+# Editor: "NVIDIA Corporation" se compara con $bad como "nvidia" (antes no coincidía y se
+# ofrecía Program Files\NVIDIA Corporation). Con separadores de ruta se descarta:
+# "BraveSoftware\Brave-Browser" (apps web de Brave) apuntaba al navegador entero.
+$pubCore = ($pub -replace '(?i)[,\.]?\s+(corporation|corp|incorporated|inc|ltd|limited|llc|gmbh|s\.?r\.?o|co)\.?$','').Trim().ToLower()
+if($pub -match '[\\/:*?"<>|]' -or ($bad -contains $pubCore)){ $pub='' }
 # Nombre "limpio" desde el DisplayName: sin (...) y cortado en la primera versión
 # ("7-Zip 26.01 (x64 edition)" -> "7-Zip"). Sirve para apps MSI sin InstallLocation.
 $clean = ($name -replace '\([^)]*\)','')
 $clean = ($clean -replace '(?i)\s+v?\d[\d\.\-]*.*$','').Trim()
 $leaf = if($loc){ Split-Path $loc -Leaf } else { '' }
-$folderTerms = @($leaf,$clean,$pub) | Where-Object { $_ -and $_.Length -gt 2 -and ($bad -notcontains $_.ToLower()) } | Select-Object -Unique
-$appTerms = @($leaf,$clean) | Where-Object { $_ -and $_.Length -gt 2 -and ($bad -notcontains $_.ToLower()) } | Select-Object -Unique
+# Un término igual al editor (ej. carpeta "Epic Games" del editor "Epic Games, Inc.") es
+# del EDITOR, no de la app: compartido con sus otros programas (Epic Online Services).
+$norm = { param($s) ($s -replace '[^a-zA-Z0-9]','').ToLower() }
+$appTerms = @($leaf,$clean) | Where-Object { $_ -and $_.Length -gt 2 -and ($bad -notcontains $_.ToLower()) -and (-not $pubCore -or (& $norm $_) -ne (& $norm $pubCore)) } | Select-Object -Unique
+$pubTerm = if($pub -and $pub.Length -gt 2 -and ($appTerms -notcontains $pub)){ $pub } else { '' }
 $found=@()
 if(SafeFolder $loc){ $found += [pscustomobject]@{type='folder'; label='folder'; path=$loc} }
 if($key -and (Test-Path -LiteralPath ('Registry::'+$key))){ $found += [pscustomobject]@{type='regkey'; label='uninstallKey'; path=('Registry::'+$key)} }
 foreach($root in @($env:APPDATA,$env:LOCALAPPDATA,$env:ProgramData,$env:ProgramFiles,[Environment]::GetEnvironmentVariable('ProgramFiles(x86)'))){
   if(!$root){ continue }
-  foreach($t in $folderTerms){
+  foreach($t in $appTerms){
     $p = Join-Path $root $t
     if((SafeFolder $p) -and (@($found.path) -notcontains $p)){ $found += [pscustomobject]@{type='folder'; label='data'; path=$p} }
+  }
+}
+if($pubTerm){
+  foreach($root in @($env:APPDATA,$env:LOCALAPPDATA)){
+    if(!$root){ continue }
+    $p = Join-Path $root $pubTerm
+    if((SafeFolder $p) -and (@($found.path) -notcontains $p)){ $found += [pscustomobject]@{type='folder'; label='pubData'; path=$p} }
   }
 }
 foreach($rr in @('HKCU:\Software','HKLM:\Software','HKLM:\Software\Wow6432Node')){
@@ -156,9 +213,11 @@ foreach($rr in @('HKCU:\Software','HKLM:\Software','HKLM:\Software\Wow6432Node')
 if($found.Count -eq 0){'[]'}else{$found|ConvertTo-Json -Compress -Depth 3}`;
 
 // Borra SOLO los restos que el usuario confirmó. Re-valida las guardas (defensa en
-// profundidad): nunca borra rutas protegidas ni claves de registro raíz, aunque
-// llegaran en la lista.
-const deleteLeftovers = (items: { type: string; path: string }[]) => String.raw`$json=[Text.Encoding]::UTF8.GetString([Convert]::FromBase64String('${b64utf8(JSON.stringify(items))}'))
+// profundidad): nunca borra rutas protegidas, carpetas con otro programa instalado
+// ni claves de registro raíz, aunque llegaran en la lista.
+const deleteLeftovers = (items: { type: string; path: string }[], appKey: string) => String.raw`$json=[Text.Encoding]::UTF8.GetString([Convert]::FromBase64String('${b64utf8(JSON.stringify(items))}'))
+$key=[Text.Encoding]::UTF8.GetString([Convert]::FromBase64String('${b64utf8(appKey)}'))
+${OTHER_LOCS}
 # Desenrollar: en PS 5.1, @($json | ConvertFrom-Json) mete TODO el array en un solo
 # elemento y el bucle daba una sola vuelta con la lista entera (no se borraba nada).
 $items=@($json | ConvertFrom-Json | ForEach-Object { $_ })
@@ -169,7 +228,7 @@ foreach($it in $items){
   $p=$it.path
   if($it.type -eq 'folder'){
     $t=$p.TrimEnd('\')
-    if($t.Length -le 12 -or ($prot -contains $t.ToLower())){ continue }
+    if($t.Length -le 12 -or ($prot -contains $t.ToLower()) -or (Shared $t)){ continue }
     if(-not (Test-Path -LiteralPath $p)){ $done++; continue }   # ya no existe (lo borró el desinstalador)
     # Cerrar procesos cuyo ejecutable esté dentro de la carpeta (archivos en uso).
     $pref=$t.ToLower()+'\'
@@ -222,7 +281,8 @@ export default function Desinstalar() {
 
   const filtered = useMemo(() => {
     const q = query.toLowerCase().trim();
-    return q ? apps.filter((a) => a.name.toLowerCase().includes(q)) : apps;
+    const mine = apps.filter((a) => !isSelf(a));
+    return q ? mine.filter((a) => a.name.toLowerCase().includes(q)) : mine;
   }, [apps, query]);
 
   const removeRow = (a: App) => removeApp(a);
@@ -287,7 +347,8 @@ export default function Desinstalar() {
         try { const d = JSON.parse(r.output.trim() || "[]"); items = (Array.isArray(d) ? d : [d]) as Leftover[]; } catch { /* salida inválida: sin restos que mostrar */ }
         setBusy(null); setWorking(false); setStatus("");
         if (items.length === 0) { setStatus(`✓ ${t("unins.noLeftovers").replace("{name}", a.name)}`); removeRow(a); return; }
-        setScan({ app: a, items: items.map((it) => ({ ...it, checked: true })) });
+        // Lo hallado por el nombre del editor puede ser de otras apps suyas: desmarcado.
+        setScan({ app: a, items: items.map((it) => ({ ...it, checked: it.label !== "pubData" })) });
       },
     });
   };
@@ -303,7 +364,7 @@ export default function Desinstalar() {
     if (chosen.length === 0) { removeRow(app); return; }
     setWorking(true); setBusy(app.name);
     setStatus(t("unins.deletingLeft").replace("{name}", app.name));
-    const r = await runPowershell(deleteLeftovers(chosen));
+    const r = await runPowershell(deleteLeftovers(chosen, app.key));
     const last = r.output.split("\n").map((l) => l.trim()).filter(Boolean).pop() || t("unins.done");
     setStatus(`✓ ${app.name}: ${last}`);
     removeRow(app);
@@ -339,8 +400,12 @@ export default function Desinstalar() {
                 desc={[a.pub, fmtSize(a.size), fmtDate(a.date)].filter(Boolean).join(" · ")}
                 right={<div className={`flex items-center gap-1.5 transition-opacity ${busy === a.name ? "opacity-100" : "opacity-0 group-hover:opacity-100"}`}>
                   {busy === a.name && <Spinner />}
-                  <button onClick={() => uninstall(a)} disabled={working} className="btn btn-ghost h-8 px-3 text-[12.5px]">{t("unins.remove")}</button>
-                  <button onClick={() => force(a)} disabled={working} className="btn btn-ghost h-8 px-3 text-[12.5px] !text-[#ff6b84] !border-[#ff547033] hover:!bg-[#ff5470]/[0.08]">{t("unins.force")}</button>
+                  {isProtected(a) && <Badge tone="warn">{t("unins.system")}</Badge>}
+                  <button disabled={working} className="btn btn-ghost h-8 px-3 text-[12.5px]"
+                    onClick={() => isProtected(a)
+                      ? setConfirm({ title: t("unins.sysTitle").replace("{name}", a.name), msg: t("unins.sysMsg"), run: () => { setConfirm(null); uninstall(a); } })
+                      : uninstall(a)}>{t("unins.remove")}</button>
+                  {!isProtected(a) && <button onClick={() => force(a)} disabled={working} className="btn btn-ghost h-8 px-3 text-[12.5px] !text-[#ff6b84] !border-[#ff547033] hover:!bg-[#ff5470]/[0.08]">{t("unins.force")}</button>}
                 </div>} />
             ))}
           </List>

@@ -210,7 +210,9 @@ const loadPick = (k: PickerKey): string[] => {
 };
 const scriptOf = (tw: Tweak, picks: Record<PickerKey, string[]>) => (tw.picker ? PICKERS[tw.picker].script(picks[tw.picker]) : tw.script);
 // Una fila con menú y nada elegido no se marca sola (no tendría nada que aplicar).
-const defaultOn = (tw: Tweak, picks: Record<PickerKey, string[]>) => !tw.optIn && !(tw.picker && picks[tw.picker].length === 0);
+// "Avanzado" (risk) nunca viene marcado ni lo marca "Marcar todo": antes sólo se miraba optIn
+// y entraban MSI mode, menú clásico, hibernación o "Quitar OneDrive por completo".
+const defaultOn = (tw: Tweak, picks: Record<PickerKey, string[]>) => !tw.optIn && tw.risk !== "advanced" && !(tw.picker && picks[tw.picker].length === 0);
 
 export default function Optimizaciones() {
   const { t, lang } = useI18n();

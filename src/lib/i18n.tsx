@@ -298,6 +298,9 @@ const STR: Record<string, { es: string; en: string }> = {
   "unins.remove": { es: "Quitar", en: "Remove" },
   "unins.force": { es: "Forzar", en: "Force" },
   "unins.confirm": { es: "Confirmar", en: "Confirm" },
+  "unins.system": { es: "Sistema", en: "System" },
+  "unins.sysTitle": { es: "¿Desinstalar {name}?", en: "Uninstall {name}?" },
+  "unins.sysMsg": { es: "Es un componente que usan Windows, otros programas o los juegos (Microsoft Store, Game Pass, Visual C++/.NET, anti-cheat, drivers…). Si lo quitás, pueden dejar de abrir juegos o apps. Hacelo solo si sabés que no lo necesitás.", en: "It's a component used by Windows, other programs or games (Microsoft Store, Game Pass, Visual C++/.NET, anti-cheat, drivers…). Removing it can stop games or apps from opening. Only do it if you know you don't need it." },
   "unins.done": { es: "hecho", en: "done" },
   "unins.doneCap": { es: "Hecho", en: "Done" },
   "unins.uninstalling": { es: "Desinstalando {name}…", en: "Uninstalling {name}…" },
@@ -445,6 +448,7 @@ const STR: Record<string, { es: string; en: string }> = {
   "unins.lo.uninstallKey": { es: "Clave de desinstalación", en: "Uninstall key" },
   "unins.lo.data": { es: "Datos / carpeta", en: "Data / folder" },
   "unins.lo.reg": { es: "Registro", en: "Registry" },
+  "unins.lo.pubData": { es: "Datos del editor (pueden ser de otras apps suyas)", en: "Publisher data (may belong to its other apps)" },
 
   // ── Motor: grupos ──
   "motor.group.Gaming": { es: "Gaming", en: "Gaming" },

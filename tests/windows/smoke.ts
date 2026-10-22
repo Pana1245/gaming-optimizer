@@ -350,14 +350,32 @@ New-Item -ItemType Directory -Force -Path "$env:ProgramData\GO Smoke App" | Out-
     must(/GONE/.test(await ok(stillInstalled(app))), "la clave de desinstalación sigue");
     return first(o);
   });
-  await test("Desinstalar: buscar y borrar restos", async () => {
-    const d = JSON.parse((await ok(scanLeftovers(app), 300)) || "[]");
-    const items = (Array.isArray(d) ? d : [d]) as { type: string; path: string }[];
-    must(items.some((i) => i.path.toLowerCase().includes("go smoke app")), "no encontró los restos: " + JSON.stringify(items));
-    const o = await ok(deleteLeftovers(items.map(({ type, path: p }) => ({ type, path: p }))), 300);
-    must(!fs.existsSync(dir) && !fs.existsSync(path.join(process.env.ProgramData ?? "C:\\ProgramData", "GO Smoke App")), "quedaron carpetas: " + o);
-    return first(o);
-  });
+  // Otro programa del mismo editor instalado dentro de %AppData%\<editor>: esa carpeta es
+  // compartida y no puede ofrecerse como resto (antes pasaba con "NVIDIA Corporation").
+  const sibKey = "HKLM\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Uninstall\\GOSmokeSibling";
+  const pubDir = path.join(process.env.APPDATA ?? "", "Gaming Optimizer Test");
+  await ok(String.raw`New-Item -ItemType Directory -Force -Path '${pubDir}\Sibling' | Out-Null
+New-Item -Force -Path 'Registry::${sibKey}' | Out-Null
+Set-ItemProperty 'Registry::${sibKey}' DisplayName 'GO Smoke Sibling'
+Set-ItemProperty 'Registry::${sibKey}' InstallLocation '"${pubDir}\Sibling"'`);
+  try {
+    await test("Desinstalar: buscar y borrar restos", async () => {
+      const d = JSON.parse((await ok(scanLeftovers(app), 300)) || "[]");
+      const items = (Array.isArray(d) ? d : [d]) as { type: string; path: string }[];
+      must(items.some((i) => i.path.toLowerCase().includes("go smoke app")), "no encontró los restos: " + JSON.stringify(items));
+      must(!items.some((i) => i.path.toLowerCase() === pubDir.toLowerCase()), "ofreció la carpeta compartida del editor: " + JSON.stringify(items));
+      const o = await ok(deleteLeftovers(items.map(({ type, path: p }) => ({ type, path: p })), app.key), 300);
+      must(!fs.existsSync(dir) && !fs.existsSync(path.join(process.env.ProgramData ?? "C:\\ProgramData", "GO Smoke App")), "quedaron carpetas: " + o);
+      return first(o);
+    });
+    await test("Desinstalar: no borra una carpeta con otro programa", async () => {
+      const o = await ok(deleteLeftovers([{ type: "folder", path: pubDir }], app.key), 300);
+      must(fs.existsSync(path.join(pubDir, "Sibling")), "borró la carpeta de otro programa: " + o);
+      return first(o);
+    });
+  } finally {
+    await ps(String.raw`Remove-Item -LiteralPath 'Registry::${sibKey}' -Force -EA SilentlyContinue; Remove-Item -LiteralPath '${pubDir}' -Recurse -Force -EA SilentlyContinue`);
+  }
 }
 
 // El runner no tiene placa NVIDIA ni AMD: se prueba que el C# compile con el PowerShell 5.1
