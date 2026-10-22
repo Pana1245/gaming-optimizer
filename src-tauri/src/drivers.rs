@@ -127,7 +127,7 @@ pub fn open_url(url: String) -> Result<(), String> {
         }
     }
     // Respaldo 2: Explorer (en algunas PCs abre una carpeta en vez del navegador).
-    std::process::Command::new("explorer.exe")
+    std::process::Command::new(crate::sys_exe("explorer.exe", true))
         .arg(&url)
         .spawn()
         .map(|_| ())

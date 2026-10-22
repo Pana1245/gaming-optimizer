@@ -159,9 +159,11 @@ fn launch() -> Result<(), String> {
     // El exe instalado se llama app.exe (binario Tauri), y DisplayIcon/InstallLocation
     // vienen del registro CON comillas → hay que sacarlas. Preferimos DisplayIcon (ruta
     // directa al exe); si no, InstallLocation + app.exe (o GamingOptimizer.exe de respaldo).
+    // Primero HKLM: la instalación nueva es por máquina (Program Files); una vieja por
+    // usuario puede seguir en HKCU hasta que la versión nueva la limpie al abrirse.
     let ps = "$ErrorActionPreference='SilentlyContinue'; \
-        $roots=@('HKCU:\\Software\\Microsoft\\Windows\\CurrentVersion\\Uninstall\\*',\
-        'HKLM:\\Software\\Microsoft\\Windows\\CurrentVersion\\Uninstall\\*',\
+        $roots=@('HKLM:\\Software\\Microsoft\\Windows\\CurrentVersion\\Uninstall\\*',\
+        'HKCU:\\Software\\Microsoft\\Windows\\CurrentVersion\\Uninstall\\*',\
         'HKLM:\\Software\\WOW6432Node\\Microsoft\\Windows\\CurrentVersion\\Uninstall\\*'); \
         $k = Get-ItemProperty $roots | Where-Object { $_.DisplayName -like 'GamingOptimizer*' } | Select-Object -First 1; \
         $exe=$null; \

@@ -108,7 +108,7 @@ pub fn tray_labels(app: AppHandle, items: tauri::State<TrayItems>, open: String,
 }
 
 fn powershell(script: &str) -> Option<std::process::Output> {
-    let mut cmd = Command::new("powershell.exe");
+    let mut cmd = Command::new(super::sys_exe(super::POWERSHELL, false));
     cmd.args(["-NoProfile", "-ExecutionPolicy", "Bypass", "-Command", script]);
     #[cfg(windows)]
     cmd.creation_flags(CREATE_NO_WINDOW);

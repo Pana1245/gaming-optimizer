@@ -16,6 +16,26 @@ use std::os::windows::process::CommandExt;
 #[cfg(windows)]
 const CREATE_NO_WINDOW: u32 = 0x0800_0000;
 
+/// Ejecutable de Windows por ruta completa (carpeta System32, o la de Windows con `in_windir`).
+/// Con sólo el nombre, Windows busca primero en la carpeta de la app; y %SystemRoot% lo puede
+/// redefinir una variable de entorno del usuario. Como la app corre elevada, cualquiera de los
+/// dos permitía "plantar" un powershell.exe falso. GetSystemDirectoryW no depende del entorno.
+pub(crate) const POWERSHELL: &str = r"WindowsPowerShell\v1.0\powershell.exe";
+
+pub(crate) fn sys_exe(name: &str, in_windir: bool) -> std::path::PathBuf {
+    #[cfg(windows)]
+    {
+        let mut buf = [0u16; 260];
+        let n = unsafe { windows::Win32::System::SystemInformation::GetSystemDirectoryW(Some(&mut buf)) } as usize;
+        if n > 0 && n < buf.len() {
+            let sys = std::path::PathBuf::from(String::from_utf16_lossy(&buf[..n]));
+            let dir = if in_windir { sys.parent().map(|p| p.to_path_buf()).unwrap_or(sys) } else { sys };
+            return dir.join(name);
+        }
+    }
+    std::path::PathBuf::from(name)
+}
+
 #[derive(Serialize)]
 pub struct RunResult {
     pub ok: bool,
@@ -44,7 +64,7 @@ async fn run_powershell(script: String, timeout_secs: Option<u64>) -> RunResult 
         let utf16: Vec<u8> = full.encode_utf16().flat_map(|u| u.to_le_bytes()).collect();
         let encoded = general_purpose::STANDARD.encode(utf16);
 
-        let mut cmd = Command::new("powershell.exe");
+        let mut cmd = Command::new(sys_exe(POWERSHELL, false));
         cmd.args(["-NoProfile", "-ExecutionPolicy", "Bypass", "-EncodedCommand", &encoded])
             .stdout(Stdio::piped())
             .stderr(Stdio::piped());
@@ -70,7 +90,7 @@ async fn run_powershell(script: String, timeout_secs: Option<u64>) -> RunResult 
                 #[cfg(windows)]
                 {
                     let pid = child.id();
-                    let mut tk = Command::new("taskkill");
+                    let mut tk = Command::new(sys_exe("taskkill.exe", false));
                     tk.args(["/F", "/T", "/PID", &pid.to_string()]);
                     tk.creation_flags(CREATE_NO_WINDOW);
                     let _ = tk.output();
@@ -106,7 +126,7 @@ async fn run_powershell_stream(app: tauri::AppHandle, script: String, id: String
         let utf16: Vec<u8> = full.encode_utf16().flat_map(|u| u.to_le_bytes()).collect();
         let encoded = general_purpose::STANDARD.encode(utf16);
 
-        let mut cmd = Command::new("powershell.exe");
+        let mut cmd = Command::new(sys_exe(POWERSHELL, false));
         cmd.args(["-NoProfile", "-ExecutionPolicy", "Bypass", "-EncodedCommand", &encoded])
             .stdout(Stdio::piped())
             .stderr(Stdio::piped());
@@ -190,7 +210,7 @@ async fn run_powershell_stream(app: tauri::AppHandle, script: String, id: String
                 #[cfg(windows)]
                 {
                     let pid = child.id();
-                    let mut tk = Command::new("taskkill");
+                    let mut tk = Command::new(sys_exe("taskkill.exe", false));
                     tk.args(["/F", "/T", "/PID", &pid.to_string()]);
                     tk.creation_flags(CREATE_NO_WINDOW);
                     let _ = tk.output();
@@ -354,7 +374,7 @@ $list | ForEach-Object {
 fn detect_gpus() -> Vec<GpuEntry> {
     let utf16: Vec<u8> = GPU_LIST_PS.encode_utf16().flat_map(|u| u.to_le_bytes()).collect();
     let encoded = general_purpose::STANDARD.encode(utf16);
-    let mut cmd = Command::new("powershell.exe");
+    let mut cmd = Command::new(sys_exe(POWERSHELL, false));
     cmd.args(["-NoProfile", "-ExecutionPolicy", "Bypass", "-EncodedCommand", &encoded]);
     #[cfg(windows)]
     cmd.creation_flags(CREATE_NO_WINDOW);
@@ -482,11 +502,11 @@ fn ledger_file() -> std::path::PathBuf {
 #[cfg(windows)]
 fn secure_data_dir(dir: &std::path::Path) {
     let d = dir.to_string_lossy().to_string();
-    let mut c = Command::new("icacls");
+    let mut c = Command::new(sys_exe("icacls.exe", false));
     c.args([d.as_str(), "/setowner", "*S-1-5-32-544", "/T", "/C", "/Q"]);
     c.creation_flags(CREATE_NO_WINDOW);
     let _ = c.status();
-    let mut c = Command::new("icacls");
+    let mut c = Command::new(sys_exe("icacls.exe", false));
     c.args([d.as_str(), "/inheritance:r", "/grant:r", "*S-1-5-18:(OI)(CI)F", "*S-1-5-32-544:(OI)(CI)F", "*S-1-5-32-545:(OI)(CI)RX", "/T", "/C", "/Q"]);
     c.creation_flags(CREATE_NO_WINDOW);
     let _ = c.status();
@@ -855,6 +875,14 @@ pub fn run() {
 mod engine_tests {
     use super::*;
     use winreg::enums::HKEY_CURRENT_USER;
+
+    #[test]
+    fn ejecutables_del_sistema_por_ruta_completa() {
+        for (n, w) in [(POWERSHELL, false), ("taskkill.exe", false), ("icacls.exe", false), ("explorer.exe", true)] {
+            let p = sys_exe(n, w);
+            assert!(p.is_absolute() && p.is_file(), "{} -> {}", n, p.display());
+        }
+    }
 
     // Valor original de OTRO tipo (texto "1" donde el tweak escribe DWORD): al deshacer
     // tiene que volver exacto (antes se borraba).

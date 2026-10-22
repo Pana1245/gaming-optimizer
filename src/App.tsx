@@ -13,6 +13,7 @@ import AccountWarning from "./components/AccountWarning";
 import { ensureNotify } from "./lib/notify";
 import { dedupePowerPlansOnce } from "./lib/powerDedupe";
 import { removeWinRing0Once } from "./lib/winring0";
+import { migrateInstallOnce } from "./lib/migrateInstall";
 // Cada sección se carga recién cuando se abre: antes todo iba en un solo archivo de
 // ~1,2 MB que se procesaba entero al arrancar (gráficos, test de velocidad, guía…).
 const Optimizaciones = lazy(() => import("./pages/Optimizaciones"));
@@ -105,6 +106,8 @@ export default function App() {
   useEffect(() => { dedupePowerPlansOnce(); }, []);
   // Quita el driver vulnerable WinRing0 que instalaban las versiones anteriores.
   useEffect(() => { removeWinRing0Once(); }, []);
+  // Pasa de la instalación por usuario (vieja) a Program Files: limpia la vieja y la tarea de inicio.
+  useEffect(() => { migrateInstallOnce(); }, []);
   // Menú de la bandeja en el idioma de la interfaz.
   useEffect(() => {
     invoke("tray_labels", { open: t("tray.open"), quit: t("tray.quit"), tooltip: t("tray.tooltip") }).catch(() => {});
