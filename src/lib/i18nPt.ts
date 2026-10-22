@@ -392,6 +392,8 @@ export const PT: Record<string, string> = {
   "gml.off": "Auto Game-Mode desativado.",
   "engine.errWrite": "Não foi possível gravar no registro",
   "engine.errPrior": "Não foi possível ler o valor anterior; abortado para não danificar o registro ao desfazer",
+  "engine.errLedger": "Não foi possível salvar o histórico: as mudanças foram aplicadas, mas não podem ser desfeitas pelo Motor",
+  "motor.undoNewer": "Primeiro desfaça a mudança mais nova no mesmo ajuste ({name})",
   "unins.lo.folder": "Pasta de instalação",
   "unins.lo.uninstallKey": "Chave de desinstalação",
   "unins.lo.data": "Dados / pasta",

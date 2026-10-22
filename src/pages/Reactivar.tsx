@@ -130,8 +130,20 @@ Write-Output OK`,
     },
     script: String.raw`$base='HKCU:\SOFTWARE\Microsoft\Windows\CurrentVersion\CapabilityAccessManager\ConsentStore'
 $perms=@('location','userAccountInformation','contacts','appointments','phoneCall','phoneCallHistory','email','userDataTasks','chat','radios','bluetoothSync','appDiagnostics','documentsLibrary','picturesLibrary','broadFileSystemAccess','backgroundSpatialPerception','gazeInput','activity','trackerPlugin','graphicsCaptureProgrammatic','graphicsCaptureWithoutBorder','microphone','webcam','videosLibrary','userNotificationListener')
-foreach($p in $perms){ $k="$base\$p"; if(Test-Path $k){ Set-ItemProperty $k -Name Value -Value 'Allow' -Type String -Force -EA SilentlyContinue } }
-Write-Output OK`,
+# Se devuelve lo que había ANTES de optimizar (respaldo más viejo), no "Permitir" a todo:
+# así no se habilitan permisos que el usuario había bloqueado a propósito.
+$bk=Get-ChildItem "$env:SystemDrive\OptimizacionBackup" -Directory -EA SilentlyContinue | Sort-Object Name | Where-Object { Test-Path -LiteralPath (Join-Path $_.FullName 'consentstore.reg') } | Select-Object -First 1
+if(-not $bk){ Write-Output 'No hay un respaldo de Optimizaciones: no se cambió ningún permiso. Revisalos en Configuración > Privacidad.'; exit 1 }
+$was=@{}; $sec=''
+foreach($l in (Get-Content -LiteralPath (Join-Path $bk.FullName 'consentstore.reg') -Encoding Unicode)){
+  if($l -match '^\[.*\\ConsentStore\\([^\\\]]+)\]$'){ $sec=$Matches[1].ToLower() } elseif($l -match '^\['){ $sec='' }
+  elseif($sec -and $l -match '^"Value"="(Allow|Deny|Prompt)"'){ $was[$sec]=$Matches[1] }
+}
+$n=0
+foreach($p in $perms){ $k="$base\$p"; $v=$was[$p.ToLower()]
+  # Sólo DESBLOQUEA (nunca bloquea): el respaldo puede traer bloqueos de versiones viejas.
+  if($v -and $v -ne 'Deny' -and (Test-Path $k) -and (Get-ItemProperty $k -Name Value -EA SilentlyContinue).Value -eq 'Deny'){ Set-ItemProperty $k -Name Value -Value $v -Type String -Force -EA SilentlyContinue; $n++ } }
+Write-Output ("Permisos devueltos a como estaban: " + $n)`,
   },
   {
     id: "energia",

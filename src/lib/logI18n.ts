@@ -286,6 +286,7 @@ const EXACT_PT: Record<string, string> = {
 };
 
 const RX: [RegExp, string, string][] = [
+  [/No hay un respaldo de Optimizaciones: no se cambió ningún permiso\. Revisalos en Configuración > Privacidad\./, "There's no Optimizations backup: no permission was changed. Check them in Settings > Privacy.", "Não há backup das Otimizações: nenhuma permissão foi alterada. Confira em Configurações > Privacidade."],
   [/^No se pudo completar la desinstalación de Edge: No se encontró setup\.exe en (.+)\.$/, "Couldn't complete Edge uninstallation: setup.exe was not found in $1.", "Não foi possível concluir a desinstalação do Edge: setup.exe não foi encontrado em $1."],
   [/^Desinstalador de Edge: código (-?\d+)$/, "Edge uninstaller: exit code $1", "Desinstalador do Edge: código de saída $1"],
   [/^No se pudieron restaurar los cambios temporales de Edge: ([\s\S]*)$/, "Couldn't restore temporary Edge changes: $1", "Não foi possível restaurar as alterações temporárias do Edge: $1"],

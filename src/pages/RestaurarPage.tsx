@@ -83,6 +83,10 @@ foreach($r in $regs){
   #    cambian solos (DHCP…): ahí solo se quitan los valores que agregan los tweaks de red.
   $onlyNames = if($order[0] -match '(?i)\\Tcpip\\Parameters\\Interfaces'){ @('TcpAckFrequency','TCPNoDelay','TcpDelAckTicks') } else { $null }
   foreach($k in $order){
+    # Registros que maneja Windows y ningún tweak escribe: el de cada juego en
+    # GameConfigStore\Children (MatchedExeFullPath, LastAccessed…) y el de cada app dentro
+    # de ConsentStore\<permiso>\<app>. Borrarles valores los dejaba a medias.
+    if($k -match '(?i)\\GameConfigStore\\Children\\|\\ConsentStore\\[^\\]+\\.'){ continue }
     $item=Get-Item -LiteralPath ('Registry::' + $k) -EA SilentlyContinue
     if(-not $item){ continue }
     foreach($vn in $item.GetValueNames()){

@@ -55,7 +55,8 @@ export default function Perfiles() {
         localStorage.setItem("profile_active", p.id);
         setActiveId(p.id);
       }
-      notify(`${p.emoji} ${t("profiles.notifyPre")} ${nameOf(p)} ${t("profiles.notifyApplied")}`, `${ok} ${t("profiles.notifyBody")} ${planOf(p)}.`);
+      // "Aplicado" sólo si se aplicó algo de verdad (antes salía aunque fallara todo).
+      if (ok > 0 && planRes.ok) notify(`${p.emoji} ${t("profiles.notifyPre")} ${nameOf(p)} ${t("profiles.notifyApplied")}`, `${ok} ${t("profiles.notifyBody")} ${planOf(p)}.`);
     } catch (err) {
       addLog(`✗ ${t("profiles.applyErr")} ${t(err instanceof Error ? err.message : String(err))}`);
     } finally {

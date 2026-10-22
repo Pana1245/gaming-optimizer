@@ -40,6 +40,7 @@ export async function undoEntry(e: LedgerEntry): Promise<boolean> {
 export async function loadLedger(): Promise<LedgerEntry[]> {
   try { return JSON.parse(await ledgerRead()) as LedgerEntry[]; } catch { return []; }
 }
+/** Si no se pudo guardar, falla: los cambios quedaron aplicados pero sin historial para deshacer. */
 export async function saveLedger(l: LedgerEntry[]): Promise<void> {
-  await ledgerWrite(JSON.stringify(l));
+  if (!(await ledgerWrite(JSON.stringify(l)))) throw new Error("engine.errLedger");
 }

@@ -66,7 +66,7 @@ export default function Motor() {
     // ya se hicieron en el registro; no guardarlos los dejaría aplicados pero sin
     // registro (imposibles de deshacer desde el Historial).
     const updated = [...ledger, ...newEntries];
-    await saveLedger(updated);
+    await persist(updated);
     if (mounted.current) {
       setLedger(updated);
       addLog(`\n${t("motor.appliedSummary").replace("{ok}", String(ok)).replace("{total}", String(selected.length))}`);
@@ -74,7 +74,18 @@ export default function Motor() {
     }
   };
 
+  // Guarda el historial; si no se pudo, lo avisa (los cambios ya están en el registro).
+  const persist = async (l: LedgerEntry[]) => {
+    try { await saveLedger(l); } catch { addLog(`✗ ${t("engine.errLedger")}`); }
+  };
+
   const undo = async (e: LedgerEntry) => {
+    // Hay un cambio MÁS NUEVO y activo sobre el mismo ajuste: deshacer éste pisaría su valor.
+    const idx = ledger.findIndex((x) => x.id === e.id);
+    if (ledger.slice(idx + 1).some((x) => !x.undone && x.key.toLowerCase() === e.key.toLowerCase() && x.prop === e.prop)) {
+      addLog(`✗ ${t("motor.undoNewer").replace("{name}", ledgerName(e, lang))}`);
+      return;
+    }
     setBusy(true);
     const ok = await undoEntry(e);
     if (!ok) {
@@ -83,18 +94,20 @@ export default function Motor() {
       return;
     }
     const updated = ledger.map((x) => (x.id === e.id ? { ...x, undone: true } : x));
-    await saveLedger(updated);
+    await persist(updated);
     if (mounted.current) { setLedger(updated); setBusy(false); }
   };
 
   const undoAll = async () => {
     setBusy(true);
-    const active = ledger.filter((e) => !e.undone);
+    // Del más NUEVO al más viejo: si un ajuste cambió dos veces, el último en deshacerse
+    // tiene que ser el primero (que guarda el valor ORIGINAL). Al revés quedaba el intermedio.
+    const active = ledger.filter((e) => !e.undone).reverse();
     // Sólo marcamos como deshecho lo que realmente se pudo revertir.
     const failed = new Set<string>();
     for (const e of active) { if (!(await undoEntry(e))) failed.add(e.id); }
     const updated = ledger.map((x) => (failed.has(x.id) ? x : { ...x, undone: true }));
-    await saveLedger(updated);
+    await persist(updated);
     if (mounted.current) {
       setLedger(updated);
       if (failed.size) addLog(`✗ ${t("motor.undoAllFail").replace("{n}", String(failed.size))}`);

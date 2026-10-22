@@ -445,6 +445,8 @@ const STR: Record<string, { es: string; en: string }> = {
   "gml.off": { es: "Auto Game-Mode desactivado.", en: "Auto Game-Mode disabled." },
   "engine.errWrite": { es: "No se pudo escribir el registro", en: "Couldn't write to the registry" },
   "engine.errPrior": { es: "No se pudo leer el valor previo; se aborta para no dañar el registro al deshacer", en: "Couldn't read the previous value; aborted so undo can't damage the registry" },
+  "engine.errLedger": { es: "No se pudo guardar el historial: los cambios quedaron aplicados pero no se pueden deshacer desde el Motor", en: "Couldn't save the history: the changes were applied but can't be undone from the Engine" },
+  "motor.undoNewer": { es: "Primero deshacé el cambio más nuevo sobre el mismo ajuste ({name})", en: "Undo the newer change to the same setting first ({name})" },
   "unins.lo.folder": { es: "Carpeta de instalación", en: "Install folder" },
   "unins.lo.uninstallKey": { es: "Clave de desinstalación", en: "Uninstall key" },
   "unins.lo.data": { es: "Datos / carpeta", en: "Data / folder" },
