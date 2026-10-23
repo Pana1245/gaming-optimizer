@@ -1,15 +1,46 @@
 import { useEffect, useState } from "react";
+import Modal from "../components/Modal";
 import { Page, Badge, Switch, Empty } from "../components/ui";
 import { StatusLine } from "../components/Feedback";
 import { useI18n } from "../lib/i18n";
 import { useGameMode } from "../lib/gameMode";
 import { useSharedState } from "../lib/sharedState";
-import { scanGames, iconsFor, launchGame, pickExe, manualGame, steamCover, steamHeader, type Game } from "../lib/games";
+import { scanGames, iconsFor, launchGame, pickExe, manualGame, steamCover, steamHeader, readGameWin, setGameWin, type Game, type GameWin } from "../lib/games";
 
 // Preferencias de la Biblioteca (sólo en esta PC): juegos agregados a mano y ocultos.
 const load = (k: string): string[] => { try { const v = JSON.parse(localStorage.getItem(k) || "[]"); return Array.isArray(v) ? v : []; } catch { return []; } };
 const save = (k: string, v: string[]) => { try { localStorage.setItem(k, JSON.stringify(v)); } catch { /* sólo esta sesión */ } };
 const exeName = (g: Game) => g.exePath?.split("\\").pop()?.toLowerCase();
+
+/** Ajustes de Windows para el .exe del juego; cada interruptor lee y escribe el registro real. */
+function WinSettings({ g, onClose }: { g: Game; onClose: () => void }) {
+  const { t } = useI18n();
+  const [st, setSt] = useState<GameWin | null>(null);
+  const [busy, setBusy] = useState(false);
+  useEffect(() => { readGameWin(g.exePath!).then(setSt).catch(() => setSt({ gpu: false, fso: false })); }, [g.exePath]);
+  const flip = async (what: keyof GameWin) => {
+    if (!st) return;
+    setBusy(true);
+    await setGameWin(g.exePath!, what, !st[what]).catch(() => false);
+    setSt(await readGameWin(g.exePath!).catch(() => st));
+    setBusy(false);
+  };
+  const row = (what: keyof GameWin) => (
+    <div className="flex items-start justify-between gap-4 py-2.5">
+      <div className="min-w-0">
+        <div className="text-[13px] text-text">{t(`lib.win.${what}`)}</div>
+        <div className="text-[12px] text-text-mute mt-0.5">{t(`lib.win.${what}Desc`)}</div>
+      </div>
+      <Switch size="sm" on={!!st?.[what]} onChange={() => flip(what)} disabled={!st || busy} label={t(`lib.win.${what}`)} />
+    </div>
+  );
+  return (
+    <Modal open title={`${t("lib.win.title")} — ${g.name}`} onClose={onClose}>
+      <div className="whitespace-normal divide-y divide-line">{row("gpu")}{row("fso")}</div>
+      <p className="text-[11.5px] text-text-mute mt-3 whitespace-normal">{t("lib.win.note")}</p>
+    </Modal>
+  );
+}
 
 /** Portada: la vertical de Steam, si falla la horizontal; si no, el ícono del .exe o la inicial. */
 function Cover({ g }: { g: Game }) {
@@ -36,6 +67,7 @@ export default function Biblioteca() {
   const [showHidden, setShowHidden] = useState(false);
   const [busy, setBusy] = useState(false);
   const [status, setStatus] = useState("");
+  const [winFor, setWinFor] = useState<Game | null>(null);
 
   const rescan = async () => { setBusy(true); setFound(await scanGames().catch(() => [])); setBusy(false); };
   // Se escanea una vez por sesión (tarda unos segundos); "Actualizar" vuelve a buscar.
@@ -109,6 +141,12 @@ export default function Biblioteca() {
                       className="absolute top-2 right-2 w-7 h-7 rounded-md bg-black/60 text-text-dim hover:text-text opacity-0 group-hover:opacity-100 focus:opacity-100 transition-opacity">
                       {isHidden ? "↺" : "✕"}
                     </button>
+                    {g.exePath && (
+                      <button onClick={() => setWinFor(g)} title={t("lib.win.title")} aria-label={`${t("lib.win.title")}: ${g.name}`}
+                        className="absolute top-2 left-2 w-7 h-7 rounded-md bg-black/60 text-text-dim hover:text-text opacity-0 group-hover:opacity-100 focus:opacity-100 transition-opacity">
+                        ⚙
+                      </button>
+                    )}
                   </div>
                   <div className="p-3 flex flex-col gap-2 flex-1">
                     <div className="min-w-0">
@@ -130,6 +168,7 @@ export default function Biblioteca() {
         )}
       </div>
       <StatusLine working={false} text={status} />
+      {winFor && <WinSettings g={winFor} onClose={() => setWinFor(null)} />}
     </Page>
   );
 }

@@ -154,6 +154,41 @@ export async function pickExe(): Promise<string | null> {
   return /\.exe$/i.test(p) ? p : null;
 }
 
+// ---- Ajustes de Windows por juego (sólo registro del usuario; el juego no se toca) ----
+// GPU: lo que guarda Configuración > Pantalla > Gráficos. FSO: la casilla "Deshabilitar
+// optimizaciones de pantalla completa" de Propiedades > Compatibilidad del .exe.
+const GPU_KEY = String.raw`HKCU:\Software\Microsoft\DirectX\UserGpuPreferences`;
+const LAYERS_KEY = String.raw`HKCU:\Software\Microsoft\Windows NT\CurrentVersion\AppCompatFlags\Layers`;
+const FSO_FLAG = "DISABLEDXMAXIMIZEDWINDOWEDMODE";
+export interface GameWin { gpu: boolean; fso: boolean }
+const q = (s: string) => `'${s.replace(/'/g, "''")}'`;
+
+export async function readGameWin(exe: string): Promise<GameWin> {
+  const r = await runPowershell(String.raw`$g=(Get-ItemProperty -LiteralPath ${q(GPU_KEY)} -Name ${q(exe)} -EA SilentlyContinue).${q(exe)}
+$l=(Get-ItemProperty -LiteralPath ${q(LAYERS_KEY)} -Name ${q(exe)} -EA SilentlyContinue).${q(exe)}
+Write-Output ("GPU=" + [int]("$g" -match 'GpuPreference=2;'))
+Write-Output ("FSO=" + [int](@("$l" -split '\s+') -contains '${FSO_FLAG}'))`);
+  return { gpu: /GPU=1/.test(r.output), fso: /FSO=1/.test(r.output) };
+}
+
+export async function setGameWin(exe: string, what: keyof GameWin, on: boolean): Promise<boolean> {
+  const script = what === "gpu"
+    ? String.raw`$k=${q(GPU_KEY)}; $n=${q(exe)}
+if(${on ? "$true" : "$false"}){ if(!(Test-Path -LiteralPath $k)){ New-Item -Path $k -Force | Out-Null }; Set-ItemProperty -LiteralPath $k -Name $n -Value 'GpuPreference=2;' -Type String -Force -EA Stop }
+# Al apagar sólo se quita si es la nuestra (alto rendimiento): una preferencia propia del usuario queda.
+elseif("$((Get-ItemProperty -LiteralPath $k -Name $n -EA SilentlyContinue).$n)" -match 'GpuPreference=2;'){ Remove-ItemProperty -LiteralPath $k -Name $n -Force -EA Stop }
+Write-Output OK`
+    // Se agrega o quita sólo nuestra marca: otras (ej. "ejecutar como administrador") se conservan.
+    : String.raw`$k=${q(LAYERS_KEY)}; $n=${q(exe)}
+$t=@("$((Get-ItemProperty -LiteralPath $k -Name $n -EA SilentlyContinue).$n)" -split '\s+' | Where-Object { $_ -and $_ -ne '~' -and $_ -ne '${FSO_FLAG}' })
+if(${on ? "$true" : "$false"}){ $t+='${FSO_FLAG}' }
+if($t.Count){ if(!(Test-Path -LiteralPath $k)){ New-Item -Path $k -Force | Out-Null }; Set-ItemProperty -LiteralPath $k -Name $n -Value ('~ ' + ($t -join ' ')) -Type String -Force -EA Stop }
+else{ Remove-ItemProperty -LiteralPath $k -Name $n -Force -EA SilentlyContinue }
+Write-Output OK`;
+  const r = await runPowershell(script);
+  return r.ok && /OK/.test(r.output);
+}
+
 export function manualGame(path: string): Game {
   const file = path.split("\\").pop() || path;
   return { id: `manual:${path.toLowerCase()}`, name: file.replace(/\.exe$/i, ""), source: "Manual", dir: path.slice(0, path.length - file.length - 1), exePath: path, launch: path };

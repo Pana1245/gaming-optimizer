@@ -73,6 +73,7 @@ const GUIDE: Item[] = [
         "Jugar los abre con su launcher, como un doble clic (sin permisos de administrador, así el anti-cheat no se queja).",
         "El interruptor Auto Game-Mode suma ese juego a la lista que detecta el modo gamer.",
         "¿Falta alguno? \"Agregar juego\" y elegís su .exe. ¿Aparece algo que no es un juego? Pasá el mouse por la portada y tocá ✕ para ocultarlo.",
+        "⚙ en cada portada: GPU de alto rendimiento y pantalla completa exclusiva para ese juego (ajustes de Windows, no del juego).",
         "Las portadas son las oficiales de Steam (se descargan de su servidor de imágenes).",
       ],
       en: [
@@ -80,6 +81,7 @@ const GUIDE: Item[] = [
         "Play opens them through their launcher, like a double click (without admin rights, so anti-cheat doesn't complain).",
         "The Auto Game-Mode switch adds that game to the list the gamer mode watches for.",
         "Missing one? \"Add game\" and pick its .exe. Something that isn't a game? Hover the cover and click ✕ to hide it.",
+        "⚙ on each cover: high-performance GPU and exclusive fullscreen for that game (Windows settings, not the game's).",
         "Covers are Steam's official ones (downloaded from its image server).",
       ],
       pt: [
@@ -87,6 +89,7 @@ const GUIDE: Item[] = [
         "Jogar abre pelo launcher, como um clique duplo (sem permissões de administrador, assim o anti-cheat não reclama).",
         "O interruptor Auto Game-Mode adiciona esse jogo à lista que o modo gamer detecta.",
         "Falta algum? \"Adicionar jogo\" e escolha o .exe. Aparece algo que não é jogo? Passe o mouse na capa e toque ✕ para ocultar.",
+        "⚙ em cada capa: GPU de alto desempenho e tela cheia exclusiva para esse jogo (ajustes do Windows, não do jogo).",
         "As capas são as oficiais da Steam (baixadas do servidor de imagens dela).",
       ],
     },
