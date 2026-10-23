@@ -81,7 +81,12 @@ foreach($r in $regs){
   if(-not $order){ continue }
   # 1) Valores agregados después del backup. En las interfaces de red Windows guarda datos que
   #    cambian solos (DHCP…): ahí solo se quitan los valores que agregan los tweaks de red.
-  $onlyNames = if($order[0] -match '(?i)\\Tcpip\\Parameters\\Interfaces'){ @('TcpAckFrequency','TCPNoDelay','TcpDelAckTicks') } else { $null }
+  # Lo mismo en la raíz del Explorador (Windows la escribe todo el tiempo) y en la de cada placa de red
+  # (el tweak sólo cambia valores que ya existían: nada que borrar).
+  $onlyNames = if($order[0] -match '(?i)\\Tcpip\\Parameters\\Interfaces'){ @('TcpAckFrequency','TCPNoDelay','TcpDelAckTicks') }
+    elseif($order[0] -match '(?i)\\CurrentVersion\\Explorer$'){ @('EnableAutoTray') }
+    elseif($order[0] -match '(?i)\\Control\\Class\\\{4d36e972-e325-11ce-bfc1-08002be10318\}\\'){ @('-') }
+    else { $null }
   foreach($k in $order){
     # Registros que maneja Windows y ningún tweak escribe: el de cada juego en
     # GameConfigStore\Children (MatchedExeFullPath, LastAccessed…) y el de cada app dentro

@@ -99,6 +99,27 @@ $od = "$env:UserProfile\OneDrive"
 if((Test-Path $od) -and -not (Get-ChildItem -LiteralPath $od -Force -Recurse -EA SilentlyContinue)){ Remove-Item -LiteralPath $od -Recurse -Force -EA SilentlyContinue }
 Write-Output 'OneDrive desinstalado (tus archivos en la carpeta OneDrive se conservan).'`,
     },
+      // El nombre que usa Windows al crear un acceso directo (sólo los nuevos).
+      { name: "Sin «- Acceso directo» en los accesos nuevos", script: String.raw`$p='HKCU:\Software\Microsoft\Windows\CurrentVersion\Explorer\NamingTemplates'
+if(!(Test-Path $p)){ New-Item $p -Force | Out-Null }
+Set-ItemProperty $p ShortcutNameTemplate '"%s.lnk"' -Type String -Force
+Write-Output "Los accesos directos nuevos ya no dicen «- Acceso directo»"` },
+      // Windows 11 no tiene esta opción (la bandeja se elige ícono por ícono en Configuración).
+      { name: "Ver todos los íconos de la bandeja", os: 10, script: String.raw`Set-ItemProperty 'HKCU:\Software\Microsoft\Windows\CurrentVersion\Explorer' EnableAutoTray 0 -Type DWord -Force
+Write-Output "Se muestran todos los íconos de la bandeja (al reiniciar el Explorador)"` },
+      // Windows recomprime el fondo JPEG al 85 % al ponerlo: con 100 se ve como la imagen original.
+      { name: "Fondo de pantalla sin compresión", script: String.raw`Set-ItemProperty 'HKCU:\Control Panel\Desktop' JPEGImportQuality 100 -Type DWord -Force
+Write-Output "Fondo de pantalla sin compresión (al volver a elegirlo)"` },
+      { name: "Pantalla de inicio de sesión sin desenfoque", script: String.raw`$p='HKLM:\SOFTWARE\Policies\Microsoft\Windows\System'
+if(!(Test-Path $p)){ New-Item $p -Force | Out-Null }
+Set-ItemProperty $p DisableAcrylicBackgroundOnLogon 1 -Type DWord -Force
+Write-Output "Pantalla de inicio de sesión sin desenfoque"` },
+      { name: "Explorador compacto (menos espacio entre archivos)", os: 11, script: String.raw`Set-ItemProperty 'HKCU:\Software\Microsoft\Windows\CurrentVersion\Explorer\Advanced' UseCompactMode 1 -Type DWord -Force
+Write-Output "Explorador compacto activado"` },
+      { name: "Sin mosaicos en vivo en el Inicio", os: 10, script: String.raw`$p='HKCU:\Software\Policies\Microsoft\Windows\CurrentVersion\PushNotifications'
+if(!(Test-Path $p)){ New-Item $p -Force | Out-Null }
+Set-ItemProperty $p NoTileApplicationNotification 1 -Type DWord -Force
+Write-Output "Mosaicos en vivo desactivados"` },
   ],
 };
 
@@ -204,6 +225,11 @@ $p='HKLM:\SOFTWARE\Policies\Google\Chrome'
 if(!(Test-Path $p)){ New-Item $p -Force | Out-Null }
 Set-ItemProperty $p BackgroundModeEnabled 0 -Type DWord -Force
 Write-Output "Chrome ya no queda abierto en segundo plano"` },
+      // optIn: frena TODOS los drivers por Windows Update (también arreglos); el de video se baja desde Drivers.
+      { name: "Que Windows Update no reemplace tus drivers", optIn: true, script: String.raw`$p='HKLM:\SOFTWARE\Policies\Microsoft\Windows\WindowsUpdate'
+if(!(Test-Path $p)){ New-Item $p -Force | Out-Null }
+Set-ItemProperty $p ExcludeWUDriversInQualityUpdate 1 -Type DWord -Force
+Write-Output "Windows Update ya no instala drivers"` },
       // optIn: arranca unos segundos más lento; sirve sobre todo con dual-boot o drivers problemáticos.
       { name: "Desactivar Inicio rápido (Fast Startup)", risk: "advanced", optIn: true, script: String.raw`Set-ItemProperty 'HKLM:\SYSTEM\CurrentControlSet\Control\Session Manager\Power' HiberbootEnabled 0 -Type DWord -Force
 Write-Output "Inicio rápido desactivado"` },

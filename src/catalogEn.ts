@@ -103,6 +103,13 @@ export const TWEAK_EN: Record<string, string> = {
   "Sin ahorro de energía en el adaptador de red": "No power saving on the network adapter",
   "Desactivar SMBv1 (protocolo inseguro)": "Disable SMBv1 (insecure protocol)",
   "Chrome sin segundo plano": "Chrome without background mode",
+  "Sin «- Acceso directo» en los accesos nuevos": "No “- Shortcut” on new shortcuts",
+  "Ver todos los íconos de la bandeja": "Show all tray icons",
+  "Fondo de pantalla sin compresión": "Wallpaper without compression",
+  "Pantalla de inicio de sesión sin desenfoque": "Sign-in screen without blur",
+  "Explorador compacto (menos espacio entre archivos)": "Compact Explorer (less space between files)",
+  "Sin mosaicos en vivo en el Inicio": "No live tiles in Start",
+  "Que Windows Update no reemplace tus drivers": "Stop Windows Update from replacing your drivers",
 };
 
 export const TWEAK_DESC_EN: Record<string, string> = {
@@ -185,4 +192,11 @@ export const TWEAK_DESC_EN: Record<string, string> = {
   "Sin ahorro de energía en el adaptador de red": "Turns off Green Ethernet, EEE and other network card power savings that can add latency or micro-drops. Doesn't change Wake-on-LAN. The connection drops for a second when applied.",
   "Desactivar SMBv1 (protocolo inseguro)": "Turns off SMBv1, the old file-sharing protocol used by the WannaCry virus. New Windows 10 installs already have it off; useful on PCs upgraded from old versions. Only affects very old network devices (NAS or printers over 10 years old).",
   "Chrome sin segundo plano": "Chrome stops staying open hidden after you close it. Frees RAM. Since it's a policy, Chrome will show “Managed by your organization”.",
+  "Sin «- Acceso directo» en los accesos nuevos": "Shortcuts you create from now on are named like the program, without the “- Shortcut” suffix.",
+  "Ver todos los íconos de la bandeja": "Shows every icon next to the clock instead of hiding them behind the arrow. Visible after restarting Explorer or signing in again.",
+  "Fondo de pantalla sin compresión": "Windows lowers JPEG wallpaper quality to 85%. With this they look like the original image. Applies the next time you pick a wallpaper.",
+  "Pantalla de inicio de sesión sin desenfoque": "The background picture of the password screen looks sharp, without the blur effect.",
+  "Explorador compacto (menos espacio entre archivos)": "Brings back the tighter File Explorer spacing from Windows 10: more files fit on screen.",
+  "Sin mosaicos en vivo en el Inicio": "Start menu tiles stop showing animated news, photos or updates (and downloading them).",
+  "Que Windows Update no reemplace tus drivers": "Stops Windows Update from installing drivers on its own (it sometimes replaces the NVIDIA or AMD one with an older version). It also blocks drivers with fixes: check them in Drivers.",
 };

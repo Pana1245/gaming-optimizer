@@ -79,4 +79,11 @@ export const TWEAK_DESC: Record<string, string> = {
   "Sin ahorro de energía en el adaptador de red": "Apaga Green Ethernet, EEE y otros ahorros de energía de la placa de red que pueden agregar latencia o microcortes. No cambia el Wake-on-LAN. La conexión se corta un segundo al aplicarlo.",
   "Desactivar SMBv1 (protocolo inseguro)": "Apaga SMBv1, la versión vieja del protocolo para compartir archivos que usó el virus WannaCry. Windows 10 nuevo ya lo trae apagado; sirve en PCs actualizadas desde versiones viejas. Sólo afecta a equipos muy antiguos de la red (NAS o impresoras de hace más de 10 años).",
   "Chrome sin segundo plano": "Chrome deja de quedar abierto escondido después de cerrarlo. Libera RAM. Como es una política, Chrome va a mostrar «Administrado por tu organización».",
+  "Sin «- Acceso directo» en los accesos nuevos": "Los accesos directos que crees desde ahora se llaman igual que el programa, sin el agregado «- Acceso directo».",
+  "Ver todos los íconos de la bandeja": "Muestra todos los íconos junto al reloj en vez de esconderlos detrás de la flechita. Se ve al reiniciar el Explorador o la sesión.",
+  "Fondo de pantalla sin compresión": "Windows achica la calidad de los fondos JPEG al 85 %. Con esto se ven como la imagen original. Se aplica la próxima vez que elijas un fondo.",
+  "Pantalla de inicio de sesión sin desenfoque": "La imagen de fondo de la pantalla para poner la contraseña se ve nítida, sin el efecto borroso.",
+  "Explorador compacto (menos espacio entre archivos)": "Vuelve al espaciado más chico del Explorador de archivos de Windows 10: entran más archivos en la pantalla.",
+  "Sin mosaicos en vivo en el Inicio": "Los mosaicos del menú Inicio dejan de mostrar noticias, fotos o novedades animadas (y de bajarlas).",
+  "Que Windows Update no reemplace tus drivers": "Evita que Windows Update instale drivers solo (a veces pisa el de NVIDIA o AMD con uno viejo). También frena drivers que traen arreglos: buscalos en Drivers.",
 };

@@ -102,6 +102,13 @@ export const TWEAK_PT: Record<string, string> = {
   "Sin ahorro de energía en el adaptador de red": "Sem economia de energia no adaptador de rede",
   "Desactivar SMBv1 (protocolo inseguro)": "Desativar SMBv1 (protocolo inseguro)",
   "Chrome sin segundo plano": "Chrome sem segundo plano",
+  "Sin «- Acceso directo» en los accesos nuevos": "Sem «- Atalho» nos atalhos novos",
+  "Ver todos los íconos de la bandeja": "Mostrar todos os ícones da bandeja",
+  "Fondo de pantalla sin compresión": "Papel de parede sem compressão",
+  "Pantalla de inicio de sesión sin desenfoque": "Tela de entrada sem desfoque",
+  "Explorador compacto (menos espacio entre archivos)": "Explorador compacto (menos espaço entre arquivos)",
+  "Sin mosaicos en vivo en el Inicio": "Sem blocos dinâmicos no Iniciar",
+  "Que Windows Update no reemplace tus drivers": "Impedir que o Windows Update substitua seus drivers",
 };
 
 export const TWEAK_DESC_PT: Record<string, string> = {
@@ -184,4 +191,11 @@ export const TWEAK_DESC_PT: Record<string, string> = {
   "Sin ahorro de energía en el adaptador de red": "Desliga Green Ethernet, EEE e outras economias de energia da placa de rede que podem adicionar latência ou microquedas. Não muda o Wake-on-LAN. A conexão cai por um segundo ao aplicar.",
   "Desactivar SMBv1 (protocolo inseguro)": "Desliga o SMBv1, a versão antiga do protocolo de compartilhamento de arquivos usada pelo vírus WannaCry. O Windows 10 novo já vem com ele desligado; serve em PCs atualizados de versões antigas. Só afeta aparelhos muito antigos da rede (NAS ou impressoras de mais de 10 anos).",
   "Chrome sin segundo plano": "O Chrome deixa de ficar aberto escondido depois de fechado. Libera RAM. Como é uma política, o Chrome vai mostrar «Gerenciado pela sua organização».",
+  "Sin «- Acceso directo» en los accesos nuevos": "Os atalhos que você criar a partir de agora têm o mesmo nome do programa, sem o «- Atalho».",
+  "Ver todos los íconos de la bandeja": "Mostra todos os ícones ao lado do relógio em vez de escondê-los atrás da setinha. Aparece ao reiniciar o Explorer ou a sessão.",
+  "Fondo de pantalla sin compresión": "O Windows reduz a qualidade dos papéis de parede JPEG para 85%. Com isso ficam como a imagem original. Vale na próxima vez que você escolher um papel de parede.",
+  "Pantalla de inicio de sesión sin desenfoque": "A imagem de fundo da tela de senha fica nítida, sem o efeito borrado.",
+  "Explorador compacto (menos espacio entre archivos)": "Volta ao espaçamento menor do Explorador de Arquivos do Windows 10: cabem mais arquivos na tela.",
+  "Sin mosaicos en vivo en el Inicio": "Os blocos do menu Iniciar deixam de mostrar notícias, fotos ou novidades animadas (e de baixá-las).",
+  "Que Windows Update no reemplace tus drivers": "Impede que o Windows Update instale drivers sozinho (às vezes substitui o da NVIDIA ou AMD por um antigo). Também bloqueia drivers com correções: procure-os em Drivers.",
 };

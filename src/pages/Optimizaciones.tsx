@@ -86,6 +86,8 @@ $keys = [ordered]@{
   'pushnotif'         = 'HKCU\Software\Microsoft\Windows\CurrentVersion\PushNotifications'
   'lanmanserver'      = 'HKLM\SYSTEM\CurrentControlSet\Services\LanmanServer\Parameters'
   'policies-google'   = 'HKLM\SOFTWARE\Policies\Google'
+  'explorer-root'     = 'HKCU\Software\Microsoft\Windows\CurrentVersion\Explorer'
+  'naming-templates'  = 'HKCU\Software\Microsoft\Windows\CurrentVersion\Explorer\NamingTemplates'
   # Claves que crean los tweaks: si no existen, queda la marca .absent y Restaurar las borra.
   'classic-menu'      = 'HKCU\Software\Classes\CLSID\{86ca1aa0-34aa-4e8b-a509-50c905bae2a2}'
   'taskbar-endtask'   = 'HKCU\Software\Microsoft\Windows\CurrentVersion\Explorer\Advanced\TaskbarDeveloperSettings'
@@ -103,7 +105,7 @@ foreach($a in @(Get-NetAdapter -Physical -EA SilentlyContinue)){
 }
 # De estas sólo se guardan los valores de la clave: los tweaks no tocan sus subclaves y
 # algunas (drivers de video) ni un administrador las puede escribir al restaurar.
-$flat = @('graphicsdrivers','sessionmanager','crashcontrol','timezone','sm-power','pushnotif')
+$flat = @('graphicsdrivers','sessionmanager','crashcontrol','timezone','sm-power','pushnotif','explorer-root')
 $n = 0
 foreach($k in $keys.GetEnumerator()){
   $f = "$backDir\$($k.Name).reg"
