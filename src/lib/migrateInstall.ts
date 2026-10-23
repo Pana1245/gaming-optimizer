@@ -36,6 +36,13 @@ foreach($l in @($startLnk, (Join-Path ([Environment]::GetFolderPath('DesktopDire
     }
   }
 }
+# Acceso del usuario y el de todos apuntando a esta app (instalar el nuevo a mano encima de uno
+# viejo deja los dos): la app aparecía duplicada en el menú Inicio / escritorio.
+foreach($pair in @(@($startLnk, $commonLnk), @((Join-Path ([Environment]::GetFolderPath('DesktopDirectory')) 'GamingOptimizer.lnk'), (Join-Path ([Environment]::GetFolderPath('CommonDesktopDirectory')) 'GamingOptimizer.lnk')))){
+  if((Test-Path -LiteralPath $pair[0]) -and (Test-Path -LiteralPath $pair[1]) -and $sh.CreateShortcut($pair[0]).TargetPath -eq $me -and $sh.CreateShortcut($pair[1]).TargetPath -eq $me){
+    Remove-Item -LiteralPath $pair[0] -Force -EA SilentlyContinue
+  }
+}
 # Sin ningún acceso en el menú Inicio: crearlo (para todos, como lo hace el instalador nuevo).
 if(-not (Test-Path -LiteralPath $startLnk) -and -not (Test-Path -LiteralPath $commonLnk)){
   try{ $s=$sh.CreateShortcut($commonLnk); $s.TargetPath=$me; $s.WorkingDirectory=(Split-Path $me); $s.IconLocation="$me,0"; $s.Save() }catch{ $left++ }
@@ -50,8 +57,8 @@ if($task){
 }
 'MIGRATE=' + $(if($left){ 'LEFT' } else { 'OK' })`;
 
-// 2: la 1 borraba los accesos viejos sin crear uno nuevo; vuelve a correr para crearlo.
-const FLAG = "installMigrate2";
+// 3: la 1 borraba los accesos viejos sin crear uno nuevo; la 2 dejaba accesos duplicados.
+const FLAG = "installMigrate3";
 
 /** Una vez (cuando ya corre desde Program Files y no queda nada viejo); si no, se reintenta. */
 export async function migrateInstallOnce(): Promise<void> {

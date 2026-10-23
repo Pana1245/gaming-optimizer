@@ -11,19 +11,32 @@
 ; Hasta la 2.5.x la app se instalaba POR USUARIO: sus accesos apuntan a la carpeta vieja, y en
 ; una actualización el instalador no crea accesos. Sin esto la versión nueva (Program Files)
 ; quedaba sin ningún acceso y se seguía abriendo la vieja.
+; Si ya hay uno para todos (instalación a mano: lo crea el instalador), el del usuario se borra
+; en vez de reapuntarlo: si no, la app aparecía dos veces.
 !macro NSIS_HOOK_POSTINSTALL
-  SetShellVarContext current
+  SetShellVarContext all
   StrCpy $R5 0
+  StrCpy $R7 0
+  ${IfThen} ${FileExists} "$SMPROGRAMS\${PRODUCTNAME}.lnk" ${|} StrCpy $R5 1 ${|}
+  ${IfThen} ${FileExists} "$DESKTOP\${PRODUCTNAME}.lnk" ${|} StrCpy $R7 1 ${|}
+  SetShellVarContext current
   ${If} ${FileExists} "$SMPROGRAMS\${PRODUCTNAME}.lnk"
-    CreateShortcut "$SMPROGRAMS\${PRODUCTNAME}.lnk" "$INSTDIR\${MAINBINARYNAME}.exe"
-    StrCpy $R5 1
+    ${If} $R5 = 1
+      Delete "$SMPROGRAMS\${PRODUCTNAME}.lnk"
+    ${Else}
+      CreateShortcut "$SMPROGRAMS\${PRODUCTNAME}.lnk" "$INSTDIR\${MAINBINARYNAME}.exe"
+      StrCpy $R5 1
+    ${EndIf}
   ${EndIf}
   ${If} ${FileExists} "$DESKTOP\${PRODUCTNAME}.lnk"
-    CreateShortcut "$DESKTOP\${PRODUCTNAME}.lnk" "$INSTDIR\${MAINBINARYNAME}.exe"
+    ${If} $R7 = 1
+      Delete "$DESKTOP\${PRODUCTNAME}.lnk"
+    ${Else}
+      CreateShortcut "$DESKTOP\${PRODUCTNAME}.lnk" "$INSTDIR\${MAINBINARYNAME}.exe"
+    ${EndIf}
   ${EndIf}
   SetShellVarContext all
   ${If} $R5 = 0
-  ${AndIfNot} ${FileExists} "$SMPROGRAMS\${PRODUCTNAME}.lnk"
     CreateShortcut "$SMPROGRAMS\${PRODUCTNAME}.lnk" "$INSTDIR\${MAINBINARYNAME}.exe"
   ${EndIf}
   ; Reabrir la app tras actualizar: el relanzamiento de Tauri (RunAsUser, SIN elevar) con UAC
