@@ -93,14 +93,15 @@ export function cs2Apply(c: Cs2, v: Cs2Values): { video: string; machine: string
 const CS2_LOCATE = String.raw`$steam=(Get-ItemProperty 'HKCU:\Software\Valve\Steam' -EA SilentlyContinue).SteamPath
 if(-not $steam){ exit 0 }
 $steam=$steam -replace '/','\'
-$lu=Get-Content -LiteralPath "$steam\config\loginusers.vdf" -Raw -EA SilentlyContinue
+$lu=Get-Content -LiteralPath "$steam\config\loginusers.vdf" -Raw -Encoding UTF8 -EA SilentlyContinue
 $best=$null
-foreach($b in [regex]::Matches("$lu",'"(\d{17})"\s*\{([^}]*)\}')){
+# Bloque de cada cuenta respetando comillas (una "}" dentro del nombre no corta el bloque).
+foreach($b in [regex]::Matches("$lu",'"(\d{17})"\s*\{((?:[^{}"]|"(?:[^"\\]|\\.)*")*)\}')){
   $id3=[UInt64]$b.Groups[1].Value - 76561197960265728
   $dir="$steam\userdata\$id3\730\local\cfg"
   if(-not (Test-Path -LiteralPath "$dir\cs2_video.txt")){ continue }
   $ts=if($b.Groups[2].Value -match '"Timestamp"\s+"(\d+)"'){ [int64]$Matches[1] } else { 0 }
-  $pn=if($b.Groups[2].Value -match '"PersonaName"\s+"([^"]*)"'){ $Matches[1] } else { "$id3" }
+  $pn=if($b.Groups[2].Value -match '"PersonaName"\s+"((?:[^"\\]|\\.)*)"'){ $Matches[1] } else { "$id3" }
   if(-not $best -or $ts -gt $best.ts){ $best=@{ ts=$ts; id="$id3"; name=$pn; dir=$dir } }
 }`;
 
@@ -117,20 +118,28 @@ $m=Get-Content -LiteralPath "$($best.dir)\cs2_machine_convars.vcfg" -Raw -Encodi
 
 const b64 = (s: string) => btoa(String.fromCharCode(...new TextEncoder().encode(s)));
 
-/** Guarda (con el juego cerrado). La primera vez deja una copia .gobak de cada archivo. */
-export async function cs2Save(c: Cs2, v: Cs2Values): Promise<"ok" | "running" | "error"> {
+/** Guarda (con el juego cerrado). La primera vez deja una copia .gobak de cada archivo.
+ *  "changed": el juego cambió los archivos desde que se leyeron (no se escribe nada). */
+export async function cs2Save(c: Cs2, v: Cs2Values): Promise<"ok" | "running" | "changed" | "error"> {
   const out = cs2Apply(c, v);
   const r = await runPowershell(CS2_LOCATE + String.raw`
 if(-not $best -or $best.id -ne '${c.account.replace(/\D/g, "")}'){ Write-Output 'ERROR'; exit 1 }
 if(Get-Process cs2 -EA SilentlyContinue){ Write-Output 'RUNNING'; exit 0 }
 $enc=New-Object System.Text.UTF8Encoding $false
-foreach($f in @(@('cs2_video.txt','${b64(out.video)}'),@('cs2_machine_convars.vcfg','${b64(out.machine)}'))){
+$files=@(@('cs2_video.txt','${b64(c.video)}','${b64(out.video)}'),@('cs2_machine_convars.vcfg','${b64(c.machine)}','${b64(out.machine)}'))
+# Si el juego los cambió después de abrir el panel, se escribiría encima con datos viejos.
+foreach($f in $files){
   $p=Join-Path $best.dir $f[0]
-  if((Test-Path -LiteralPath $p) -and -not (Test-Path -LiteralPath "$p.gobak")){ Copy-Item -LiteralPath $p -Destination "$p.gobak" }
-  if($f[1]){ [IO.File]::WriteAllText($p, $enc.GetString([Convert]::FromBase64String($f[1])), $enc) }
+  $now=if(Test-Path -LiteralPath $p){ [IO.File]::ReadAllText($p, $enc) } else { '' }
+  if($now -cne $enc.GetString([Convert]::FromBase64String($f[1]))){ Write-Output 'CHANGED'; exit 0 }
 }
+try{
+  # Primero todas las copias (si una falla, no se escribe nada); después los archivos.
+  foreach($f in $files){ $p=Join-Path $best.dir $f[0]; if($f[2] -and (Test-Path -LiteralPath $p) -and -not (Test-Path -LiteralPath "$p.gobak")){ Copy-Item -LiteralPath $p -Destination "$p.gobak" -EA Stop } }
+  foreach($f in $files){ if($f[2]){ [IO.File]::WriteAllText((Join-Path $best.dir $f[0]), $enc.GetString([Convert]::FromBase64String($f[2])), $enc) } }
+}catch{ Write-Output 'ERROR'; exit 1 }
 Write-Output 'OK'`);
-  return /RUNNING/.test(r.output) ? "running" : /OK/.test(r.output) ? "ok" : "error";
+  return !r.ok ? "error" : /RUNNING/.test(r.output) ? "running" : /CHANGED/.test(r.output) ? "changed" : /OK/.test(r.output) ? "ok" : "error";
 }
 
 /** Vuelve a los archivos como estaban antes del primer cambio. */
@@ -138,7 +147,8 @@ export async function cs2Restore(c: Cs2): Promise<"ok" | "running" | "error"> {
   const r = await runPowershell(CS2_LOCATE + String.raw`
 if(-not $best -or $best.id -ne '${c.account.replace(/\D/g, "")}'){ Write-Output 'ERROR'; exit 1 }
 if(Get-Process cs2 -EA SilentlyContinue){ Write-Output 'RUNNING'; exit 0 }
-foreach($f in 'cs2_video.txt','cs2_machine_convars.vcfg'){ $p=Join-Path $best.dir $f; if(Test-Path -LiteralPath "$p.gobak"){ Move-Item -LiteralPath "$p.gobak" -Destination $p -Force } }
+try{ foreach($f in 'cs2_video.txt','cs2_machine_convars.vcfg'){ $p=Join-Path $best.dir $f; if(Test-Path -LiteralPath "$p.gobak"){ Move-Item -LiteralPath "$p.gobak" -Destination $p -Force -EA Stop } } }
+catch{ Write-Output 'ERROR'; exit 1 }
 Write-Output 'OK'`);
-  return /RUNNING/.test(r.output) ? "running" : /OK/.test(r.output) ? "ok" : "error";
+  return !r.ok ? "error" : /RUNNING/.test(r.output) ? "running" : /OK/.test(r.output) ? "ok" : "error";
 }

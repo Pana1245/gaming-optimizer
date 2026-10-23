@@ -40,6 +40,7 @@ const STR: Record<string, { es: string; en: string }> = {
   "lib.cs2.none": { es: "No se encontraron opciones de Counter-Strike 2: abrí el juego una vez y volvé.", en: "No Counter-Strike 2 options found: open the game once and come back." },
   "lib.cs2.running": { es: "Cerrá Counter-Strike 2 para cambiar sus opciones (si no, el juego las pisa al salir).", en: "Close Counter-Strike 2 to change its options (otherwise the game overwrites them on exit)." },
   "lib.cs2.error": { es: "No se pudieron guardar las opciones.", en: "Couldn't save the options." },
+  "lib.cs2.changed": { es: "El juego cambió sus opciones desde que abriste esto: se volvieron a leer, revisalas y guardá de nuevo.", en: "The game changed its options since you opened this: they were reloaded, check them and save again." },
   "lib.cs2.save": { es: "Guardar en el juego", en: "Save to game" },
   "lib.cs2.discard": { es: "Descartar", en: "Discard" },
   "lib.cs2.restore": { es: "Volver a como estaba", en: "Revert to original" },

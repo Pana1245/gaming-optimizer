@@ -28,6 +28,7 @@ export const PT: Record<string, string> = {
   "lib.cs2.none": "Nenhuma opção do Counter-Strike 2 encontrada: abra o jogo uma vez e volte.",
   "lib.cs2.running": "Feche o Counter-Strike 2 para mudar as opções (senão o jogo as sobrescreve ao sair).",
   "lib.cs2.error": "Não foi possível salvar as opções.",
+  "lib.cs2.changed": "O jogo mudou as opções desde que você abriu isto: foram recarregadas, confira e salve de novo.",
   "lib.cs2.save": "Salvar no jogo",
   "lib.cs2.discard": "Descartar",
   "lib.cs2.restore": "Voltar ao original",

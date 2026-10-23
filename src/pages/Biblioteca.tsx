@@ -76,11 +76,11 @@ function Cs2Settings() {
   if (c === null) return <p className="text-[12px] text-text-mute mt-5">{t("lib.cs2.none")}</p>;
   const orig = cs2Read(c);
   const changed = Object.keys(v).some((k) => v[k] !== orig[k]);
-  const run = async (fn: () => Promise<"ok" | "running" | "error">, okMsg: string) => {
+  const run = async (fn: () => Promise<"ok" | "running" | "changed" | "error">, okMsg: string) => {
     setBusy(true);
     const r = await fn().catch(() => "error" as const);
-    setMsg(r === "ok" ? `✓ ${okMsg}` : r === "running" ? `✗ ${t("lib.cs2.running")}` : `✗ ${t("lib.cs2.error")}`);
-    if (r === "ok") await reload();
+    setMsg(r === "ok" ? `✓ ${okMsg}` : r === "running" ? `✗ ${t("lib.cs2.running")}` : r === "changed" ? `✗ ${t("lib.cs2.changed")}` : `✗ ${t("lib.cs2.error")}`);
+    if (r === "ok" || r === "changed") await reload();
     setBusy(false);
   };
   return (
@@ -113,9 +113,9 @@ function Cs2Settings() {
       <div className="flex items-center gap-2 mt-4">
         <button onClick={() => run(() => cs2Save(c, v), t("lib.cs2.saved"))} disabled={busy || !changed} className="btn btn-primary h-8 text-[12.5px]">{t("lib.cs2.save")}</button>
         {changed && <button onClick={() => setV(orig)} disabled={busy} className="btn btn-ghost h-8 text-[12.5px]">{t("lib.cs2.discard")}</button>}
-        {c.hasBackup && <button onClick={() => run(() => cs2Restore(c), t("lib.cs2.restored"))} disabled={busy} className="btn btn-ghost h-8 text-[12.5px] ml-auto">{t("lib.cs2.restore")}</button>}
+        {msg && <span className="text-[12px] text-text-dim min-w-0">{msg}</span>}
+        {c.hasBackup && <button onClick={() => run(() => cs2Restore(c), t("lib.cs2.restored"))} disabled={busy} className="btn btn-ghost h-8 text-[12.5px] ml-auto shrink-0">{t("lib.cs2.restore")}</button>}
       </div>
-      {msg && <p className="text-[12px] text-text-dim mt-2">{msg}</p>}
       <p className="text-[11.5px] text-text-mute mt-2">{t("lib.cs2.note")}</p>
     </div>
   );
