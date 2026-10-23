@@ -309,6 +309,8 @@ export const VALORANT: GameAdapter<Val> = {
   load: async () => { const c = await valLoad(); return c && { who: c.region.toUpperCase(), running: c.running, nvidia: c.nvidia, hasBackup: c.hasBackup, values: valRead(c.text, c.gus || c.gusRoot), raw: c }; },
   // Sólo los archivos que cambian (rutas relativas a <cuenta>\Windows).
   save: (c, v) => {
+    // Sin ningún GameUserSettings.ini no hay dónde guardar la V-Sync: no decir "guardado".
+    if ("vsync" in v && !c.gus && !c.gusRoot) return Promise.resolve<SaveResult>("error");
     const o = valApply(c, v);
     const files: [string, string, string][] = [[VAL_FILES[0], c.text, o.text], [VAL_FILES[1], c.gus, o.gus], [VAL_FILES[2], c.gusRoot, o.gusRoot]];
     return saveFiles(valSame(c.folder), VAL_PROCS, files.filter(([, a, b]) => a !== b));
