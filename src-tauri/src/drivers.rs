@@ -38,7 +38,7 @@ pub async fn drivers_fetch(url: String) -> Result<String, String> {
 /// abra la URL, como un doble clic en un acceso directo: navegador predeterminado y
 /// NO elevado. Es el método documentado por Microsoft (IShellDispatch2 del escritorio).
 #[cfg(windows)]
-fn desktop_open(url: &str, args: &str) -> windows::core::Result<()> {
+fn desktop_open(url: &str, args: &str, dir: &str) -> windows::core::Result<()> {
     use windows::core::{Interface, BSTR};
     use windows::Win32::System::Com::*;
     use windows::Win32::System::Variant::VARIANT;
@@ -55,7 +55,8 @@ fn desktop_open(url: &str, args: &str) -> windows::core::Result<()> {
             let shell: IShellDispatch2 = view.Application()?.cast()?;
             let none = VARIANT::default();
             let argv = if args.is_empty() { VARIANT::default() } else { VARIANT::from(BSTR::from(args)) };
-            shell.ShellExecute(&BSTR::from(url), &argv, &none, &VARIANT::from(BSTR::from("open")), &VARIANT::from(1i32))
+            let cwd = if dir.is_empty() { none.clone() } else { VARIANT::from(BSTR::from(dir)) };
+            shell.ShellExecute(&BSTR::from(url), &argv, &cwd, &VARIANT::from(BSTR::from("open")), &VARIANT::from(1i32))
         })();
         if init.is_ok() {
             CoUninitialize();
@@ -114,7 +115,7 @@ pub fn open_url(url: String) -> Result<(), String> {
     #[cfg(windows)]
     {
         let u = url.clone();
-        if std::thread::spawn(move || desktop_open(&u, "").is_ok()).join().unwrap_or(false) {
+        if std::thread::spawn(move || desktop_open(&u, "", "").is_ok()).join().unwrap_or(false) {
             return Ok(());
         }
     }
@@ -163,7 +164,9 @@ pub fn launch_game(target: String, args: Option<String>) -> Result<(), String> {
     #[cfg(windows)]
     {
         let (t, a) = (target.clone(), args.clone());
-        if std::thread::spawn(move || desktop_open(&t, &a).is_ok()).join().unwrap_or(false) {
+        // Un .exe arranca en su carpeta, como desde un acceso directo: algunos juegos buscan ahí sus datos.
+        let d = if t.to_ascii_lowercase().ends_with(".exe") { std::path::Path::new(&t).parent().map(|p| p.to_string_lossy().into_owned()).unwrap_or_default() } else { String::new() };
+        if std::thread::spawn(move || desktop_open(&t, &a, &d).is_ok()).join().unwrap_or(false) {
             return Ok(());
         }
     }
@@ -234,7 +237,7 @@ mod tests {
     #[test]
     #[ignore]
     fn abre_en_el_navegador() {
-        desktop_open("https://www.gigabyte.com/Search?kw=B550M%20AORUS%20ELITE", "").unwrap();
+        desktop_open("https://www.gigabyte.com/Search?kw=B550M%20AORUS%20ELITE", "", "").unwrap();
     }
 
     // Consulta real a las fuentes oficiales (requiere internet): cargo test -- --ignored

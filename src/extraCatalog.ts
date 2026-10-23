@@ -46,11 +46,11 @@ foreach($a in @(Get-NetAdapter -Physical -EA SilentlyContinue)){
   if($c){ Restart-NetAdapter -Name $a.Name -Confirm:$false -EA SilentlyContinue; $n+=$c }
 }
 Write-Output "Ahorro de energía de red desactivado en $n opción(es)"` },
-    // Protocolo de 1984 usado por WannaCry; Windows 10 nuevo ya lo trae apagado, PCs actualizadas no siempre.
-    { name: "Desactivar SMBv1 (protocolo inseguro)", script: String.raw`if((Get-SmbServerConfiguration -EA SilentlyContinue).EnableSMB1Protocol){
+    // Sólo el servidor (lo que explotó WannaCry): apagar el cliente toca dependencias de servicios. Protocolo de 1984; Windows 10 nuevo ya lo trae apagado, PCs actualizadas no siempre.
+    { name: "Desactivar el servidor SMBv1 (protocolo inseguro)", script: String.raw`if((Get-SmbServerConfiguration -EA SilentlyContinue).EnableSMB1Protocol){
   Set-SmbServerConfiguration -EnableSMB1Protocol $false -Force -EA Stop
-  Write-Output "SMBv1 desactivado"
-} else { Write-Output "SMBv1 ya estaba desactivado" }` },
+  Write-Output "Servidor SMBv1 desactivado"
+} else { Write-Output "El servidor SMBv1 ya estaba desactivado" }` },
     { name: "Desactivar Network Throttling", script: String.raw`Set-ItemProperty 'HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Multimedia\SystemProfile' NetworkThrottlingIndex 0xffffffff -Type DWord -Force
 Write-Output "Network Throttling desactivado"` },
     // DODownloadMode 0: sólo descarga de Microsoft (HTTP), sin subir a otras PCs.

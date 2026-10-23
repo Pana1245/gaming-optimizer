@@ -172,11 +172,15 @@ Write-Output ("FSO=" + [int](@("$l" -split '\s+') -contains '${FSO_FLAG}'))`);
 }
 
 export async function setGameWin(exe: string, what: keyof GameWin, on: boolean): Promise<boolean> {
+  // El valor es una lista "clave=valor;" (ej. también SwapEffectUpgradeEnable): sólo se toca GpuPreference.
+  // Al apagar sólo se quita si es la nuestra (alto rendimiento): una preferencia propia del usuario queda.
   const script = what === "gpu"
     ? String.raw`$k=${q(GPU_KEY)}; $n=${q(exe)}
-if(${on ? "$true" : "$false"}){ if(!(Test-Path -LiteralPath $k)){ New-Item -Path $k -Force | Out-Null }; Set-ItemProperty -LiteralPath $k -Name $n -Value 'GpuPreference=2;' -Type String -Force -EA Stop }
-# Al apagar sólo se quita si es la nuestra (alto rendimiento): una preferencia propia del usuario queda.
-elseif("$((Get-ItemProperty -LiteralPath $k -Name $n -EA SilentlyContinue).$n)" -match 'GpuPreference=2;'){ Remove-ItemProperty -LiteralPath $k -Name $n -Force -EA Stop }
+$kv=[ordered]@{}
+foreach($x in ("$((Get-ItemProperty -LiteralPath $k -Name $n -EA SilentlyContinue).$n)" -split ';')){ if($x -match '^\s*([^=]+)=(.*)$'){ $kv[$Matches[1].Trim()]=$Matches[2].Trim() } }
+if(${on ? "$true" : "$false"}){ $kv['GpuPreference']='2' } elseif($kv['GpuPreference'] -eq '2'){ $kv.Remove('GpuPreference') }
+if($kv.Count){ if(!(Test-Path -LiteralPath $k)){ New-Item -Path $k -Force | Out-Null }; Set-ItemProperty -LiteralPath $k -Name $n -Value ((@($kv.Keys | ForEach-Object { "$_=$($kv[$_])" }) -join ';') + ';') -Type String -Force -EA Stop }
+else{ Remove-ItemProperty -LiteralPath $k -Name $n -Force -EA SilentlyContinue }
 Write-Output OK`
     // Se agrega o quita sólo nuestra marca: otras (ej. "ejecutar como administrador") se conservan.
     : String.raw`$k=${q(LAYERS_KEY)}; $n=${q(exe)}
