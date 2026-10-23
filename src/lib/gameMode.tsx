@@ -78,11 +78,6 @@ const RECOVER = String.raw`$p='HKCU:\Software\GamingOptimizer'
 $on=(Get-ItemProperty $p -Name GmActive -EA SilentlyContinue).GmActive -eq 1
 $bg=[bool](Get-ItemProperty $p -Name BgPrios -EA SilentlyContinue).BgPrios
 Write-Output ("GM=" + [int]$on + ";BG=" + [int]$bg)`;
-const prioScript = (exe: string) => {
-  const base = exe.replace(/\.exe$/i, "").replace(/'/g, "''");
-  return `Get-Process -Name '${base}' -EA SilentlyContinue | ForEach-Object { try{ $_.PriorityClass='High' }catch{} }; Write-Output OK`;
-};
-
 export const DEFAULT_GAMES = [
   "valorant.exe", "valorant-win64-shipping.exe", "cs2.exe", "csgo.exe",
   "league of legends.exe", "fortniteclient-win64-shipping.exe",
@@ -201,8 +196,8 @@ export function GameModeProvider({ children }: { children: ReactNode }) {
         notify(tr("gml.onTitle"), tr("gml.onBody").replace("{g}", g));
         const on = await runPowershell(GAMER_ON);
         if (!on.ok) addLog((tt) => tt("gml.planFail"));
+        // Perfil Power (pro): sólo baja las apps de fondo. El proceso del juego no se toca (anti-cheat).
         if (proRef.current) {
-          await runPowershell(prioScript(g));
           // Sin apps elegidas no se toca nada (BG_LOWER guardaría una lista vacía igual).
           const bg = bgRef.current.length ? await runPowershell(BG_LOWER(bgRef.current)) : { ok: true, output: "BG=0" };
           appliedProRef.current = true;

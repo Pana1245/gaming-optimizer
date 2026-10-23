@@ -276,7 +276,7 @@ const GUIDE: Item[] = [
       es: [
         "Un servicio en segundo plano vigila los procesos cada 3 segundos (funciona estés en la sección que estés).",
         "Detecta un juego de tu lista → guarda tu plan actual, activa el plan máximo + responsiveness gamer y te notifica.",
-        "Modo Pro ⚡: además pone el juego en prioridad Alta, baja apps de fondo (Chrome, OneDrive…). Vos elegís qué apps se frenan; Discord nunca, para no cortar la voz.",
+        "Perfiles: Lite (plan de energía y prioridad multimedia de Windows) o Power (además baja las apps de fondo que elijas: Chrome, OneDrive…). Ninguno toca el proceso del juego, así no hay problemas con los anti-cheat. Discord nunca se frena, para no cortar la voz.",
         "Cerrás el juego → restaura TU plan anterior y las prioridades, y te avisa.",
         "“Detectar instalados” escanea Steam, Epic y Riot y llena la lista solo. También podés agregar .exe a mano.",
         "Iniciar con Windows: arranca minimizado junto al reloj (bandeja) y vigila tus juegos sin pedir permiso cada vez. Con el modo activo, cerrar la ventana la deja en la bandeja; para salir del todo: clic derecho en el ícono → Salir.",
@@ -284,7 +284,7 @@ const GUIDE: Item[] = [
       en: [
         "A background service checks running processes every 3 seconds (it works whichever section you're in).",
         "It detects a game from your list → saves your current plan, enables the max plan + gamer responsiveness and notifies you.",
-        "Pro Mode ⚡: also sets the game to High priority, lowers background apps (Chrome, OneDrive…). You choose which apps get throttled; never Discord, so voice isn't cut.",
+        "Profiles: Lite (power plan and Windows multimedia priority) or Power (also lowers the background apps you pick: Chrome, OneDrive…). Neither touches the game process, so there are no anti-cheat issues. Discord is never throttled, so voice isn't cut.",
         "You close the game → it restores YOUR previous plan and priorities, and lets you know.",
         "“Detect installed” scans Steam, Epic and Riot and fills in the list for you. You can also add .exe files by hand.",
         "Start with Windows: launches minimized next to the clock (tray) and watches your games without asking for permission each time. With the mode on, closing the window keeps it in the tray; to quit completely: right-click the icon → Quit.",
@@ -292,7 +292,7 @@ const GUIDE: Item[] = [
       pt: [
         "Um serviço em segundo plano verifica os processos a cada 3 segundos (funciona em qualquer seção).",
         "Detecta um jogo da sua lista → salva seu plano atual, ativa o plano máximo + responsividade gamer e te avisa.",
-        "Modo Pro ⚡: também coloca o jogo em prioridade Alta, reduz apps em segundo plano (Chrome, OneDrive…). Você escolhe quais apps são freados; o Discord nunca, para não cortar a voz.",
+        "Perfis: Lite (plano de energia e prioridade multimídia do Windows) ou Power (também reduz os apps em segundo plano que você escolher: Chrome, OneDrive…). Nenhum toca o processo do jogo, então não há problemas com anti-cheat. O Discord nunca é freado, para não cortar a voz.",
         "Você fecha o jogo → ele restaura o SEU plano anterior e as prioridades, e te avisa.",
         "“Detectar instalados” procura na Steam, Epic e Riot e preenche a lista sozinho. Você também pode adicionar .exe manualmente.",
         "Iniciar com o Windows: abre minimizado ao lado do relógio (bandeja) e monitora seus jogos sem pedir permissão toda vez. Com o modo ativo, fechar a janela o deixa na bandeja; para sair de vez: clique direito no ícone → Sair.",

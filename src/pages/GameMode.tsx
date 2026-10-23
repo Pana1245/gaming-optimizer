@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { useGameMode } from "../lib/gameMode";
 import { detectGames, type DetectedGame } from "../lib/detect";
-import { Page, Switch, SectionTitle, List, Row, Badge, LogPanel } from "../components/ui";
+import { Page, Switch, SectionTitle, List, Row, Badge, LogPanel, Tabs } from "../components/ui";
 import BgPicker from "../components/BgPicker";
 import { MenuButton } from "../components/PickerPanel";
 import { useI18n } from "../lib/i18n";
@@ -121,10 +121,13 @@ export default function GameMode() {
             <List>
               <div className="px-4 py-3.5 flex items-start gap-3">
                 <div className="min-w-0 flex-1">
-                  <div className="text-[13.5px] text-text">{t("gm.proTitle")}</div>
-                  <p className="text-[12px] text-text-mute mt-1 leading-relaxed">{t("gm.proHint")}</p>
+                  <div className="flex items-center justify-between gap-3">
+                    <div className="text-[13.5px] text-text">{t("gm.proTitle")}</div>
+                    <Tabs value={pro ? "power" : "lite"} onChange={(v) => setPro(v === "power")}
+                      items={[{ id: "lite", label: "Lite" }, { id: "power", label: "Power" }]} />
+                  </div>
+                  <p className="text-[12px] text-text-mute mt-2 leading-relaxed">{t(pro ? "gm.proHint" : "gm.liteHint")}</p>
                 </div>
-                <Switch size="sm" on={pro} onChange={setPro} label={t("gm.proTitle")} />
               </div>
               <div className={`px-4 py-3 flex items-center gap-3 transition-opacity ${pro ? "" : "opacity-50"}`}>
                 <div className="min-w-0 flex-1">
