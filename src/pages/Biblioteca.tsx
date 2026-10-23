@@ -6,7 +6,7 @@ import { useI18n } from "../lib/i18n";
 import { useGameMode } from "../lib/gameMode";
 import { useSharedState } from "../lib/sharedState";
 import { scanGames, iconsFor, launchGame, pickExe, manualGame, steamCover, steamHeader, readGameWin, setGameWin, type Game, type GameWin } from "../lib/games";
-import { cs2Load, cs2Read, cs2Save, cs2Restore, cs2Preset, CS2_FIELDS, type Cs2, type Cs2Values, type Cs2Preset } from "../lib/gameSettings";
+import { gameAdapter, type GameAdapter, type GameCfg, type Values, type Preset, type SaveResult } from "../lib/gameSettings";
 
 // Preferencias de la Biblioteca (sólo en esta PC): juegos agregados a mano y ocultos.
 const load = (k: string): string[] => { try { const v = JSON.parse(localStorage.getItem(k) || "[]"); return Array.isArray(v) ? v : []; } catch { return []; } };
@@ -35,88 +35,79 @@ function WinSettings({ g, onClose }: { g: Game; onClose: () => void }) {
       <Switch size="sm" on={!!st?.[what]} onChange={() => flip(what)} disabled={!st || busy} label={t(`lib.win.${what}`)} />
     </div>
   );
-  const cs2 = g.appId === "730";
+  const adapter = gameAdapter(g);
   return (
-    <Modal open wide={cs2} title={`${t("lib.win.title")} — ${g.name}`} onClose={onClose}>
+    <Modal open wide={!!adapter} title={`${t("lib.win.title")} — ${g.name}`} onClose={onClose}>
       <div className="whitespace-normal">
         <div className="text-[11px] uppercase tracking-wider text-text-mute mb-1">Windows</div>
         <div className="divide-y divide-line">{row("gpu")}{row("fso")}</div>
         <p className="text-[11.5px] text-text-mute mt-2">{t("lib.win.note")}</p>
-        {cs2 && <Cs2Settings />}
+        {adapter && <GameOptions a={adapter} game={g.name} />}
       </div>
     </Modal>
   );
 }
 
-// Etiqueta de cada opción de CS2 (valor del archivo -> texto).
-const CS2_LABELS: Record<string, (t: (k: string) => string) => Record<string, string>> = {
-  displaymode: (t) => ({ full: t("lib.cs2.full"), borderless: t("lib.cs2.borderless"), window: t("lib.cs2.window") }),
-  fps_max: (t) => ({ "0": t("lib.cs2.noLimit") }),
-  "setting.mat_vsync": (t) => ({ "0": t("lib.q.off"), "1": t("lib.q.on") }),
-  "setting.r_low_latency": (t) => ({ "0": t("lib.q.off"), "1": t("lib.q.on"), "2": t("lib.cs2.boost") }),
-  "setting.msaa_samples": (t) => ({ "0": t("lib.q.off"), "2": "2x MSAA", "4": "4x MSAA", "8": "8x MSAA" }),
-  "setting.videocfg_shadow_quality": (t) => ({ "0": t("lib.q.0"), "1": t("lib.q.1"), "2": t("lib.q.2"), "3": t("lib.q.3") }),
-  "setting.videocfg_texture_detail": (t) => ({ "0": t("lib.q.0"), "1": t("lib.q.1"), "2": t("lib.q.2") }),
-  "setting.videocfg_particle_detail": (t) => ({ "0": t("lib.q.0"), "1": t("lib.q.1"), "2": t("lib.q.2"), "3": t("lib.q.3") }),
-  "setting.videocfg_ao_detail": (t) => ({ "0": t("lib.q.off"), "1": t("lib.q.1"), "2": t("lib.q.2") }),
-  "setting.r_texturefilteringquality": (t) => ({ "0": t("lib.cs2.bilinear"), "1": t("lib.cs2.trilinear"), "2": "2x AF", "3": "4x AF", "4": "8x AF", "5": "16x AF" }),
-  "setting.shaderquality": (t) => ({ "0": t("lib.q.0"), "1": t("lib.q.2") }),
-};
-
-/** Opciones de video de Counter-Strike 2 (sus archivos de configuración, con el juego cerrado). */
-function Cs2Settings() {
+/** Opciones de video del juego (sus archivos de configuración, con el juego cerrado). */
+function GameOptions({ a, game }: { a: GameAdapter; game: string }) {
   const { t } = useI18n();
-  const [c, setC] = useState<Cs2 | null | undefined>(undefined);
-  const [v, setV] = useState<Cs2Values>({});
+  const tx = (s: string) => (s.startsWith("lib.") ? t(s) : s);
+  const [c, setC] = useState<GameCfg<unknown> | null | undefined>(undefined);
+  const [v, setV] = useState<Values>({});
   const [msg, setMsg] = useState("");
   const [busy, setBusy] = useState(false);
-  const reload = () => cs2Load().then((x) => { setC(x); if (x) setV(cs2Read(x)); }).catch(() => setC(null));
-  useEffect(() => { reload(); }, []);
-  if (c === undefined) return <p className="text-[12px] text-text-mute mt-5">{t("lib.cs2.loading")}</p>;
-  if (c === null) return <p className="text-[12px] text-text-mute mt-5">{t("lib.cs2.none")}</p>;
-  const orig = cs2Read(c);
-  const changed = Object.keys(v).some((k) => v[k] !== orig[k]);
-  const run = async (fn: () => Promise<"ok" | "running" | "changed" | "error">, okMsg: string) => {
+  const reload = () => a.load().then((x) => { setC(x); if (x) setV(x.values); }).catch(() => setC(null));
+  // Se lee al abrir (y al cambiar de juego); reload no cambia entre renders de forma relevante.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  useEffect(() => { reload(); }, [a]);
+  if (c === undefined) return <p className="text-[12px] text-text-mute mt-5">{t("lib.go.loading").replace("{g}", game)}</p>;
+  if (c === null) return <p className="text-[12px] text-text-mute mt-5">{t("lib.go.none").replace("{g}", game)}</p>;
+  // Sólo se guarda lo que cambió (en VALORANT una opción que falta queda "predeterminada").
+  const diff = Object.fromEntries(Object.entries(v).filter(([k, x]) => x !== "" && x !== c.values[k]));
+  const changed = Object.keys(diff).length > 0;
+  const run = async (fn: () => Promise<SaveResult>, okMsg: string) => {
     setBusy(true);
     const r = await fn().catch(() => "error" as const);
-    setMsg(r === "ok" ? `✓ ${okMsg}` : r === "running" ? `✗ ${t("lib.cs2.running")}` : r === "changed" ? `✗ ${t("lib.cs2.changed")}` : `✗ ${t("lib.cs2.error")}`);
+    setMsg(r === "ok" ? `✓ ${okMsg}` : r === "running" ? `✗ ${t("lib.go.running").replace("{g}", game)}` : r === "changed" ? `✗ ${t("lib.go.changed")}` : `✗ ${t("lib.go.error")}`);
     if (r === "ok" || r === "changed") await reload();
     setBusy(false);
   };
   return (
     <div className="mt-5">
       <div className="flex items-baseline justify-between gap-3 mb-2">
-        <div className="text-[11px] uppercase tracking-wider text-text-mute">{t("lib.cs2.game")}</div>
-        <div className="text-[11.5px] text-text-mute truncate">{t("lib.cs2.account").replace("{n}", c.persona)}</div>
+        <div className="text-[11px] uppercase tracking-wider text-text-mute">{t("lib.go.game")}</div>
+        <div className="text-[11.5px] text-text-mute truncate">{t(`lib.${a.id}.account`).replace("{n}", c.who)}</div>
       </div>
-      {c.running && <p className="text-[12px] text-[#ffb547] mb-2">{t("lib.cs2.running")}</p>}
+      {c.running && <p className="text-[12px] text-[#ffb547] mb-2">{t("lib.go.running").replace("{g}", game)}</p>}
       <div className="flex gap-2 mb-3">
-        {(["low", "mid", "high"] as Cs2Preset[]).map((p) => (
-          <button key={p} onClick={() => setV((x) => ({ ...x, ...cs2Preset(p) }))} disabled={busy} className="btn btn-ghost h-8 flex-1 text-[12.5px]">{t(`lib.cs2.preset.${p}`)}</button>
+        {(["low", "mid", "high"] as Preset[]).map((p) => (
+          <button key={p} onClick={() => setV((x) => ({ ...x, ...a.presets[p] }))} disabled={busy} className="btn btn-ghost h-8 flex-1 text-[12.5px]">{t(`lib.go.preset.${p}`)}</button>
         ))}
       </div>
       <div className="grid grid-cols-2 gap-x-4 gap-y-2.5">
-        {CS2_FIELDS.filter((f) => !f.nvidiaOnly || c.nvidia).map((f) => {
-          const labels = CS2_LABELS[f.key](t);
+        {a.fields.filter((f) => !f.nvidiaOnly || c.nvidia).map((f) => {
+          const cur = v[f.key] ?? "";
+          const known = f.opts.some(([o]) => o === cur);
           return (
             <label key={f.key} className="flex flex-col gap-1 min-w-0">
-              <span className="text-[12px] text-text-dim">{t(`lib.cs2.f.${f.key}`)}</span>
-              <select value={v[f.key] ?? ""} onChange={(e) => setV((x) => ({ ...x, [f.key]: e.target.value }))} disabled={busy}
+              <span className="text-[12px] text-text-dim">{t(`lib.${a.id}.f.${f.key.split("::").pop()}`)}</span>
+              <select value={cur} onChange={(e) => setV((x) => ({ ...x, [f.key]: e.target.value }))} disabled={busy}
                 className="h-8 rounded-md bg-white/[0.04] border border-line text-[12.5px] text-text px-2 outline-none focus:border-accent">
-                {!f.opts.includes(v[f.key] ?? "") && <option value={v[f.key] ?? ""}>{v[f.key] ?? "—"}</option>}
-                {f.opts.map((o) => <option key={o} value={o}>{labels[o] ?? o}</option>)}
+                {cur === "" && <option value="">{t("lib.go.default")}</option>}
+                {cur !== "" && !known && <option value={cur}>{cur}</option>}
+                {f.opts.map(([o, l]) => <option key={o} value={o}>{tx(l)}</option>)}
               </select>
             </label>
           );
         })}
       </div>
       <div className="flex items-center gap-2 mt-4">
-        <button onClick={() => run(() => cs2Save(c, v), t("lib.cs2.saved"))} disabled={busy || !changed} className="btn btn-primary h-8 text-[12.5px]">{t("lib.cs2.save")}</button>
-        {changed && <button onClick={() => setV(orig)} disabled={busy} className="btn btn-ghost h-8 text-[12.5px]">{t("lib.cs2.discard")}</button>}
+        <button onClick={() => run(() => a.save(c.raw, diff), t("lib.go.saved"))} disabled={busy || !changed} className="btn btn-primary h-8 text-[12.5px]">{t("lib.go.save")}</button>
+        {changed && <button onClick={() => setV(c.values)} disabled={busy} className="btn btn-ghost h-8 text-[12.5px]">{t("lib.go.discard")}</button>}
         {msg && <span className="text-[12px] text-text-dim min-w-0">{msg}</span>}
-        {c.hasBackup && <button onClick={() => run(() => cs2Restore(c), t("lib.cs2.restored"))} disabled={busy} className="btn btn-ghost h-8 text-[12.5px] ml-auto shrink-0">{t("lib.cs2.restore")}</button>}
+        {c.hasBackup && <button onClick={() => run(() => a.restore(c.raw), t("lib.go.restored"))} disabled={busy} className="btn btn-ghost h-8 text-[12.5px] ml-auto shrink-0">{t("lib.go.restore")}</button>}
       </div>
-      <p className="text-[11.5px] text-text-mute mt-2">{t("lib.cs2.note")}</p>
+      <p className="text-[11.5px] text-text-mute mt-2">{t(a.id === "val" ? "lib.val.note" : "lib.go.note")}</p>
     </div>
   );
 }

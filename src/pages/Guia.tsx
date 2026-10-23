@@ -73,7 +73,7 @@ const GUIDE: Item[] = [
         "Jugar los abre con su launcher, como un doble clic (sin permisos de administrador, así el anti-cheat no se queja).",
         "El interruptor Auto Game-Mode suma ese juego a la lista que detecta el modo gamer.",
         "¿Falta alguno? \"Agregar juego\" y elegís su .exe. ¿Aparece algo que no es un juego? Pasá el mouse por la portada y tocá ✕ para ocultarlo.",
-        "⚙ al lado de Jugar: GPU de alto rendimiento y pantalla completa exclusiva (ajustes de Windows). En Counter-Strike 2 además sus opciones de video, con presets Máximo FPS / Equilibrado / Calidad: se cambian con el juego cerrado y se puede volver a como estaba.",
+        "⚙ al lado de Jugar: GPU de alto rendimiento y pantalla completa exclusiva (ajustes de Windows). En Counter-Strike 2 y VALORANT además sus opciones de video, con presets Máximo FPS / Equilibrado / Calidad: se cambian con el juego cerrado y se puede volver a como estaba.",
         "Las portadas son las oficiales de Steam (se descargan de su servidor de imágenes).",
       ],
       en: [
@@ -81,7 +81,7 @@ const GUIDE: Item[] = [
         "Play opens them through their launcher, like a double click (without admin rights, so anti-cheat doesn't complain).",
         "The Auto Game-Mode switch adds that game to the list the gamer mode watches for.",
         "Missing one? \"Add game\" and pick its .exe. Something that isn't a game? Hover the cover and click ✕ to hide it.",
-        "⚙ next to Play: high-performance GPU and exclusive fullscreen (Windows settings). For Counter-Strike 2 also its video options, with Max FPS / Balanced / Quality presets: changed with the game closed, and you can revert them.",
+        "⚙ next to Play: high-performance GPU and exclusive fullscreen (Windows settings). For Counter-Strike 2 and VALORANT also their video options, with Max FPS / Balanced / Quality presets: changed with the game closed, and you can revert them.",
         "Covers are Steam's official ones (downloaded from its image server).",
       ],
       pt: [
@@ -89,7 +89,7 @@ const GUIDE: Item[] = [
         "Jogar abre pelo launcher, como um clique duplo (sem permissões de administrador, assim o anti-cheat não reclama).",
         "O interruptor Auto Game-Mode adiciona esse jogo à lista que o modo gamer detecta.",
         "Falta algum? \"Adicionar jogo\" e escolha o .exe. Aparece algo que não é jogo? Passe o mouse na capa e toque ✕ para ocultar.",
-        "⚙ ao lado de Jogar: GPU de alto desempenho e tela cheia exclusiva (ajustes do Windows). No Counter-Strike 2 também as opções de vídeo, com presets Máximo FPS / Equilibrado / Qualidade: mudam com o jogo fechado e dá para voltar ao original.",
+        "⚙ ao lado de Jogar: GPU de alto desempenho e tela cheia exclusiva (ajustes do Windows). No Counter-Strike 2 e no VALORANT também as opções de vídeo, com presets Máximo FPS / Equilibrado / Qualidade: mudam com o jogo fechado e dá para voltar ao original.",
         "As capas são as oficiais da Steam (baixadas do servidor de imagens dela).",
       ],
     },
