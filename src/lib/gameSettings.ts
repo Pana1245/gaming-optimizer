@@ -7,7 +7,8 @@ export type Values = Record<string, string>;
 export type Preset = "low" | "mid" | "high";
 export type SaveResult = "ok" | "running" | "changed" | "error";
 /** Opción de un juego: [valor del archivo, texto] (texto = clave de i18n "lib.…" o literal). */
-export interface Field { key: string; opts: [string, string][]; nvidiaOnly?: boolean }
+/** `def`: valor que usa el juego cuando la opción no está en el archivo (visto en el propio juego). */
+export interface Field { key: string; opts: [string, string][]; nvidiaOnly?: boolean; def?: string }
 export interface GameCfg<R> { who: string; running: boolean; nvidia: boolean; hasBackup: boolean; values: Values; raw: R }
 export interface GameAdapter<R = unknown> {
   id: string;                        // prefijo de los textos: lib.<id>.f.<clave>
@@ -215,19 +216,21 @@ export const CS2: GameAdapter<Cs2> = {
 // ---- VALORANT ----
 // Opciones de video en RiotUserSettings.ini de la última cuenta de Riot usada. Riot sólo escribe
 // las que se cambiaron alguna vez: si falta una, el juego usa la suya ("predeterminado").
-export interface Val { folder: string; region: string; running: boolean; nvidia: boolean; text: string; hasBackup: boolean }
+// gus/gusRoot: GameUserSettings.ini de la cuenta y el general (V-Sync; el juego escribe los dos).
+export interface Val { folder: string; region: string; running: boolean; nvidia: boolean; text: string; gus: string; gusRoot: string; hasBackup: boolean }
 const V = (k: string) => `EAres${k}`;
 const Q3: [string, string][] = [["0", "lib.q.0"], ["1", "lib.q.1"], ["2", "lib.q.2"]];
 const ONOFF: [string, string][] = [["True", "lib.q.on"], ["False", "lib.q.off"]];
 export const VAL_FIELDS: Field[] = [
   // fpslimit combina LimitFramerateAlways (sí/no) y MaxFramerateAlways (el número).
   { key: "fpslimit", opts: [["off", "lib.go.noLimit"], ...["60", "120", "144", "165", "240", "300"].map((x): [string, string] => [x, x])] },
+  { key: "vsync", opts: ONOFF },
   { key: V("IntSettingName::NvidiaReflexLowLatencySetting"), opts: [["0", "lib.q.off"], ["1", "lib.q.on"], ["2", "lib.go.boost"]], nvidiaOnly: true },
-  { key: V("IntSettingName::MaterialQuality"), opts: Q3 },
+  { key: V("IntSettingName::MaterialQuality"), opts: Q3, def: "2" },
   { key: V("IntSettingName::TextureQuality"), opts: Q3 },
   { key: V("IntSettingName::DetailQuality"), opts: Q3 },
   { key: V("IntSettingName::UIQuality"), opts: Q3 },
-  { key: V("IntSettingName::AntiAliasing"), opts: [["0", "lib.q.off"], ["1", "FXAA"], ["2", "2x MSAA"], ["3", "4x MSAA"]] },
+  { key: V("IntSettingName::AntiAliasing"), opts: [["0", "lib.q.off"], ["1", "FXAA"], ["2", "2x MSAA"], ["3", "4x MSAA"]], def: "3" },
   { key: V("IntSettingName::AnisotropicFiltering"), opts: [["1", "1x"], ["2", "2x"], ["4", "4x"], ["8", "8x"], ["16", "16x"]] },
   { key: V("BoolSettingName::ShadowsEnabled"), opts: ONOFF },
   { key: V("IntSettingName::BloomQuality"), opts: [["1", "lib.q.on"], ["0", "lib.q.off"]] },
@@ -246,15 +249,27 @@ const VAL_PRESETS = presets(
 );
 const LIMIT = V("BoolSettingName::LimitFramerateAlways"), MAXFPS = V("FloatSettingName::MaxFramerateAlways");
 
-export function valRead(text: string): Values {
+const GUS = "/Script/ShooterGame.ShooterGameUserSettings";
+export function valRead(text: string, gus = ""): Values {
   const v: Values = {};
-  for (const f of VAL_FIELDS) { if (f.key === "fpslimit") continue; const x = iniGet(text, f.key); if (x !== undefined) v[f.key] = x; }
+  for (const f of VAL_FIELDS) {
+    if (f.key === "fpslimit" || f.key === "vsync") continue;
+    const x = iniGet(text, f.key) ?? f.def; if (x !== undefined) v[f.key] = x;
+  }
   const max = iniGet(text, MAXFPS);
   v.fpslimit = iniGet(text, LIMIT) === "True" && max ? String(Math.round(Number(max))) : "off";
+  const vs = iniGet(gus, "bUseVSync"); if (vs !== undefined) v.vsync = vs;
   return v;
 }
-export function valApply(text: string, v: Values): string {
+/** Aplica los valores: RiotUserSettings.ini y, para V-Sync, los dos GameUserSettings.ini. */
+export function valApply(c: { text: string; gus: string; gusRoot: string }, v: Values): { text: string; gus: string; gusRoot: string } {
+  let { text, gus, gusRoot } = c;
   for (const [k, val] of Object.entries(v)) {
+    if (k === "vsync") {
+      if (gus) gus = iniSet(gus, "bUseVSync", val, GUS);
+      if (gusRoot) gusRoot = iniSet(gusRoot, "bUseVSync", val, GUS);
+      continue;
+    }
     if (k === "fpslimit") {
       text = iniSet(text, LIMIT, val === "off" ? "False" : "True", "Settings");
       if (val !== "off") text = iniSet(text, MAXFPS, val, "Settings");
@@ -262,7 +277,7 @@ export function valApply(text: string, v: Values): string {
     }
     text = iniSet(text, k, val, "Settings");
   }
-  return text;
+  return { text, gus, gusRoot };
 }
 
 // Última cuenta (LastKnownUser) y su carpeta <puuid>-<región> más reciente.
@@ -271,6 +286,7 @@ $last=("$(Get-Content -LiteralPath "$base\WindowsClient\RiotLocalMachine.ini" -E
 $best=$null
 if($last){ $best=Get-ChildItem -LiteralPath $base -Directory -EA SilentlyContinue | Where-Object { $_.Name.StartsWith("$last-",[StringComparison]::OrdinalIgnoreCase) -and (Test-Path -LiteralPath "$($_.FullName)\Windows\RiotUserSettings.ini") } | Sort-Object { (Get-Item -LiteralPath "$($_.FullName)\Windows\RiotUserSettings.ini").LastWriteTime } -Descending | Select-Object -First 1 }`;
 const VAL_PROCS = ["VALORANT-Win64-Shipping", "VALORANT"];
+const VAL_FILES = ["RiotUserSettings.ini", String.raw`..\WindowsClient\GameUserSettings.ini`, String.raw`..\..\WindowsClient\GameUserSettings.ini`];
 const valSame = (folder: string) => VAL_LOCATE + String.raw`
 if(-not $best -or $best.Name -ne ${psq(folder)}){ Write-Output 'ERROR'; exit 1 }
 $dir=Join-Path $best.FullName 'Windows'`;
@@ -278,18 +294,26 @@ $dir=Join-Path $best.FullName 'Windows'`;
 export async function valLoad(): Promise<Val | null> {
   const r = await runPowershell(VAL_LOCATE + String.raw`
 if(-not $best){ exit 0 }
+$enc=New-Object System.Text.UTF8Encoding $false
 $f=Join-Path $best.FullName 'Windows\RiotUserSettings.ini'
+$g=Join-Path $best.FullName 'WindowsClient\GameUserSettings.ini'; $gr=Join-Path $base 'WindowsClient\GameUserSettings.ini'
 [pscustomobject]@{ folder=$best.Name; region=($best.Name -replace '^.*-',''); running=[bool](Get-Process ${VAL_PROCS.map(psq).join(",")} -EA SilentlyContinue); nvidia=${NVIDIA_PS}
-  text=[IO.File]::ReadAllText($f, (New-Object System.Text.UTF8Encoding $false)); hasBackup=(Test-Path -LiteralPath "$f.gobak") } | ConvertTo-Json -Compress`);
+  text=[IO.File]::ReadAllText($f, $enc); gus=$(if(Test-Path -LiteralPath $g){ [IO.File]::ReadAllText($g, $enc) } else { '' }); gusRoot=$(if(Test-Path -LiteralPath $gr){ [IO.File]::ReadAllText($gr, $enc) } else { '' })
+  hasBackup=(@("$f.gobak","$g.gobak","$gr.gobak") | Where-Object { Test-Path -LiteralPath $_ }).Count -gt 0 } | ConvertTo-Json -Compress`);
   const j = lastJson(r.output);
   return j && typeof j.text === "string" && j.folder ? j : null;
 }
 
 export const VALORANT: GameAdapter<Val> = {
   id: "val", fields: VAL_FIELDS, presets: VAL_PRESETS,
-  load: async () => { const c = await valLoad(); return c && { who: c.region.toUpperCase(), running: c.running, nvidia: c.nvidia, hasBackup: c.hasBackup, values: valRead(c.text), raw: c }; },
-  save: (c, v) => saveFiles(valSame(c.folder), VAL_PROCS, [["RiotUserSettings.ini", c.text, valApply(c.text, v)]]),
-  restore: (c) => restoreFiles(valSame(c.folder), VAL_PROCS, ["RiotUserSettings.ini"]),
+  load: async () => { const c = await valLoad(); return c && { who: c.region.toUpperCase(), running: c.running, nvidia: c.nvidia, hasBackup: c.hasBackup, values: valRead(c.text, c.gus || c.gusRoot), raw: c }; },
+  // Sólo los archivos que cambian (rutas relativas a <cuenta>\Windows).
+  save: (c, v) => {
+    const o = valApply(c, v);
+    const files: [string, string, string][] = [[VAL_FILES[0], c.text, o.text], [VAL_FILES[1], c.gus, o.gus], [VAL_FILES[2], c.gusRoot, o.gusRoot]];
+    return saveFiles(valSame(c.folder), VAL_PROCS, files.filter(([, a, b]) => a !== b));
+  },
+  restore: (c) => restoreFiles(valSame(c.folder), VAL_PROCS, VAL_FILES),
 };
 
 /** Módulo de opciones del juego, si está soportado. */

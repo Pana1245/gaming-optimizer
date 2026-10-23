@@ -65,6 +65,7 @@ export const PT: Record<string, string> = {
   "lib.val.account": "Última conta Riot usada · {n}",
   "lib.go.default": "Padrão do jogo",
   "lib.val.f.fpslimit": "Limite de FPS (sempre)",
+  "lib.val.f.vsync": "Sincronização vertical (V-Sync)",
   "lib.val.f.NvidiaReflexLowLatencySetting": "NVIDIA Reflex (baixa latência)",
   "lib.val.f.MaterialQuality": "Qualidade dos materiais",
   "lib.val.f.TextureQuality": "Qualidade das texturas",

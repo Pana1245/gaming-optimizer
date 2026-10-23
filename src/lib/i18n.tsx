@@ -77,6 +77,7 @@ const STR: Record<string, { es: string; en: string }> = {
   "lib.val.account": { es: "Última cuenta de Riot usada · {n}", en: "Last Riot account used · {n}" },
   "lib.go.default": { es: "Predeterminado del juego", en: "Game default" },
   "lib.val.f.fpslimit": { es: "Límite de FPS (siempre)", en: "FPS limit (always)" },
+  "lib.val.f.vsync": { es: "Sincronización vertical (V-Sync)", en: "Vertical sync (V-Sync)" },
   "lib.val.f.NvidiaReflexLowLatencySetting": { es: "NVIDIA Reflex (baja latencia)", en: "NVIDIA Reflex (low latency)" },
   "lib.val.f.MaterialQuality": { es: "Calidad de materiales", en: "Material quality" },
   "lib.val.f.TextureQuality": { es: "Calidad de texturas", en: "Texture quality" },
