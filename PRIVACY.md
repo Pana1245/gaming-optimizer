@@ -27,6 +27,9 @@ The app connects to the internet only for these explicit, user-facing features:
 - **App icons** — the "Install apps" list loads each app's icon from Google's favicon service
   (`www.google.com/s2/favicons`), which receives the app's public website domain (e.g.
   `spotify.com`) and your IP address, like any image on a web page.
+- **Game library** — game covers are loaded from Steam's public image server
+  (`cdn.cloudflare.steamstatic.com`), which receives the game's public Steam ID and your IP
+  address, like any image on a web page. Game detection only reads your launchers' local files.
 - **Drivers** — to find the latest driver for your graphics card or motherboard, the app queries
   the manufacturer's public support service (NVIDIA `gfwsl.geforce.com` / `www.nvidia.com`,
   ASUS `www.asus.com`) with your hardware model (e.g. "RTX 3070", the board name). "Open support

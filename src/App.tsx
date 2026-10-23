@@ -35,14 +35,16 @@ const Red = lazy(() => import("./pages/Red"));
 const Graficos = lazy(() => import("./pages/Graficos"));
 const Herramientas = lazy(() => import("./pages/Herramientas"));
 const Reactivar = lazy(() => import("./pages/Reactivar"));
+const Biblioteca = lazy(() => import("./pages/Biblioteca"));
 import {
-  IconRocket, IconShieldCheck, IconGamepad, IconBroom, IconPower, IconApps, IconTrash, IconReset, IconWrench, IconChart, IconBook, IconGauge, IconLayers, IconGlobe, IconGpu, IconTools, IconLifeRing, IconPulse, IconChip,
+  IconRocket, IconShieldCheck, IconGamepad, IconBroom, IconPower, IconApps, IconTrash, IconReset, IconWrench, IconChart, IconBook, IconGauge, IconLayers, IconGlobe, IconGpu, IconTools, IconLifeRing, IconPulse, IconChip, IconLibrary,
 } from "./components/icons";
 
 // Menú agrupado: arriba lo general; después rendimiento, limpieza/apps y control/reparación.
 const GROUPS: NavGroup[] = [
   { items: [
     { id: "panel", label: "nav.panel", icon: <IconGauge /> },
+    { id: "library", label: "nav.library", icon: <IconLibrary /> },
     { id: "health", label: "nav.health", icon: <IconPulse /> },
     { id: "drivers", label: "nav.drivers", icon: <IconChip /> },
     { id: "system", label: "nav.system", icon: <IconChart /> },
@@ -77,6 +79,7 @@ function renderPage(page: string, go: (p: string) => void) {
     case "health": return <Chequeo onNavigate={go} />;
     case "drivers": return <Drivers />;
     case "panel": return <Panel onNavigate={go} />;
+    case "library": return <Biblioteca />;
     case "profiles": return <Perfiles />;
     case "network": return <Red />;
     case "gpu": return <Graficos onNavigate={go} />;

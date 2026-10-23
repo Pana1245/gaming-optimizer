@@ -914,7 +914,7 @@ pub fn run() {
             clear_standby_ram, nv_query, reg_apply, reg_undo,
             speedtest::speed_test, speedtest::speed_cancel,
             tray::tray_labels, tray::autostart_get, tray::autostart_set,
-            drivers::drivers_fetch, drivers::open_url
+            drivers::drivers_fetch, drivers::open_url, drivers::launch_game
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

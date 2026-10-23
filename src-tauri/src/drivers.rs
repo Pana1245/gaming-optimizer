@@ -38,7 +38,7 @@ pub async fn drivers_fetch(url: String) -> Result<String, String> {
 /// abra la URL, como un doble clic en un acceso directo: navegador predeterminado y
 /// NO elevado. Es el método documentado por Microsoft (IShellDispatch2 del escritorio).
 #[cfg(windows)]
-fn desktop_open(url: &str) -> windows::core::Result<()> {
+fn desktop_open(url: &str, args: &str) -> windows::core::Result<()> {
     use windows::core::{Interface, BSTR};
     use windows::Win32::System::Com::*;
     use windows::Win32::System::Variant::VARIANT;
@@ -54,7 +54,8 @@ fn desktop_open(url: &str) -> windows::core::Result<()> {
             let view: IShellFolderViewDual = browser.QueryActiveShellView()?.GetItemObject::<IDispatch>(SVGIO_BACKGROUND)?.cast()?;
             let shell: IShellDispatch2 = view.Application()?.cast()?;
             let none = VARIANT::default();
-            shell.ShellExecute(&BSTR::from(url), &none, &none, &VARIANT::from(BSTR::from("open")), &VARIANT::from(1i32))
+            let argv = if args.is_empty() { VARIANT::default() } else { VARIANT::from(BSTR::from(args)) };
+            shell.ShellExecute(&BSTR::from(url), &argv, &none, &VARIANT::from(BSTR::from("open")), &VARIANT::from(1i32))
         })();
         if init.is_ok() {
             CoUninitialize();
@@ -113,7 +114,7 @@ pub fn open_url(url: String) -> Result<(), String> {
     #[cfg(windows)]
     {
         let u = url.clone();
-        if std::thread::spawn(move || desktop_open(&u).is_ok()).join().unwrap_or(false) {
+        if std::thread::spawn(move || desktop_open(&u, "").is_ok()).join().unwrap_or(false) {
             return Ok(());
         }
     }
@@ -134,6 +135,46 @@ pub fn open_url(url: String) -> Result<(), String> {
         .map_err(|e| e.to_string())
 }
 
+/// ¿Es un destino de juego permitido? Protocolos de launchers con su forma exacta, o un
+/// .exe que existe. Los argumentos sólo con caracteres simples (los del Riot Client).
+fn valid_launch(target: &str, args: &str) -> bool {
+    let simple = |s: &str, extra: &str| !s.is_empty() && s.chars().all(|c| c.is_ascii_alphanumeric() || extra.contains(c));
+    let ok_target = if let Some(id) = target.strip_prefix("steam://rungameid/") {
+        !id.is_empty() && id.chars().all(|c| c.is_ascii_digit())
+    } else if let Some(rest) = target.strip_prefix("com.epicgames.launcher://apps/") {
+        rest.strip_suffix("?action=launch&silent=true").is_some_and(|id| simple(id, "%._-"))
+    } else if let Some(app) = target.strip_prefix(r"shell:AppsFolder\") {
+        simple(app, "._-!")
+    } else {
+        let p = std::path::Path::new(target);
+        p.is_absolute() && target.to_ascii_lowercase().ends_with(".exe") && p.is_file() && !target.contains('"')
+    };
+    ok_target && (args.is_empty() || simple(args, " =._-"))
+}
+
+/// Lanza un juego como un doble clic en el escritorio: sin los permisos de administrador
+/// de la app (el juego y su anti-cheat corren como el usuario, igual que desde su launcher).
+#[tauri::command]
+pub fn launch_game(target: String, args: Option<String>) -> Result<(), String> {
+    let args = args.unwrap_or_default();
+    if !valid_launch(&target, &args) {
+        return Err("destino inválido".into());
+    }
+    #[cfg(windows)]
+    {
+        let (t, a) = (target.clone(), args.clone());
+        if std::thread::spawn(move || desktop_open(&t, &a).is_ok()).join().unwrap_or(false) {
+            return Ok(());
+        }
+    }
+    // Sin escritorio accesible: los protocolos los resuelve Explorer; un .exe no se lanza
+    // desde acá para no darle permisos de administrador al juego.
+    if target.contains("://") || target.starts_with("shell:") {
+        return std::process::Command::new(crate::sys_exe("explorer.exe", true)).arg(&target).spawn().map(|_| ()).map_err(|e| e.to_string());
+    }
+    Err("no se pudo lanzar el juego".into())
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -146,6 +187,20 @@ mod tests {
         assert!(r.is_err());
         assert!(open_url("https://a.com/x y".into()).is_err());
         assert!(open_url("file:///C:/Windows".into()).is_err());
+    }
+
+    #[test]
+    fn valida_destinos_de_juegos() {
+        assert!(valid_launch("steam://rungameid/730", ""));
+        assert!(!valid_launch("steam://rungameid/730;calc", ""));
+        assert!(valid_launch("com.epicgames.launcher://apps/fn%3A4fe75bbc%3AFortnite?action=launch&silent=true", ""));
+        assert!(!valid_launch("com.epicgames.launcher://apps/x?action=uninstall", ""));
+        assert!(valid_launch(r"shell:AppsFolder\Microsoft.MinecraftUWP_8wekyb3d8bbwe!Game", ""));
+        assert!(!valid_launch(r"shell:AppsFolder\x & calc", ""));
+        assert!(valid_launch(r"C:\Windows\notepad.exe", "--launch-product=valorant --launch-patchline=live"));
+        assert!(!valid_launch(r"C:\Windows\notepad.exe", r#""; calc"#));
+        assert!(!valid_launch(r"C:\no\existe.exe", ""));
+        assert!(!valid_launch("https://evil.com", ""));
     }
 
     #[cfg(windows)]
@@ -179,7 +234,7 @@ mod tests {
     #[test]
     #[ignore]
     fn abre_en_el_navegador() {
-        desktop_open("https://www.gigabyte.com/Search?kw=B550M%20AORUS%20ELITE").unwrap();
+        desktop_open("https://www.gigabyte.com/Search?kw=B550M%20AORUS%20ELITE", "").unwrap();
     }
 
     // Consulta real a las fuentes oficiales (requiere internet): cargo test -- --ignored

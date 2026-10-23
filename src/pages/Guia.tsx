@@ -64,6 +64,34 @@ const GUIDE: Item[] = [
     },
   },
   {
+    id: "library", icon: "🎮",
+    title: { es: "Biblioteca", en: "Library", pt: "Biblioteca" },
+    desc: { es: "Todos tus juegos en un solo lugar.", en: "All your games in one place.", pt: "Todos os seus jogos em um só lugar." },
+    points: {
+      es: [
+        "Encuentra los juegos instalados de Steam, Epic, Riot (VALORANT, League of Legends) y Minecraft de la Microsoft Store.",
+        "Jugar los abre con su launcher, como un doble clic (sin permisos de administrador, así el anti-cheat no se queja).",
+        "El interruptor Auto Game-Mode suma ese juego a la lista que detecta el modo gamer.",
+        "¿Falta alguno? \"Agregar juego\" y elegís su .exe. ¿Aparece algo que no es un juego? Pasá el mouse por la portada y tocá ✕ para ocultarlo.",
+        "Las portadas son las oficiales de Steam (se descargan de su servidor de imágenes).",
+      ],
+      en: [
+        "Finds installed games from Steam, Epic, Riot (VALORANT, League of Legends) and Minecraft from the Microsoft Store.",
+        "Play opens them through their launcher, like a double click (without admin rights, so anti-cheat doesn't complain).",
+        "The Auto Game-Mode switch adds that game to the list the gamer mode watches for.",
+        "Missing one? \"Add game\" and pick its .exe. Something that isn't a game? Hover the cover and click ✕ to hide it.",
+        "Covers are Steam's official ones (downloaded from its image server).",
+      ],
+      pt: [
+        "Encontra os jogos instalados da Steam, Epic, Riot (VALORANT, League of Legends) e o Minecraft da Microsoft Store.",
+        "Jogar abre pelo launcher, como um clique duplo (sem permissões de administrador, assim o anti-cheat não reclama).",
+        "O interruptor Auto Game-Mode adiciona esse jogo à lista que o modo gamer detecta.",
+        "Falta algum? \"Adicionar jogo\" e escolha o .exe. Aparece algo que não é jogo? Passe o mouse na capa e toque ✕ para ocultar.",
+        "As capas são as oficiais da Steam (baixadas do servidor de imagens dela).",
+      ],
+    },
+  },
+  {
     id: "health", icon: "🩺",
     title: { es: "Chequeo de PC", en: "PC Check", pt: "Checkup do PC" },
     desc: { es: "Encuentra problemas reales que le quitan rendimiento a tu PC.", en: "Finds real problems that cost your PC performance.", pt: "Encontra problemas reais que tiram desempenho do seu PC." },
