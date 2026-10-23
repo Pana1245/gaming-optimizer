@@ -86,20 +86,32 @@ export function kvSet(text: string, key: string, value: string, block = ""): str
 }
 
 // ---- Formato INI (Unreal): líneas Clave=Valor dentro de [Sección] ----
+// La misma clave puede repetirse en varias secciones (Rocket League): todo se hace dentro de UNA.
 const iniRx = (key: string) => new RegExp(`^(${esc(key)}=)(.*?)(\\r?)$`, "m");
-export function iniGet(text: string, key: string): string | undefined {
-  return iniRx(key).exec(text)?.[2];
+/** [inicio, fin) del cuerpo de la sección (las líneas entre su encabezado y el siguiente); -1 si no tiene salto de línea. */
+function iniBody(text: string, section: string): [number, number] | null {
+  const h = new RegExp(`^\\[${esc(section)}\\]\\r?$`, "m").exec(text);
+  if (!h) return null;
+  const eol = text.indexOf("\n", h.index);
+  if (eol < 0) return [-1, -1];
+  const next = /^\[/m.exec(text.slice(eol + 1));
+  return [eol + 1, next ? eol + 1 + next.index : text.length];
 }
-/** Cambia el valor; si la clave no está, la agrega justo debajo del encabezado de la sección. */
+/** Valor de la clave dentro de `section` (sin sección: la primera del archivo). */
+export function iniGet(text: string, key: string, section?: string): string | undefined {
+  if (section === undefined) return iniRx(key).exec(text)?.[2];
+  const b = iniBody(text, section);
+  return b && b[0] >= 0 ? iniRx(key).exec(text.slice(b[0], b[1]))?.[2] : undefined;
+}
+/** Cambia el valor dentro de `section`; si la clave no está, la agrega debajo del encabezado. */
 export function iniSet(text: string, key: string, value: string, section: string): string {
-  const rx = iniRx(key);
-  if (rx.test(text)) return text.replace(rx, (_m, a, _v, cr) => `${a}${value}${cr}`);
   const nl = text.includes("\r\n") ? "\r\n" : "\n";
-  const h = text.indexOf(`[${section}]`);
-  if (h < 0) return `${text}${text.endsWith(nl) || !text ? "" : nl}[${section}]${nl}${key}=${value}${nl}`;
-  const eol = text.indexOf("\n", h);
-  if (eol < 0) return `${text}${nl}${key}=${value}${nl}`;
-  return `${text.slice(0, eol + 1)}${key}=${value}${nl}${text.slice(eol + 1)}`;
+  const b = iniBody(text, section);
+  if (!b) return `${text}${text.endsWith("\n") || !text ? "" : nl}[${section}]${nl}${key}=${value}${nl}`;
+  if (b[0] < 0) return `${text}${nl}${key}=${value}${nl}`;
+  const body = text.slice(b[0], b[1]), rx = iniRx(key);
+  const nb = rx.test(body) ? body.replace(rx, (_m, a, _v, cr) => `${a}${value}${cr}`) : `${key}=${value}${nl}${body}`;
+  return text.slice(0, b[0]) + nb + text.slice(b[1]);
 }
 
 // ---- Counter-Strike 2 ----
@@ -254,11 +266,11 @@ export function valRead(text: string, gus = ""): Values {
   const v: Values = {};
   for (const f of VAL_FIELDS) {
     if (f.key === "fpslimit" || f.key === "vsync") continue;
-    const x = iniGet(text, f.key) ?? f.def; if (x !== undefined) v[f.key] = x;
+    const x = iniGet(text, f.key, "Settings") ?? f.def; if (x !== undefined) v[f.key] = x;
   }
-  const max = iniGet(text, MAXFPS);
-  v.fpslimit = iniGet(text, LIMIT) === "True" && max ? String(Math.round(Number(max))) : "off";
-  const vs = iniGet(gus, "bUseVSync"); if (vs !== undefined) v.vsync = vs;
+  const max = iniGet(text, MAXFPS, "Settings");
+  v.fpslimit = iniGet(text, LIMIT, "Settings") === "True" && max ? String(Math.round(Number(max))) : "off";
+  const vs = iniGet(gus, "bUseVSync", GUS); if (vs !== undefined) v.vsync = vs;
   return v;
 }
 /** Aplica los valores: RiotUserSettings.ini y, para V-Sync, los dos GameUserSettings.ini. */
@@ -318,9 +330,72 @@ export const VALORANT: GameAdapter<Val> = {
   restore: (c) => restoreFiles(valSame(c.folder), VAL_PROCS, VAL_FILES),
 };
 
+// ---- Rocket League ----
+// TASystemSettings.ini (Documentos\My Games): sólo la sección [SystemSettings], la que usa la PC
+// (las demás repiten las claves para celulares, editor…). Probado en esta PC: el juego respeta
+// el cambio del archivo. FPS, suavizado, intensidad de efectos y clima van en el perfil
+// (binario): no se tocan.
+export interface Rl { text: string; running: boolean; hasBackup: boolean }
+const RL_SEC = "SystemSettings";
+const TF: [string, string][] = [["True", "lib.q.on"], ["False", "lib.q.off"]];
+const RL_FX = ["bAllowHighQualityMaterials", "AmbientOcclusion", "DepthOfField", "Bloom", "bAllowLightShafts", "LensFlares", "DynamicShadows", "MotionBlur"];
+export const RL_FIELDS: Field[] = [
+  // displaymode combina Fullscreen y Borderless.
+  { key: "displaymode", opts: [["full", "lib.cs2.full"], ["borderless", "lib.cs2.borderless"], ["window", "lib.cs2.window"]] },
+  { key: "UseVsync", opts: TF },
+  ...RL_FX.map((key): Field => ({ key, opts: TF })),
+];
+const RL_PRESETS = presets(RL_FX,
+  ["False", "False", "False", "False", "False", "False", "False", "False"],   // Máximo FPS
+  ["True", "False", "False", "True", "True", "False", "True", "False"],       // Equilibrado
+  ["True", "True", "True", "True", "True", "True", "True", "True"],           // Calidad
+);
+// El archivo mezcla "True" y "TRUE": se normaliza para que coincida con las opciones.
+const tf = (x: string | undefined) => (x === undefined ? undefined : /^true$/i.test(x) ? "True" : /^false$/i.test(x) ? "False" : x);
+
+export function rlRead(text: string): Values {
+  const v: Values = {};
+  for (const k of ["UseVsync", ...RL_FX]) { const x = tf(iniGet(text, k, RL_SEC)); if (x !== undefined) v[k] = x; }
+  const fs = tf(iniGet(text, "Fullscreen", RL_SEC)), bl = tf(iniGet(text, "Borderless", RL_SEC));
+  v.displaymode = fs === "True" ? "full" : bl === "True" ? "borderless" : "window";
+  return v;
+}
+export function rlApply(text: string, v: Values): string {
+  for (const [k, val] of Object.entries(v)) {
+    if (k === "displaymode") {
+      text = iniSet(text, "Fullscreen", val === "full" ? "True" : "False", RL_SEC);
+      text = iniSet(text, "Borderless", val === "borderless" ? "True" : "False", RL_SEC);
+      continue;
+    }
+    text = iniSet(text, k, val, RL_SEC);
+  }
+  return text;
+}
+
+const RL_LOCATE = String.raw`$dir=Join-Path ([Environment]::GetFolderPath('MyDocuments')) 'My Games\Rocket League\TAGame\Config'
+if(-not (Test-Path -LiteralPath "$dir\TASystemSettings.ini")){ exit 0 }`;
+const RL_PROCS = ["RocketLeague"];
+
+export async function rlLoad(): Promise<Rl | null> {
+  const r = await runPowershell(RL_LOCATE + String.raw`
+$f="$dir\TASystemSettings.ini"
+[pscustomobject]@{ text=[IO.File]::ReadAllText($f, (New-Object System.Text.UTF8Encoding $false)); running=[bool](Get-Process ${RL_PROCS.map(psq).join(",")} -EA SilentlyContinue)
+  hasBackup=(Test-Path -LiteralPath "$f.gobak") } | ConvertTo-Json -Compress`);
+  const j = lastJson(r.output);
+  return j && typeof j.text === "string" && j.text ? j : null;
+}
+
+export const ROCKET_LEAGUE: GameAdapter<Rl> = {
+  id: "rl", fields: RL_FIELDS, presets: RL_PRESETS,
+  load: async () => { const c = await rlLoad(); return c && { who: "", running: c.running, nvidia: false, hasBackup: c.hasBackup, values: rlRead(c.text), raw: c }; },
+  save: (c, v) => saveFiles(RL_LOCATE, RL_PROCS, [["TASystemSettings.ini", c.text, rlApply(c.text, v)]]),
+  restore: () => restoreFiles(RL_LOCATE, RL_PROCS, ["TASystemSettings.ini"]),
+};
+
 /** Módulo de opciones del juego, si está soportado. */
 export function gameAdapter(g: { id: string; appId?: string }): GameAdapter | null {
   if (g.appId === "730") return CS2 as GameAdapter;
   if (g.id === "riot:valorant") return VALORANT as GameAdapter;
+  if (g.appId === "252950" || g.id === "epic:Sugar") return ROCKET_LEAGUE as GameAdapter;
   return null;
 }

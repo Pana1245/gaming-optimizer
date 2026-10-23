@@ -107,7 +107,7 @@ function GameOptions({ a, game }: { a: GameAdapter; game: string }) {
         {msg && <span className="text-[12px] text-text-dim min-w-0">{msg}</span>}
         {c.hasBackup && <button onClick={() => run(() => a.restore(c.raw), t("lib.go.restored"))} disabled={busy} className="btn btn-ghost h-8 text-[12.5px] ml-auto shrink-0">{t("lib.go.restore")}</button>}
       </div>
-      <p className="text-[11.5px] text-text-mute mt-2">{t(a.id === "val" ? "lib.val.note" : "lib.go.note")}</p>
+      <p className="text-[11.5px] text-text-mute mt-2">{t(a.id === "cs2" ? "lib.go.note" : `lib.${a.id}.note`)}</p>
     </div>
   );
 }
