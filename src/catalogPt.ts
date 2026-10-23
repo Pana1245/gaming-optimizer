@@ -99,6 +99,9 @@ export const TWEAK_PT: Record<string, string> = {
   "Abrir el Explorador en «Este equipo»": "Abrir o Explorador em “Este Computador”",
   "Edge sin segundo plano ni inicio anticipado": "Edge sem segundo plano nem inicialização antecipada",
   "Desactivar Inicio rápido (Fast Startup)": "Desativar Inicialização Rápida (Fast Startup)",
+  "Sin ahorro de energía en el adaptador de red": "Sem economia de energia no adaptador de rede",
+  "Desactivar SMBv1 (protocolo inseguro)": "Desativar SMBv1 (protocolo inseguro)",
+  "Chrome sin segundo plano": "Chrome sem segundo plano",
 };
 
 export const TWEAK_DESC_PT: Record<string, string> = {
@@ -178,4 +181,7 @@ export const TWEAK_DESC_PT: Record<string, string> = {
   "Abrir el Explorador en «Este equipo»": "O Explorador de Arquivos abre direto nos seus discos em vez de Início / Acesso rápido.",
   "Edge sin segundo plano ni inicio anticipado": "O Edge deixa de ficar aberto escondido depois de fechado e de iniciar com o Windows para “abrir mais rápido”. Libera RAM. Não afeta o WebView2 (usado por outros apps, incluindo este).",
   "Desactivar Inicio rápido (Fast Startup)": "Com a Inicialização Rápida, “Desligar” não desliga de verdade: o Windows salva o estado e os drivers não reiniciam, o que pode arrastar problemas. Desativar faz uma inicialização limpa toda vez (alguns segundos mais lenta). Útil com dual boot. Avançado.",
+  "Sin ahorro de energía en el adaptador de red": "Desliga Green Ethernet, EEE e outras economias de energia da placa de rede que podem adicionar latência ou microquedas. Não muda o Wake-on-LAN. A conexão cai por um segundo ao aplicar.",
+  "Desactivar SMBv1 (protocolo inseguro)": "Desliga o SMBv1, a versão antiga do protocolo de compartilhamento de arquivos usada pelo vírus WannaCry. O Windows 10 novo já vem com ele desligado; serve em PCs atualizados de versões antigas. Só afeta aparelhos muito antigos da rede (NAS ou impressoras de mais de 10 anos).",
+  "Chrome sin segundo plano": "O Chrome deixa de ficar aberto escondido depois de fechado. Libera RAM. Como é uma política, o Chrome vai mostrar «Gerenciado pela sua organização».",
 };

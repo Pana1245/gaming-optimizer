@@ -76,4 +76,7 @@ export const TWEAK_DESC: Record<string, string> = {
   "Abrir el Explorador en «Este equipo»": "El Explorador de archivos abre directo en tus discos en vez de Inicio / Acceso rápido.",
   "Edge sin segundo plano ni inicio anticipado": "Edge deja de quedar abierto escondido después de cerrarlo y de arrancar con Windows para «abrir más rápido». Libera RAM. No afecta a WebView2 (lo que usan otras apps, incluida esta).",
   "Desactivar Inicio rápido (Fast Startup)": "Con Inicio rápido, «Apagar» no apaga del todo: Windows guarda su estado y los drivers no se reinician, lo que puede arrastrar problemas. Desactivarlo hace un arranque limpio cada vez (tarda unos segundos más). Útil con dual-boot. Avanzado.",
+  "Sin ahorro de energía en el adaptador de red": "Apaga Green Ethernet, EEE y otros ahorros de energía de la placa de red que pueden agregar latencia o microcortes. No cambia el Wake-on-LAN. La conexión se corta un segundo al aplicarlo.",
+  "Desactivar SMBv1 (protocolo inseguro)": "Apaga SMBv1, la versión vieja del protocolo para compartir archivos que usó el virus WannaCry. Windows 10 nuevo ya lo trae apagado; sirve en PCs actualizadas desde versiones viejas. Sólo afecta a equipos muy antiguos de la red (NAS o impresoras de hace más de 10 años).",
+  "Chrome sin segundo plano": "Chrome deja de quedar abierto escondido después de cerrarlo. Libera RAM. Como es una política, Chrome va a mostrar «Administrado por tu organización».",
 };

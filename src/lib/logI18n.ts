@@ -290,6 +290,11 @@ const EXACT_PT: Record<string, string> = {
 const RX: [RegExp, string, string][] = [
   [/No hay un respaldo de Optimizaciones: no se cambió ningún permiso\. Revisalos en Configuración > Privacidad\./, "There's no Optimizations backup: no permission was changed. Check them in Settings > Privacy.", "Não há backup das Otimizações: nenhuma permissão foi alterada. Confira em Configurações > Privacidade."],
   [/^No se pudo renovar la IP ahora: se renueva al reiniciar\.$/, "Couldn't renew the IP now: it renews on restart.", "Não foi possível renovar o IP agora: ele é renovado ao reiniciar."],
+  [/^Ahorro de energía de red desactivado en (\d+) opción\(es\)$/, "Network power saving disabled in $1 option(s)", "Economia de energia de rede desativada em $1 opção(ões)"],
+  [/^SMBv1 desactivado$/, "SMBv1 disabled", "SMBv1 desativado"],
+  [/^SMBv1 ya estaba desactivado$/, "SMBv1 was already disabled", "O SMBv1 já estava desativado"],
+  [/^Chrome no está instalado$/, "Chrome isn't installed", "O Chrome não está instalado"],
+  [/^Chrome ya no queda abierto en segundo plano$/, "Chrome no longer stays open in the background", "O Chrome não fica mais aberto em segundo plano"],
   [/^Fallaron: (.+)$/, "Failed: $1", "Falharam: $1"],
   [/Hay otro antivirus instalado: Windows Defender queda en modo pasivo./, "Another antivirus is installed: Windows Defender stays in passive mode.", "Há outro antivírus instalado: o Windows Defender fica em modo passivo."],
   [/^No se pudo completar la desinstalación de Edge: No se encontró setup\.exe en (.+)\.$/, "Couldn't complete Edge uninstallation: setup.exe was not found in $1.", "Não foi possível concluir a desinstalação do Edge: setup.exe não foi encontrado em $1."],

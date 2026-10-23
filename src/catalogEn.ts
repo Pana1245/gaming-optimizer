@@ -100,6 +100,9 @@ export const TWEAK_EN: Record<string, string> = {
   "Abrir el Explorador en «Este equipo»": "Open File Explorer to “This PC”",
   "Edge sin segundo plano ni inicio anticipado": "Edge without background mode or startup boost",
   "Desactivar Inicio rápido (Fast Startup)": "Disable Fast Startup",
+  "Sin ahorro de energía en el adaptador de red": "No power saving on the network adapter",
+  "Desactivar SMBv1 (protocolo inseguro)": "Disable SMBv1 (insecure protocol)",
+  "Chrome sin segundo plano": "Chrome without background mode",
 };
 
 export const TWEAK_DESC_EN: Record<string, string> = {
@@ -179,4 +182,7 @@ export const TWEAK_DESC_EN: Record<string, string> = {
   "Abrir el Explorador en «Este equipo»": "File Explorer opens straight to your drives instead of Home / Quick access.",
   "Edge sin segundo plano ni inicio anticipado": "Edge stops staying open hidden after you close it and stops starting with Windows to “open faster”. Frees RAM. Doesn't affect WebView2 (used by other apps, including this one).",
   "Desactivar Inicio rápido (Fast Startup)": "With Fast Startup, “Shut down” doesn't fully shut down: Windows saves its state and drivers don't restart, which can carry problems over. Turning it off gives a clean boot every time (a few seconds slower). Useful with dual boot. Advanced.",
+  "Sin ahorro de energía en el adaptador de red": "Turns off Green Ethernet, EEE and other network card power savings that can add latency or micro-drops. Doesn't change Wake-on-LAN. The connection drops for a second when applied.",
+  "Desactivar SMBv1 (protocolo inseguro)": "Turns off SMBv1, the old file-sharing protocol used by the WannaCry virus. New Windows 10 installs already have it off; useful on PCs upgraded from old versions. Only affects very old network devices (NAS or printers over 10 years old).",
+  "Chrome sin segundo plano": "Chrome stops staying open hidden after you close it. Frees RAM. Since it's a policy, Chrome will show “Managed by your organization”.",
 };

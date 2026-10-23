@@ -31,6 +31,26 @@ Set-ItemProperty $p PowerThrottlingOff 1 -Type DWord -Force
 Write-Output "Power Throttling desactivado"` },
   ],
   network: [
+    // Ahorros de energía del adaptador (Green Ethernet, EEE…) que agregan latencia al despertar el
+    // enlace. Sólo las palabras clave que el driver tiene y que aceptan 0 (apagado); Wake-on-LAN no se toca.
+    { name: "Sin ahorro de energía en el adaptador de red", script: String.raw`$kw=@('*EEE','EEE','AdvancedEEE','EnableGreenEthernet','GigaLite','PowerSavingMode','EnableSavePowerNow','ULPMode','*SelectiveSuspend')
+$n=0
+foreach($a in @(Get-NetAdapter -Physical -EA SilentlyContinue)){
+  $c=0
+  foreach($pr in @(Get-NetAdapterAdvancedProperty -Name $a.Name -AllProperties -EA SilentlyContinue | Where-Object { $kw -contains $_.RegistryKeyword })){
+    if("$($pr.RegistryValue)" -ne '0' -and (-not $pr.ValidRegistryValues -or @($pr.ValidRegistryValues) -contains '0')){
+      try{ Set-NetAdapterAdvancedProperty -Name $a.Name -RegistryKeyword $pr.RegistryKeyword -RegistryValue 0 -NoRestart -EA Stop; $c++ }catch{}
+    }
+  }
+  # Sólo se reinicia la placa que cambió (aplica los valores; corta la red un segundo).
+  if($c){ Restart-NetAdapter -Name $a.Name -Confirm:$false -EA SilentlyContinue; $n+=$c }
+}
+Write-Output "Ahorro de energía de red desactivado en $n opción(es)"` },
+    // Protocolo de 1984 usado por WannaCry; Windows 10 nuevo ya lo trae apagado, PCs actualizadas no siempre.
+    { name: "Desactivar SMBv1 (protocolo inseguro)", script: String.raw`if((Get-SmbServerConfiguration -EA SilentlyContinue).EnableSMB1Protocol){
+  Set-SmbServerConfiguration -EnableSMB1Protocol $false -Force -EA Stop
+  Write-Output "SMBv1 desactivado"
+} else { Write-Output "SMBv1 ya estaba desactivado" }` },
     { name: "Desactivar Network Throttling", script: String.raw`Set-ItemProperty 'HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Multimedia\SystemProfile' NetworkThrottlingIndex 0xffffffff -Type DWord -Force
 Write-Output "Network Throttling desactivado"` },
     // DODownloadMode 0: sólo descarga de Microsoft (HTTP), sin subir a otras PCs.
@@ -177,6 +197,13 @@ if(!(Test-Path $p)){ New-Item $p -Force | Out-Null }
 Set-ItemProperty $p StartupBoostEnabled 0 -Type DWord -Force
 Set-ItemProperty $p BackgroundModeEnabled 0 -Type DWord -Force
 Write-Output "Edge ya no queda abierto en segundo plano"` },
+      // Política de Chrome: Chrome muestra "Administrado por tu organización" mientras exista.
+      { name: "Chrome sin segundo plano", script: String.raw`$exe=@("$env:ProgramFiles\Google\Chrome\Application\chrome.exe","$([Environment]::GetFolderPath('ProgramFilesX86'))\Google\Chrome\Application\chrome.exe","$env:LOCALAPPDATA\Google\Chrome\Application\chrome.exe") | Where-Object { Test-Path -LiteralPath $_ }
+if(-not $exe){ Write-Output "Chrome no está instalado"; exit 0 }
+$p='HKLM:\SOFTWARE\Policies\Google\Chrome'
+if(!(Test-Path $p)){ New-Item $p -Force | Out-Null }
+Set-ItemProperty $p BackgroundModeEnabled 0 -Type DWord -Force
+Write-Output "Chrome ya no queda abierto en segundo plano"` },
       // optIn: arranca unos segundos más lento; sirve sobre todo con dual-boot o drivers problemáticos.
       { name: "Desactivar Inicio rápido (Fast Startup)", risk: "advanced", optIn: true, script: String.raw`Set-ItemProperty 'HKLM:\SYSTEM\CurrentControlSet\Control\Session Manager\Power' HiberbootEnabled 0 -Type DWord -Force
 Write-Output "Inicio rápido desactivado"` },

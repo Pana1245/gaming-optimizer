@@ -84,6 +84,8 @@ $keys = [ordered]@{
   'directx-user'      = 'HKCU\Software\Microsoft\DirectX\UserGpuPreferences'
   'powerthrottling'   = 'HKLM\SYSTEM\CurrentControlSet\Control\Power\PowerThrottling'
   'pushnotif'         = 'HKCU\Software\Microsoft\Windows\CurrentVersion\PushNotifications'
+  'lanmanserver'      = 'HKLM\SYSTEM\CurrentControlSet\Services\LanmanServer\Parameters'
+  'policies-google'   = 'HKLM\SOFTWARE\Policies\Google'
   # Claves que crean los tweaks: si no existen, queda la marca .absent y Restaurar las borra.
   'classic-menu'      = 'HKCU\Software\Classes\CLSID\{86ca1aa0-34aa-4e8b-a509-50c905bae2a2}'
   'taskbar-endtask'   = 'HKCU\Software\Microsoft\Windows\CurrentVersion\Explorer\Advanced\TaskbarDeveloperSettings'
@@ -92,6 +94,12 @@ $keys = [ordered]@{
 $i = 0
 foreach($g in @(Get-CimInstance Win32_VideoController -EA SilentlyContinue | Where-Object { $_.PNPDeviceID -like 'PCI*' })){
   $keys["msi-gpu$i"] = "HKLM\SYSTEM\CurrentControlSet\Enum\$($g.PNPDeviceID)\Device Parameters\Interrupt Management"; $i++
+}
+# Configuración de cada adaptador de red (sólo sus valores).
+$i = 0
+foreach($a in @(Get-NetAdapter -Physical -EA SilentlyContinue)){
+  $drv = (Get-PnpDeviceProperty -InstanceId $a.PnPDeviceID -KeyName 'DEVPKEY_Device_Driver' -EA SilentlyContinue).Data
+  if($drv){ $keys["nic$i"] = "HKLM\SYSTEM\CurrentControlSet\Control\Class\$drv"; $i++ }
 }
 # De estas sólo se guardan los valores de la clave: los tweaks no tocan sus subclaves y
 # algunas (drivers de video) ni un administrador las puede escribir al restaurar.
@@ -102,7 +110,7 @@ foreach($k in $keys.GetEnumerator()){
   reg export $($k.Value) $f /y > $null 2>&1
   if($LASTEXITCODE -eq 0){
     $n++
-    if($flat -contains $k.Name){
+    if($flat -contains $k.Name -or $k.Name -like 'nic*'){
       $ls = @(Get-Content -LiteralPath $f -Encoding Unicode)
       $hd = @(for($j = 0; $j -lt $ls.Count; $j++){ if($ls[$j] -match '^\['){ $j } })
       if($hd.Count -gt 1){ Set-Content -LiteralPath $f -Value $ls[0..($hd[1] - 1)] -Encoding Unicode }
