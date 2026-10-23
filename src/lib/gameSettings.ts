@@ -333,12 +333,12 @@ export const VALORANT: GameAdapter<Val> = {
 // ---- Rocket League ----
 // TASystemSettings.ini (Documentos\My Games): sólo la sección [SystemSettings], la que usa la PC
 // (las demás repiten las claves para celulares, editor…). Probado en esta PC: el juego respeta
-// el cambio del archivo. FPS, suavizado, intensidad de efectos y clima van en el perfil
-// (binario): no se tocan.
+// el cambio del archivo. FPS, suavizado, intensidad de efectos, clima, rayos de luz y resplandor
+// de lente van en el perfil (binario; el juego pisa el .ini al abrir): no se tocan.
 export interface Rl { text: string; running: boolean; hasBackup: boolean }
 const RL_SEC = "SystemSettings";
 const TF: [string, string][] = [["True", "lib.q.on"], ["False", "lib.q.off"]];
-const RL_FX = ["bAllowHighQualityMaterials", "AmbientOcclusion", "DepthOfField", "Bloom", "bAllowLightShafts", "LensFlares", "DynamicShadows", "MotionBlur"];
+const RL_FX = ["bAllowHighQualityMaterials", "AmbientOcclusion", "DepthOfField", "Bloom", "DynamicShadows", "MotionBlur"];
 export const RL_FIELDS: Field[] = [
   // displaymode combina Fullscreen y Borderless.
   { key: "displaymode", opts: [["full", "lib.cs2.full"], ["borderless", "lib.cs2.borderless"], ["window", "lib.cs2.window"]] },
@@ -346,9 +346,9 @@ export const RL_FIELDS: Field[] = [
   ...RL_FX.map((key): Field => ({ key, opts: TF })),
 ];
 const RL_PRESETS = presets(RL_FX,
-  ["False", "False", "False", "False", "False", "False", "False", "False"],   // Máximo FPS
-  ["True", "False", "False", "True", "True", "False", "True", "False"],       // Equilibrado
-  ["True", "True", "True", "True", "True", "True", "True", "True"],           // Calidad
+  ["False", "False", "False", "False", "False", "False"],   // Máximo FPS
+  ["True", "False", "False", "True", "True", "False"],      // Equilibrado
+  ["True", "True", "True", "True", "True", "True"],         // Calidad
 );
 // El archivo mezcla "True" y "TRUE": se normaliza para que coincida con las opciones.
 const tf = (x: string | undefined) => (x === undefined ? undefined : /^true$/i.test(x) ? "True" : /^false$/i.test(x) ? "False" : x);
