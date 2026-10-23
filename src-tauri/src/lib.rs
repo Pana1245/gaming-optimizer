@@ -49,27 +49,55 @@ pub struct StreamDone {
     pub code: i32,
 }
 
-/// Ejecuta un script PowerShell oculto (-EncodedCommand evita problemas de escaping).
+/// Script grande escrito a disco para -File; se borra al soltarlo.
+struct TmpScript(Option<std::path::PathBuf>);
+impl Drop for TmpScript {
+    fn drop(&mut self) { if let Some(p) = &self.0 { let _ = std::fs::remove_file(p); } }
+}
+
+/// Línea de comandos máxima de Windows: 32.767 caracteres (con el exe y los demás argumentos).
+const MAX_ENCODED: usize = 30_000;
+
+/// powershell.exe oculto que corre `script` (-EncodedCommand evita problemas de escaping).
+/// Si no entra en la línea de comandos (el Chequeo de PC con NVMe pasó el límite y no
+/// arrancaba), va como .ps1 en la carpeta de datos, donde sólo escriben administradores:
+/// en %TEMP% otro programa podría cambiarlo antes de que corra como administrador.
+fn ps_command(script: &str) -> (Command, TmpScript) {
+    // Forzar salida UTF-8: el backend lee stdout como UTF-8, pero powershell.exe
+    // escribe en el codepage OEM de la consola → los acentos volvían como '?'
+    // (en literales y en nombres del registro). Con esto se decodifican bien.
+    let full = format!("$ProgressPreference='SilentlyContinue';\ntry{{[Console]::OutputEncoding=[System.Text.UTF8Encoding]::new($false)}}catch{{}}\n{script}");
+    // UTF-16LE -> base64 (formato que espera -EncodedCommand)
+    let utf16: Vec<u8> = full.encode_utf16().flat_map(|u| u.to_le_bytes()).collect();
+    let encoded = general_purpose::STANDARD.encode(utf16);
+    let mut cmd = Command::new(sys_exe(POWERSHELL, false));
+    let mut tmp = TmpScript(None);
+    if encoded.len() <= MAX_ENCODED {
+        cmd.args(["-NoProfile", "-ExecutionPolicy", "Bypass", "-EncodedCommand", &encoded]);
+    } else {
+        static N: std::sync::atomic::AtomicU32 = std::sync::atomic::AtomicU32::new(0);
+        ensure_data_dir();
+        let n = N.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
+        let p = ledger_file().with_file_name(format!("ps-{}-{n}.ps1", std::process::id()));
+        // BOM: sin él PowerShell 5.1 lee el archivo como ANSI y rompe los acentos.
+        let _ = std::fs::write(&p, [&b"\xEF\xBB\xBF"[..], full.as_bytes()].concat());
+        cmd.args(["-NoProfile", "-ExecutionPolicy", "Bypass", "-File"]).arg(&p);
+        tmp.0 = Some(p);
+    }
+    cmd.stdout(Stdio::piped()).stderr(Stdio::piped());
+    #[cfg(windows)]
+    cmd.creation_flags(CREATE_NO_WINDOW);
+    (cmd, tmp)
+}
+
+/// Ejecuta un script PowerShell oculto.
 /// `timeout_secs` es opcional (por defecto 600s) para cortar scripts colgados sin
 /// matar operaciones largas legítimas (instalaciones, backups).
 #[tauri::command]
 async fn run_powershell(script: String, timeout_secs: Option<u64>) -> RunResult {
     tauri::async_runtime::spawn_blocking(move || {
         use wait_timeout::ChildExt;
-        // Forzar salida UTF-8: el backend lee stdout como UTF-8, pero powershell.exe
-        // escribe en el codepage OEM de la consola → los acentos volvían como '?'
-        // (en literales y en nombres del registro). Con esto se decodifican bien.
-        let full = format!("$ProgressPreference='SilentlyContinue';\ntry{{[Console]::OutputEncoding=[System.Text.UTF8Encoding]::new($false)}}catch{{}}\n{script}");
-        // UTF-16LE -> base64 (formato que espera -EncodedCommand)
-        let utf16: Vec<u8> = full.encode_utf16().flat_map(|u| u.to_le_bytes()).collect();
-        let encoded = general_purpose::STANDARD.encode(utf16);
-
-        let mut cmd = Command::new(sys_exe(POWERSHELL, false));
-        cmd.args(["-NoProfile", "-ExecutionPolicy", "Bypass", "-EncodedCommand", &encoded])
-            .stdout(Stdio::piped())
-            .stderr(Stdio::piped());
-        #[cfg(windows)]
-        cmd.creation_flags(CREATE_NO_WINDOW);
+        let (mut cmd, _tmp) = ps_command(&script);
 
         let mut child = match cmd.spawn() {
             Ok(c) => c,
@@ -119,19 +147,7 @@ async fn run_powershell(script: String, timeout_secs: Option<u64>) -> RunResult 
 #[tauri::command]
 async fn run_powershell_stream(app: tauri::AppHandle, script: String, id: String) {
     tauri::async_runtime::spawn_blocking(move || {
-        // Forzar salida UTF-8: el backend lee stdout como UTF-8, pero powershell.exe
-        // escribe en el codepage OEM de la consola → los acentos volvían como '?'
-        // (en literales y en nombres del registro). Con esto se decodifican bien.
-        let full = format!("$ProgressPreference='SilentlyContinue';\ntry{{[Console]::OutputEncoding=[System.Text.UTF8Encoding]::new($false)}}catch{{}}\n{script}");
-        let utf16: Vec<u8> = full.encode_utf16().flat_map(|u| u.to_le_bytes()).collect();
-        let encoded = general_purpose::STANDARD.encode(utf16);
-
-        let mut cmd = Command::new(sys_exe(POWERSHELL, false));
-        cmd.args(["-NoProfile", "-ExecutionPolicy", "Bypass", "-EncodedCommand", &encoded])
-            .stdout(Stdio::piped())
-            .stderr(Stdio::piped());
-        #[cfg(windows)]
-        cmd.creation_flags(CREATE_NO_WINDOW);
+        let (mut cmd, _tmp) = ps_command(&script);
 
         let line_ev = format!("ps-line-{id}");
         let done_ev = format!("ps-done-{id}");
@@ -938,6 +954,20 @@ mod engine_tests {
         assert!(reg_undo(key, "W".into(), "DWord".into(), r2.prior));
         assert!(k.get_raw_value("W").is_err());
         let _ = hk.delete_subkey_all(path);
+    }
+
+    // Escribe en %ProgramData%\GamingOptimizer: necesita correr como administrador.
+    #[test]
+    #[ignore]
+    fn script_grande_corre_por_archivo() {
+        let big = format!("# {}\nWrite-Output 'acentuación ok'", "x".repeat(20_000));
+        let (mut cmd, tmp) = ps_command(&big);
+        let p = tmp.0.clone().expect("debería ir por archivo");
+        let out = String::from_utf8_lossy(&cmd.output().unwrap().stdout).trim().to_string();
+        assert_eq!(out, "acentuación ok");
+        drop(tmp);
+        assert!(!p.exists(), "el .ps1 temporal tiene que borrarse");
+        assert!(ps_command("Write-Output 1").1 .0.is_none(), "uno chico va por -EncodedCommand");
     }
 
     #[test]
