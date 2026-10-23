@@ -14,17 +14,31 @@ $left=0
 $k='HKCU:\Software\Microsoft\Windows\CurrentVersion\Uninstall\GamingOptimizer'
 $old="$((Get-ItemProperty -LiteralPath $k -EA SilentlyContinue).InstallLocation)".Trim().Trim('"').TrimEnd('\')
 $lad=[Environment]::GetFolderPath('LocalApplicationData')
+# Sin entrada de desinstalación (instalaciones viejas o ya borrada): la carpeta por defecto, si su app.exe es esta app.
+$def=Join-Path $lad 'GamingOptimizer'
+if(-not $old -and (Test-Path -LiteralPath (Join-Path $def 'app.exe')) -and (Get-Item -LiteralPath (Join-Path $def 'app.exe')).VersionInfo.ProductName -eq 'GamingOptimizer'){ $old=$def }
 if($old -and $old.StartsWith($lad + '\',[StringComparison]::OrdinalIgnoreCase) -and -not $me.StartsWith($old + '\',[StringComparison]::OrdinalIgnoreCase)){
   foreach($f in 'app.exe','uninstall.exe'){ Remove-Item -LiteralPath (Join-Path $old $f) -Force -EA SilentlyContinue }
   Remove-Item -LiteralPath (Join-Path $old 'resources') -Recurse -Force -EA SilentlyContinue
   if(-not @(Get-ChildItem -LiteralPath $old -Force -EA SilentlyContinue).Count){ Remove-Item -LiteralPath $old -Force -EA SilentlyContinue }
   if(Test-Path -LiteralPath (Join-Path $old 'app.exe')){ $left++ } else { Remove-Item -LiteralPath $k -Force -EA SilentlyContinue }
 }
-foreach($l in @((Join-Path ([Environment]::GetFolderPath('Programs')) 'GamingOptimizer.lnk'), (Join-Path ([Environment]::GetFolderPath('DesktopDirectory')) 'GamingOptimizer.lnk'))){
+# Accesos del usuario que apuntan a la vieja: se REAPUNTAN al exe nuevo (antes se borraban, y al
+# actualizar el instalador no crea accesos: la app quedaba sin ninguno en el menú Inicio).
+$sh=New-Object -ComObject WScript.Shell
+$startLnk=Join-Path ([Environment]::GetFolderPath('Programs')) 'GamingOptimizer.lnk'
+$commonLnk=Join-Path ([Environment]::GetFolderPath('CommonPrograms')) 'GamingOptimizer.lnk'
+foreach($l in @($startLnk, (Join-Path ([Environment]::GetFolderPath('DesktopDirectory')) 'GamingOptimizer.lnk'))){
   if(Test-Path -LiteralPath $l){
-    $t=(New-Object -ComObject WScript.Shell).CreateShortcut($l).TargetPath
-    if($t -and $t.StartsWith($lad + '\',[StringComparison]::OrdinalIgnoreCase)){ Remove-Item -LiteralPath $l -Force -EA SilentlyContinue }
+    $s=$sh.CreateShortcut($l)
+    if($s.TargetPath -and $s.TargetPath.StartsWith($lad + '\',[StringComparison]::OrdinalIgnoreCase)){
+      try{ $s.TargetPath=$me; $s.WorkingDirectory=(Split-Path $me); $s.IconLocation="$me,0"; $s.Save() }catch{ $left++ }
+    }
   }
+}
+# Sin ningún acceso en el menú Inicio: crearlo (para todos, como lo hace el instalador nuevo).
+if(-not (Test-Path -LiteralPath $startLnk) -and -not (Test-Path -LiteralPath $commonLnk)){
+  try{ $s=$sh.CreateShortcut($commonLnk); $s.TargetPath=$me; $s.WorkingDirectory=(Split-Path $me); $s.IconLocation="$me,0"; $s.Save() }catch{ $left++ }
 }
 # 2) "Iniciar con Windows": que la tarea abra el exe nuevo (con los mismos argumentos).
 $task=Get-ScheduledTask -TaskName 'GamingOptimizer Autostart' -EA SilentlyContinue
@@ -36,7 +50,8 @@ if($task){
 }
 'MIGRATE=' + $(if($left){ 'LEFT' } else { 'OK' })`;
 
-const FLAG = "installMigrate1";
+// 2: la 1 borraba los accesos viejos sin crear uno nuevo; vuelve a correr para crearlo.
+const FLAG = "installMigrate2";
 
 /** Una vez (cuando ya corre desde Program Files y no queda nada viejo); si no, se reintenta. */
 export async function migrateInstallOnce(): Promise<void> {
