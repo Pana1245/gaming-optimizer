@@ -23,7 +23,7 @@ export interface Profile {
   planLabelEn: string;
   planLabelPt: string;
   gmPro: boolean;     // Auto Game-Mode: Power (baja las apps de fondo elegidas) o Lite
-  games?: { preset?: Preset; fps?: string }; // opciones de video de los juegos (si el usuario lo marca)
+  games?: { preset?: Preset; fps?: string }; // opciones de video de los juegos (si el usuario lo marca); fps "max" = sin límite
 }
 
 const SYSP = String.raw`HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Multimedia\SystemProfile`;
@@ -56,9 +56,9 @@ export const PROFILES: Profile[] = [
     desc: "FPS y latencia al máximo. Para shooters y juego online serio.",
     descEn: "Max FPS and latency. For shooters and serious online play.",
     descPt: "FPS e latência no máximo. Para shooters e jogo online sério.",
-    bullets: ["Plan de energía máximo", "Game Mode ON · Game DVR OFF", "GPU Scheduling (HAGS)", "CPU sin reserva para fondo", "Sin transparencias", "Auto Game-Mode: Power (baja tus apps de fondo)", "Juegos: Máximo FPS (opcional)"],
-    bulletsEn: ["Max power plan", "Game Mode ON · Game DVR OFF", "GPU Scheduling (HAGS)", "No CPU reserved for background", "No transparency", "Auto Game-Mode: Power (lowers your background apps)", "Games: Max FPS (optional)"],
-    bulletsPt: ["Plano de energia máximo", "Game Mode ON · Game DVR OFF", "GPU Scheduling (HAGS)", "Sem reserva de CPU para segundo plano", "Sem transparências", "Auto Game-Mode: Power (reduz seus apps em segundo plano)", "Jogos: Máximo FPS (opcional)"],
+    bullets: ["Plan de energía máximo", "Game Mode ON · Game DVR OFF", "GPU Scheduling (HAGS)", "CPU sin reserva para fondo", "Sin transparencias", "Auto Game-Mode: Power (baja tus apps de fondo)", "Juegos: Máximo FPS, sin límite de FPS (opcional)"],
+    bulletsEn: ["Max power plan", "Game Mode ON · Game DVR OFF", "GPU Scheduling (HAGS)", "No CPU reserved for background", "No transparency", "Auto Game-Mode: Power (lowers your background apps)", "Games: Max FPS, no FPS limit (optional)"],
+    bulletsPt: ["Plano de energia máximo", "Game Mode ON · Game DVR OFF", "GPU Scheduling (HAGS)", "Sem reserva de CPU para segundo plano", "Sem transparências", "Auto Game-Mode: Power (reduz seus apps em segundo plano)", "Jogos: Máximo FPS, sem limite de FPS (opcional)"],
     ops: [
       op("p_gamemode", "Game Mode de Windows", GAMEBAR, "AutoGameModeEnabled", 1, "Perfil Competitivo"),
       op("p_gamedvr", "Game DVR OFF", GAMECFG, "GameDVR_Enabled", 0, "Perfil Competitivo"),
@@ -67,7 +67,7 @@ export const PROFILES: Profile[] = [
       op("p_transp", "Transparencia OFF", PERSONALIZE, "EnableTransparency", 0, "Perfil Competitivo"),
     ],
     planScript: PLAN_MAX, planLabel: "Máximo rendimiento", planLabelEn: "Maximum performance", planLabelPt: "Desempenho máximo",
-    gmPro: true, games: { preset: "low" },
+    gmPro: true, games: { preset: "low", fps: "max" },
   },
   {
     id: "streaming", name: "Streaming", nameEn: "Streaming", namePt: "Streaming", emoji: "🎥", color: "#3b9eff",

@@ -163,7 +163,7 @@ const GUIDE: Item[] = [
         "Streaming: igual de rápido pero dejando CPU para el encoder de OBS; Auto Game-Mode en Lite para no frenarlo.",
         "Equilibrado: valores estándar de Windows — usalo si algo anda raro.",
         "Ahorro: para notebooks o PCs encendidas todo el día.",
-        "Si marcás la casilla, también cambia las opciones de video de tus juegos: Competitivo y Ahorro → Máximo FPS (Ahorro además con límite de 60 FPS), Streaming → Equilibrado. Se deshace en Biblioteca → ⚙.",
+        "Si marcás la casilla, también cambia las opciones de video de tus juegos: Competitivo → Máximo FPS sin límite de FPS, Ahorro → Máximo FPS con límite de 60 FPS, Streaming → Equilibrado. Se deshace en Biblioteca → ⚙.",
         "Los cambios de Windows pasan por el Motor: quedan en el Historial y se pueden deshacer.",
       ],
       en: [
@@ -171,7 +171,7 @@ const GUIDE: Item[] = [
         "Streaming: just as fast, but leaves CPU for the OBS encoder; Auto Game-Mode on Lite so it isn't slowed down.",
         "Balanced: standard Windows values — use it if something acts up.",
         "Power Saver: for laptops or PCs that stay on all day.",
-        "If you tick the box, it also changes your games' video options: Competitive and Power Saver → Max FPS (Power Saver also with a 60 FPS limit), Streaming → Balanced. Undo it in Library → ⚙.",
+        "If you tick the box, it also changes your games' video options: Competitive → Max FPS with no FPS limit, Power Saver → Max FPS with a 60 FPS limit, Streaming → Balanced. Undo it in Library → ⚙.",
         "Windows changes go through the Change Engine: they're logged in the History and can be undone.",
       ],
       pt: [
@@ -179,7 +179,7 @@ const GUIDE: Item[] = [
         "Streaming: tão rápido quanto, mas deixa CPU para o encoder do OBS; Auto Game-Mode no Lite para não atrapalhá-lo.",
         "Equilibrado: valores padrão do Windows — use se algo estiver estranho.",
         "Economia: para notebooks ou PCs ligados o dia todo.",
-        "Se você marcar a caixa, também muda as opções de vídeo dos seus jogos: Competitivo e Economia → Máximo FPS (Economia também com limite de 60 FPS), Streaming → Equilibrado. Desfaça em Biblioteca → ⚙.",
+        "Se você marcar a caixa, também muda as opções de vídeo dos seus jogos: Competitivo → Máximo FPS sem limite de FPS, Economia → Máximo FPS com limite de 60 FPS, Streaming → Equilibrado. Desfaça em Biblioteca → ⚙.",
         "As mudanças do Windows passam pelo Motor: ficam no Histórico e podem ser desfeitas.",
       ],
     },

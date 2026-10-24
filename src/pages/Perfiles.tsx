@@ -40,10 +40,12 @@ export default function Perfiles() {
       const c = await a.load().catch(() => null);
       if (!c) continue;
       const nvidia = (k: string) => c.nvidia || !a.fields.find((f) => f.key === k)?.nvidiaOnly;
-      const want: Values = { ...(g.preset && a.presets ? a.presets[g.preset] : {}), ...(g.fps && a.fpsKey ? { [a.fpsKey]: g.fps } : {}) };
+      // "max" = la opción "Sin límite" de ese juego (la primera: "0" u "off" según el juego).
+      const fps = g.fps === "max" ? a.fields.find((f) => f.key === a.fpsKey)?.opts[0][0] : g.fps;
+      const want: Values = { ...(g.preset && a.presets ? a.presets[g.preset] : {}), ...(fps && a.fpsKey ? { [a.fpsKey]: fps } : {}) };
       const diff = Object.fromEntries(Object.entries(want).filter(([k, v]) => nvidia(k) && c.values[k] !== v));
       if (!Object.keys(want).length) continue;
-      const what = [g.preset && a.presets ? t(`lib.go.preset.${g.preset}`) : "", g.fps && a.fpsKey ? `${g.fps} FPS` : ""].filter(Boolean).join(" · ");
+      const what = [g.preset && a.presets ? t(`lib.go.preset.${g.preset}`) : "", fps && a.fpsKey ? (g.fps === "max" ? t("lib.go.noLimit") : `${fps} FPS`) : ""].filter(Boolean).join(" · ");
       if (!Object.keys(diff).length) { addLog(`✓ ${a.name}: ${what} ${t("profiles.gameSame")}`); continue; }
       const r = c.running ? "running" : await a.save(c.raw, diff);
       addLog(r === "ok" ? `✓ ${a.name}: ${what}` : `✗ ${a.name}: ${t(r === "running" ? "profiles.gameOpen" : "profiles.gameFail")}`);
