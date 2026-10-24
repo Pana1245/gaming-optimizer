@@ -102,7 +102,7 @@ const STR: Record<string, { es: string; en: string }> = {
   "lib.rl.f.DynamicShadows": { es: "Sombras dinámicas", en: "Dynamic shadows" },
   "lib.rl.f.MotionBlur": { es: "Desenfoque de movimiento", en: "Motion blur" },
   "lib.fn.account": { es: "Opciones de esta PC", en: "This PC's options" },
-  "lib.fn.note": { es: "Se cambia el archivo de opciones de video, lo mismo que su menú. El modo de renderizado (Rendimiento, DirectX 11/12) y el escalado (DLSS, TSR) se cambian en el juego. En modo Rendimiento algunas calidades no tienen efecto.", en: "The video options file is changed, same as its menu. Rendering mode (Performance, DirectX 11/12) and upscaling (DLSS, TSR) are changed in the game. In Performance mode some qualities have no effect." },
+  "lib.fn.note": { es: "Se cambia el archivo de opciones de video, lo mismo que su menú. El modo de renderizado (Rendimiento, DirectX 11/12) y el escalado (DLSS, TSR) se cambian en el juego. En modo Rendimiento el juego deja siempre en Bajo los efectos, el posprocesado y las sombras.", en: "The video options file is changed, same as its menu. Rendering mode (Performance, DirectX 11/12) and upscaling (DLSS, TSR) are changed in the game. In Performance mode the game always keeps effects, post processing and shadows on Low." },
   "lib.fn.epic": { es: "Épico", en: "Epic" },
   "lib.fn.f.displaymode": { es: "Modo de pantalla", en: "Display mode" },
   "lib.fn.f.FrameRateLimit": { es: "Límite de FPS", en: "Frame rate limit" },

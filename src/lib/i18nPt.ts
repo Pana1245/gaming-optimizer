@@ -90,7 +90,7 @@ export const PT: Record<string, string> = {
   "lib.rl.f.DynamicShadows": "Sombras dinâmicas",
   "lib.rl.f.MotionBlur": "Desfoque de movimento",
   "lib.fn.account": "Opções deste PC",
-  "lib.fn.note": "O arquivo de opções de vídeo é alterado, igual ao menu. O modo de renderização (Desempenho, DirectX 11/12) e o upscaling (DLSS, TSR) se mudam no jogo. No modo Desempenho algumas qualidades não têm efeito.",
+  "lib.fn.note": "O arquivo de opções de vídeo é alterado, igual ao menu. O modo de renderização (Desempenho, DirectX 11/12) e o upscaling (DLSS, TSR) se mudam no jogo. No modo Desempenho o jogo sempre deixa efeitos, pós-processamento e sombras no Baixo.",
   "lib.fn.epic": "Épico",
   "lib.fn.f.displaymode": "Modo de tela",
   "lib.fn.f.FrameRateLimit": "Limite de FPS",
