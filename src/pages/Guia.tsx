@@ -159,7 +159,7 @@ const GUIDE: Item[] = [
     desc: { es: "Configuraciones completas con un solo clic.", en: "Complete setups with a single click.", pt: "Configurações completas com um só clique." },
     points: {
       es: [
-        "Competitivo: FPS y latencia al máximo (plan máximo, HAGS, CPU sin reserva, sin transparencias) y Auto Game-Mode en Power.",
+        "Competitivo: FPS y latencia al máximo (plan máximo, HAGS, CPU sin reserva, mouse sin aceleración, red sin ahorro de energía) y Auto Game-Mode en Power. Sólo toca lo que afecta al juego: lo general de Windows se elige en Optimizaciones.",
         "Streaming: igual de rápido pero dejando CPU para el encoder de OBS; Auto Game-Mode en Lite para no frenarlo.",
         "Equilibrado: valores estándar de Windows — usalo si algo anda raro.",
         "Ahorro: para notebooks o PCs encendidas todo el día.",
@@ -168,7 +168,7 @@ const GUIDE: Item[] = [
         "Los ajustes de Windows se deshacen en Motor → Historial y las optimizaciones en Restaurar.",
       ],
       en: [
-        "Competitive: max FPS and lowest latency (max power plan, HAGS, no CPU reserve, no transparency) and Auto Game-Mode on Power.",
+        "Competitive: max FPS and lowest latency (max power plan, HAGS, no CPU reserve, no mouse acceleration, no network power saving) and Auto Game-Mode on Power. It only touches what affects the game: general Windows changes are picked in Optimizations.",
         "Streaming: just as fast, but leaves CPU for the OBS encoder; Auto Game-Mode on Lite so it isn't slowed down.",
         "Balanced: standard Windows values — use it if something acts up.",
         "Power Saver: for laptops or PCs that stay on all day.",
@@ -177,7 +177,7 @@ const GUIDE: Item[] = [
         "Windows settings are undone in Engine → History and optimizations in Restore.",
       ],
       pt: [
-        "Competitivo: FPS e latência no máximo (plano máximo, HAGS, sem reserva de CPU, sem transparências) e Auto Game-Mode no Power.",
+        "Competitivo: FPS e latência no máximo (plano máximo, HAGS, sem reserva de CPU, mouse sem aceleração, rede sem economia de energia) e Auto Game-Mode no Power. Só mexe no que afeta o jogo: o geral do Windows se escolhe em Otimizações.",
         "Streaming: tão rápido quanto, mas deixa CPU para o encoder do OBS; Auto Game-Mode no Lite para não atrapalhá-lo.",
         "Equilibrado: valores padrão do Windows — use se algo estiver estranho.",
         "Economia: para notebooks ou PCs ligados o dia todo.",
