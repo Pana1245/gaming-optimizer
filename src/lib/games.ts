@@ -3,6 +3,7 @@
 // launchers; nada se modifica.
 import { invoke } from "@tauri-apps/api/core";
 import { runPowershell } from "./api";
+import { PS_QUOTES } from "./psQuote";
 
 export type GameSource = "Steam" | "Epic" | "Riot" | "Store" | "Manual";
 export interface Game {
@@ -40,7 +41,7 @@ const KNOWN_EXE: Record<string, string> = {
   "riot:league_of_legends": String.raw`Game\League of Legends.exe`,
 };
 
-const psMap = (m: Record<string, string>) => "@{" + Object.entries(m).map(([k, v]) => `'${k}'='${v.replace(/'/g, "''")}'`).join(";") + "}";
+const psMap = (m: Record<string, string>) => "@{" + Object.entries(m).map(([k, v]) => `'${k}'='${v.replace(PS_QUOTES, "$&$&")}'`).join(";") + "}";
 
 export const SCAN = String.raw`$out=New-Object System.Collections.ArrayList
 $known=${psMap(KNOWN_EXE)}
@@ -79,7 +80,8 @@ try{
     foreach($lib in ($libs | Sort-Object -Unique)){
       foreach($f in @(Get-ChildItem -LiteralPath "$lib\steamapps" -Filter 'appmanifest_*.acf' -EA SilentlyContinue)){
         $c=Get-Content -LiteralPath $f.FullName -Raw -Encoding UTF8
-        $a=if($c -match '"appid"\s+"(\d+)"'){$Matches[1]}; $nm=if($c -match '"name"\s+"(.+?)"'){$Matches[1]}; $d=if($c -match '"installdir"\s+"(.+?)"'){$Matches[1]}
+        # Los valores VDF pueden traer \" o \\ adentro (ej. un nombre con comillas): se lee hasta la comilla que cierra y se desescapa.
+        $a=if($c -match '"appid"\s+"(\d+)"'){$Matches[1]}; $nm=if($c -match '"name"\s+"((?:[^"\\]|\\.)*)"'){$Matches[1] -replace '\\(.)','$1'}; $d=if($c -match '"installdir"\s+"((?:[^"\\]|\\.)*)"'){$Matches[1] -replace '\\(.)','$1'}
         if(-not $a -or -not $nm -or -not $d -or $skipApps -contains $a){ continue }
         $full="$lib\steamapps\common\$d"
         if(-not (Test-Path -LiteralPath $full)){ continue }
@@ -151,7 +153,7 @@ ConvertTo-Json -InputObject @($out) -Compress -Depth 3`;
 const ICONS = (paths: string[]) => String.raw`Add-Type -AssemblyName System.Drawing
 Add-Type -Namespace GoIco -Name N -MemberDefinition '[DllImport("user32.dll", CharSet=CharSet.Unicode)] public static extern uint PrivateExtractIcons(string f, int i, int cx, int cy, IntPtr[] h, IntPtr[] id, uint n, uint fl); [DllImport("user32.dll")] public static extern bool DestroyIcon(IntPtr h);'
 $out=[ordered]@{}
-foreach($p in @(${paths.map((p) => `'${p.replace(/'/g, "''")}'`).join(",")})){
+foreach($p in @(${paths.map((p) => `'${p.replace(PS_QUOTES, "$&$&")}'`).join(",")})){
   try{
     if($p -like '*.png'){ $out[$p]=[Convert]::ToBase64String([IO.File]::ReadAllBytes($p)); continue }
     $h=New-Object IntPtr[] 1; $id=New-Object IntPtr[] 1; $big=$false
@@ -226,7 +228,7 @@ const GPU_KEY = String.raw`HKCU:\Software\Microsoft\DirectX\UserGpuPreferences`;
 const LAYERS_KEY = String.raw`HKCU:\Software\Microsoft\Windows NT\CurrentVersion\AppCompatFlags\Layers`;
 const FSO_FLAG = "DISABLEDXMAXIMIZEDWINDOWEDMODE";
 export interface GameWin { gpu: boolean; fso: boolean }
-const q = (s: string) => `'${s.replace(/'/g, "''")}'`;
+const q = (s: string) => `'${s.replace(PS_QUOTES, "$&$&")}'`;
 
 export async function readGameWin(exe: string): Promise<GameWin> {
   const r = await runPowershell(String.raw`$g=(Get-ItemProperty -LiteralPath ${q(GPU_KEY)} -Name ${q(exe)} -EA SilentlyContinue).${q(exe)}

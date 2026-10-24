@@ -4,6 +4,7 @@ import { WINGET_SETUP } from "./wingetSetup";
 import { waitTask } from "./shell";
 import { notify } from "./notify";
 import { useI18n } from "./i18n";
+import { PS_QUOTES } from "./psQuote";
 
 export interface InstallApp { id: string; name: string; }
 
@@ -41,7 +42,7 @@ const inUse = (out: string) => /in use|en uso|packageInUse|c[oó]digo.*\b26\b/i.
 // Instala una app DES-ELEVADA (como el usuario normal, sin admin) vía una tarea
 // programada de nivel limitado. Necesario para apps per-usuario como Spotify, cuyo
 // instalador se niega a correr elevado. Devuelve 'GO_OK' o 'GO_FAIL <detalle>'.
-const deElevatedInstall = (id: string) => String.raw`$id = '${id.replace(/'/g, "''")}'
+const deElevatedInstall = (id: string) => String.raw`$id = '${id.replace(PS_QUOTES, "$&$&")}'
 $tmp  = "$env:TEMP\go_" + [guid]::NewGuid().ToString('N')
 $out  = "$tmp.out"; $code = "$tmp.code"
 $inner = "winget install --id '$id' --exact --source winget --silent --force --accept-package-agreements --accept-source-agreements --disable-interactivity *>&1 | Out-File -LiteralPath '$out' -Encoding utf8; " + '$LASTEXITCODE | Set-Content -LiteralPath ' + "'$code'"

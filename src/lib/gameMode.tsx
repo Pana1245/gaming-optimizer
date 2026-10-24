@@ -6,6 +6,7 @@ import { ensureNotify, notify } from "./notify";
 import { useI18n } from "./i18n";
 import { BG_CATALOG, BG_RECOMMENDED } from "../bgApps";
 import { MAX_PLAN } from "./powerDedupe";
+import { PS_QUOTES } from "./psQuote";
 
 const GUID_RX = String.raw`([0-9a-fA-F]{8}-([0-9a-fA-F]{4}-){3}[0-9a-fA-F]{12})`;
 
@@ -45,7 +46,7 @@ Write-Output OK`;
 // Apps de fondo a las que se les baja la prioridad mientras jugás: las que el usuario
 // eligió en Auto Game-Mode (ver bgApps.ts; Discord nunca, para no cortar la voz). Se
 // restauran al cerrar el juego.
-const psNames = (ids: string[]) => ids.map((x) => `'${x.replace(/'/g, "''")}'`).join(",");
+const psNames = (ids: string[]) => ids.map((x) => `'${x.replace(PS_QUOTES, "$&$&")}'`).join(",");
 // Antes de bajar a Idle, guardamos la prioridad original de cada proceso POR PID
 // (no por nombre) en el registro, para restaurar exactamente lo que bajamos —
 // aunque haya dos procesos con el mismo .exe y prioridades distintas.

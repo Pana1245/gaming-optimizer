@@ -1,5 +1,6 @@
 import { runPowershell } from "./api";
 import { ENGINE_TWEAKS } from "../engineTweaks";
+import { PS_QUOTES } from "./psQuote";
 
 // ---- Puntaje de optimización: lee el estado real del registro y lo compara ----
 export interface ScoreResult { applied: number; total: number; pct: number; missing: { name: string; nameEn?: string; namePt?: string }[]; }
@@ -36,13 +37,13 @@ export interface Temps { cpu: number | null; gpu: number | null; pawn: boolean; 
 const TEMP_SCRIPT = (dll: string) => String.raw`$cpu=$null; $gpu=$null
 $cpuNames=@('CPU Package','Core (Tctl/Tdie)','Core (Tdie)','Core (Tctl)','Package','Tdie','Tctl')
 $cpuRank=99
-$lhmDir=Split-Path '${dll.replace(/'/g, "''")}'
+$lhmDir=Split-Path '${dll.replace(PS_QUOTES, "$&$&")}'
 # Dependencias (System.Memory, HidSharp…) desde la misma carpeta, sin importar la versión pedida.
 $null=[AppDomain]::CurrentDomain.add_AssemblyResolve({ param($s,$e)
   $p=Join-Path $lhmDir ((New-Object Reflection.AssemblyName($e.Name)).Name + '.dll')
   if(Test-Path -LiteralPath $p){ [Reflection.Assembly]::LoadFrom($p) } else { $null } })
 try{
-  Add-Type -Path '${dll.replace(/'/g, "''")}' -EA Stop
+  Add-Type -Path '${dll.replace(PS_QUOTES, "$&$&")}' -EA Stop
   $c=New-Object LibreHardwareMonitor.Hardware.Computer
   $c.IsCpuEnabled=$true; $c.IsGpuEnabled=$true
   $c.Open()

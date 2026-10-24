@@ -5,6 +5,7 @@ import { Page, List, Row, Badge, Switch, Empty, Check } from "../components/ui";
 import { StatusLine } from "../components/Feedback";
 import { useI18n } from "../lib/i18n";
 import { trLog } from "../lib/logI18n";
+import { PS_QUOTES } from "../lib/psQuote";
 
 // HKLM32 = clave Run de las apps de 32 bits (WOW6432Node), donde escriben la mayoría de
 // los instaladores de 32 bits: antes no se listaban (el Administrador de tareas sí las
@@ -62,10 +63,10 @@ if($out.Count -eq 0){ '[]' } else { $out | ConvertTo-Json -Compress -Depth 3 }`;
 const toggleScript = (e: Entry, enable: boolean) => {
   if (e.scope === "Store") {
     // 1 = desactivada por el usuario (como el interruptor de Configuración > Inicio).
-    const key = (e.key ?? "").replace(/'/g, "''");
+    const key = (e.key ?? "").replace(PS_QUOTES, "$&$&");
     return `$k='Registry::${key}'\nif(!(Test-Path -LiteralPath $k)){ exit 1 }\nSet-ItemProperty -LiteralPath $k -Name State -Value ${enable ? 2 : 1} -Type DWord -Force -EA Stop\nWrite-Output OK`;
   }
-  const name = e.name.replace(/'/g, "''");
+  const name = e.name.replace(PS_QUOTES, "$&$&");
   const appr = APPROVED[e.scope];
   const bytes = enable ? "2,0,0,0,0,0,0,0,0,0,0,0" : "3,0,0,0,0,0,0,0,0,0,0,0";
   return `$a='${appr}'\nif(!(Test-Path $a)){ New-Item $a -Force | Out-Null }\nSet-ItemProperty -Path $a -Name '${name}' -Value ([byte[]](${bytes})) -Type Binary -Force -EA Stop\nWrite-Output OK`;

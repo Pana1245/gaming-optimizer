@@ -9,12 +9,13 @@ import { useI18n } from "../lib/i18n";
 import { trLog } from "../lib/logI18n";
 import { useUninstall, type UApp } from "../lib/uninstall";
 import { waitTask } from "../lib/shell";
+import { PS_QUOTES } from "../lib/psQuote";
 
 // La lista y los iconos se precargan al arrancar la app (ver UninstallProvider),
 // así esta sección los muestra ya listos. Acá sólo vive la lógica de acciones.
 type App = UApp;
 
-const esc = (s: string) => (s || "").replace(/'/g, "''");
+const esc = (s: string) => (s || "").replace(PS_QUOTES, "$&$&");
 
 // La cadena de desinstalación viene del registro (dato NO confiable) y este
 // script corre ELEVADO. Interpolarla en un here-string permitía romperlo (una

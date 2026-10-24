@@ -2,6 +2,7 @@
 // archivos de opciones que el propio juego guarda, con el juego cerrado. No se toca el proceso
 // ni los archivos del juego, sólo sus opciones (lo mismo que cambia su menú).
 import { runPowershell } from "./api";
+import { PS_QUOTES } from "./psQuote";
 
 export type Values = Record<string, string>;
 export type Preset = "low" | "mid" | "high";
@@ -24,7 +25,7 @@ export interface GameAdapter<R = unknown> {
 
 const esc = (s: string) => s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 const b64 = (s: string) => btoa(String.fromCharCode(...new TextEncoder().encode(s)));
-const psq = (s: string) => `'${s.replace(/'/g, "''")}'`;
+const psq = (s: string) => `'${s.replace(PS_QUOTES, "$&$&")}'`;
 const lastJson = (out: string) => { try { return JSON.parse(out.trim().split("\n").pop() || ""); } catch { return null; } };
 const NVIDIA_PS = String.raw`[bool](@(Get-CimInstance Win32_VideoController -EA SilentlyContinue) | Where-Object { $_.Name -match 'NVIDIA' })`;
 

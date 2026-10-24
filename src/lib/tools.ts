@@ -1,4 +1,5 @@
 import { runPowershell } from "./api";
+import { PS_QUOTES } from "./psQuote";
 
 // ---- Control de Windows Update ----------------------------------------------
 const AU = String.raw`HKLM:\SOFTWARE\Policies\Microsoft\Windows\WindowsUpdate\AU`;
@@ -85,7 +86,7 @@ public static class RmLock {
   }
 }
 '@
-$path='${path.replace(/'/g, "''")}'
+$path='${path.replace(PS_QUOTES, "$&$&")}'
 if(-not (Test-Path $path)){ Write-Output 'NOEXIST' } else {
   $pids=[RmLock]::Who($path)
   $out=foreach($id in $pids){ try{ $p=Get-Process -Id $id -EA Stop; [pscustomobject]@{pid=$id;name=$p.ProcessName} }catch{ [pscustomobject]@{pid=$id;name='(sistema)'} } }
