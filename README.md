@@ -42,7 +42,8 @@ debloateados y sin internet) o el clásico y liviano `GamingOptimizer_x64-setup.
 | 🚀 **Optimizaciones** | +60 tweaks de rendimiento, red y privacidad. Backup + punto de restauración automático. Etiqueta **Avanzado** en los ajustes sensibles. |
 | 🖥️ **Gráficos** | Tweaks universales de GPU + máximo rendimiento NVIDIA/AMD y monitor en vivo por `nvidia-smi`. |
 | 🛡️ **Motor de Cambios** | Aplica tweaks **leyendo el valor previo, verificando que quedó, y con historial para deshacer uno por uno**. Auditado y reversible. Incluye desactivar **VBS / Integridad de memoria** (más FPS en Windows 11). |
-| 🎮 **Auto Game-Mode** | Un daemon detecta cuándo abrís un juego, activa el modo gamer y **revierte solo** al cerrarlo. Queda en la **bandeja del sistema** y puede **iniciar con Windows**. |
+| 🕹️ **Biblioteca** | Tus juegos de Steam, Epic, Riot y Microsoft Store en un lugar, con portada y **Jugar**. Por juego: GPU de alto rendimiento, pantalla completa exclusiva y **opciones de video del juego** (CS2, VALORANT, Rocket League, Fortnite; límite de FPS en AION 2) con presets **Máximo FPS / Equilibrado / Calidad** — con **cualquier placa** (NVIDIA, AMD o Intel), sin tocar el proceso del juego, y **Volver a como estaba**. |
+| 🎮 **Auto Game-Mode** | Un daemon detecta cuándo abrís un juego, activa el modo gamer (**Lite** o **Power**) y **revierte solo** al cerrarlo, sin tocar el proceso del juego. Queda en la **bandeja del sistema** y puede **iniciar con Windows**. |
 | 🌐 **Red** | **Test de velocidad real** (16 descargas / 10 subidas en paralelo, velocímetro en vivo, ping, jitter y bufferbloat), **test de conexión para jugar** (jitter y pérdida hacia internet y hacia tu router) y cambio de DNS. |
 | 🧹 **Limpieza** | Analiza y libera espacio (temporales, cachés, papelera…). Muestra los MB liberados. |
 | ⏻ **Inicio** | Gestor de programas de arranque con interruptores (no destructivo). |
