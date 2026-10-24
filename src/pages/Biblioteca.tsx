@@ -112,17 +112,21 @@ function GameOptions({ a, game }: { a: GameAdapter; game: string }) {
   );
 }
 
-/** Portada: la vertical de Steam, si falla la horizontal; si no, el ícono del .exe o la inicial. */
+/** Portada: la que el launcher guardó en la PC (Steam) o su catálogo (Epic); si no, la vertical
+ *  de Steam y su horizontal; si no, el ícono del .exe o la inicial. */
 function Cover({ g }: { g: Game }) {
-  const urls = g.appId ? [steamCover(g.appId), steamHeader(g.appId)] : [];
+  const urls: [string, boolean][] = [
+    ...(g.cover ? [[g.cover, true] as [string, boolean]] : []),
+    ...(g.appId ? [[steamCover(g.appId), true], [steamHeader(g.appId), false]] as [string, boolean][] : []),
+  ];
   const [i, setI] = useState(0);
   if (i < urls.length) {
-    return <img src={urls[i]} alt="" loading="lazy" onError={() => setI(i + 1)}
-      className={`absolute inset-0 w-full h-full ${i === 0 ? "object-cover" : "object-contain bg-black/40"}`} />;
+    return <img src={urls[i][0]} alt="" loading="lazy" onError={() => setI(i + 1)}
+      className={`absolute inset-0 w-full h-full ${urls[i][1] ? "object-cover" : "object-contain bg-black/40"}`} />;
   }
   return (
     <div className="absolute inset-0 flex items-center justify-center bg-gradient-to-br from-white/[0.06] to-white/[0.01]">
-      {g.icon ? <img src={`data:image/png;base64,${g.icon}`} alt="" className="w-14 h-14 [image-rendering:auto]" />
+      {g.icon ? <img src={`data:image/png;base64,${g.icon}`} alt="" className="w-20 h-20 rounded-xl [image-rendering:auto]" />
         : <span className="text-[34px] font-semibold text-text-mute">{g.name.slice(0, 1).toUpperCase()}</span>}
     </div>
   );

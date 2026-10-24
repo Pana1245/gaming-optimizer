@@ -14,7 +14,9 @@ export interface Game {
   exePath?: string;           // ejecutable REAL del juego (el proceso que corre), si se sabe
   launch: string;             // steam://…, com.epicgames.launcher://…, shell:AppsFolder\…, o un .exe
   args?: string;
-  icon?: string;              // PNG en base64 (juegos que no son de Steam)
+  icon?: string;              // PNG en base64 (juegos sin portada)
+  cover?: string;             // portada: data: (caché local de Steam) o https (catálogo de Epic)
+  iconPath?: string;          // archivo con un ícono mejor que el del .exe (Riot)
 }
 
 // Herramientas de Steam que no son juegos (runtimes, SteamVR) y programas comunes que se
@@ -43,9 +45,17 @@ export const SCAN = String.raw`$out=New-Object System.Collections.ArrayList
 $known=${psMap(KNOWN_EXE)}
 $skipApps=@(${STEAM_SKIP.map((x) => `'${x}'`).join(",")})
 $skipExe='hlds|dedicated|server|unins|vcredist|vc_redist|redist|crashpad|crash|setup|dxsetup|directx|notification|webhelper|easyanticheat|battleye|eac_|launcher|cleanup|helper|update|report'
-function Add($id,$name,$src,$dir,$exe,$launch,$argv,$appId){
+function Add($id,$name,$src,$dir,$exe,$launch,$argv,$appId,$cover,$iconPath){
   if($exe -and -not (Test-Path -LiteralPath $exe -PathType Leaf)){ $exe=$null }
-  [void]$out.Add([pscustomobject]@{id=$id;name=$name;source=$src;dir=$dir;exePath=$exe;launch=$launch;args=$argv;appId=$appId})
+  [void]$out.Add([pscustomobject]@{id=$id;name=$name;source=$src;dir=$dir;exePath=$exe;launch=$launch;args=$argv;appId=$appId;cover=$cover;iconPath=$iconPath})
+}
+# Portada vertical que Steam ya guardó en esta PC (los juegos nuevos no la tienen en el CDN viejo).
+function SteamCover($lc,$a){
+  $d=Join-Path $lc $a
+  if(-not (Test-Path -LiteralPath $d)){ return $null }
+  $f=Get-Item -LiteralPath "$d\library_600x900.jpg" -EA SilentlyContinue
+  if(-not $f){ $f=Get-ChildItem -LiteralPath $d -Recurse -Filter 'library_capsule.jpg' -EA SilentlyContinue | Sort-Object LastWriteTime -Descending | Select-Object -First 1 }
+  if($f -and $f.Length -lt 1MB){ 'data:image/jpeg;base64,' + [Convert]::ToBase64String([IO.File]::ReadAllBytes($f.FullName)) }
 }
 function BestExe($dir,$hint){
   $c=@(Get-ChildItem -LiteralPath $dir -Filter *.exe -Recurse -Depth 2 -EA SilentlyContinue | Where-Object { $_.Name -notmatch $skipExe })
@@ -59,6 +69,7 @@ try{
   $steam=(Get-ItemProperty 'HKCU:\Software\Valve\Steam' -EA SilentlyContinue).SteamPath
   if($steam){
     $libs=@($steam -replace '/','\')
+    $lc=Join-Path ($steam -replace '/','\') 'appcache\librarycache'
     $vdf=Join-Path $steam 'steamapps\libraryfolders.vdf'
     if(Test-Path -LiteralPath $vdf){ foreach($l in (Get-Content -LiteralPath $vdf -Encoding UTF8)){ if($l -match '"path"\s+"(.+?)"'){ $libs+=($Matches[1] -replace '\\\\','\') } } }
     foreach($lib in ($libs | Sort-Object -Unique)){
@@ -69,7 +80,7 @@ try{
         $full="$lib\steamapps\common\$d"
         if(-not (Test-Path -LiteralPath $full)){ continue }
         $exe=if($known["steam:$a"]){ Join-Path $full $known["steam:$a"] } else { BestExe $full $d }
-        Add "steam:$a" $nm 'Steam' $full $exe "steam://rungameid/$a" '' $a
+        Add "steam:$a" $nm 'Steam' $full $exe "steam://rungameid/$a" '' $a (SteamCover $lc $a)
       }
     }
   }
@@ -77,6 +88,15 @@ try{
 # EPIC: manifiestos .item (y Pending\: ahí queda el de un juego instalado con una actualización a medias)
 try{
   $md="$env:ProgramData\Epic\EpicGamesLauncher\Data\Manifests"; $seen=@{}
+  # Portadas: el catálogo que Epic guarda en la PC (JSON en base64) trae la URL de cada una.
+  $cat=@{}
+  try{
+    $raw=Get-Content -LiteralPath "$env:ProgramData\Epic\EpicGamesLauncher\Data\Catalog\catcache.bin" -Raw -EA Stop
+    foreach($it in ([Text.Encoding]::UTF8.GetString([Convert]::FromBase64String($raw.Trim())) | ConvertFrom-Json)){
+      $k=$it.keyImages | Where-Object { $_.type -eq 'DieselGameBoxTall' } | Select-Object -First 1
+      if($it.id -and $k.url -match '^https://cdn1\.epicgames\.com/'){ $cat[$it.id]=$k.url + '?h=480&quality=medium&resize=1&w=360' }
+    }
+  }catch{}
   foreach($f in @(Get-ChildItem -LiteralPath $md -Filter *.item -EA SilentlyContinue) + @(Get-ChildItem -LiteralPath "$md\Pending" -Filter *.item -EA SilentlyContinue)){
     try{
       $j=Get-Content -LiteralPath $f.FullName -Raw -Encoding UTF8 | ConvertFrom-Json
@@ -88,7 +108,7 @@ try{
       if($j.bIsIncompleteInstall -and -not ($f.Directory.Name -eq 'Pending' -and $exe -and (Test-Path -LiteralPath $exe -PathType Leaf))){ continue }
       $seen[$id]=1
       $uri='com.epicgames.launcher://apps/' + [uri]::EscapeDataString("$($j.CatalogNamespace):$($j.CatalogItemId):$($j.AppName)") + '?action=launch&silent=true'
-      Add $id $j.DisplayName 'Epic' $j.InstallLocation $exe $uri '' $null
+      Add $id $j.DisplayName 'Epic' $j.InstallLocation $exe $uri '' $null $cat[$j.CatalogItemId]
     }catch{}
   }
 }catch{}
@@ -103,24 +123,39 @@ try{
       $dir=$null; foreach($l in (Get-Content -LiteralPath $y)){ if($l -match 'product_install_full_path:\s*"(.+?)"'){ $dir=$Matches[1] -replace '/','\' } }
       if(-not $dir -or -not (Test-Path -LiteralPath $dir)){ continue }
       $exe=Join-Path $dir $known["riot:$($p.k)"]
-      Add "riot:$($p.k)" $p.n 'Riot' $dir $exe $rc "--launch-product=$($p.k) --launch-patchline=live" $null
+      $ico="$env:ProgramData\Riot Games\Metadata\$($p.k).live\$($p.k).live.ico"
+      Add "riot:$($p.k)" $p.n 'Riot' $dir $exe $rc "--launch-product=$($p.k) --launch-patchline=live" $null $null $(if(Test-Path -LiteralPath $ico){ $ico })
     }
   }
 }catch{}
-# MICROSOFT STORE: Minecraft
+# MICROSOFT STORE: Minecraft. Ícono: el logo más grande del paquete (el del .exe es de 32 px o no hay).
+function StoreLogo($pkg){
+  foreach($n in 'LargeLogo.png','SmallLogo.altform-unplated_targetsize-256.png','SmallLogo.targetsize-256.png','Logo.scale-200.png','Logo.png'){
+    $f=Join-Path $pkg.InstallLocation $n; if(Test-Path -LiteralPath $f){ return $f }
+  }
+}
 try{
   $mc=Get-AppxPackage -Name 'Microsoft.MinecraftUWP' -EA SilentlyContinue | Select-Object -First 1
-  if($mc){ Add 'store:minecraft' 'Minecraft (Bedrock)' 'Store' $mc.InstallLocation (Join-Path $mc.InstallLocation 'Minecraft.Windows.exe') "shell:AppsFolder\$($mc.PackageFamilyName)!Game" '' $null }
+  if($mc){ Add 'store:minecraft' 'Minecraft (Bedrock)' 'Store' $mc.InstallLocation (Join-Path $mc.InstallLocation 'Minecraft.Windows.exe') "shell:AppsFolder\$($mc.PackageFamilyName)!Game" '' $null $null (StoreLogo $mc) }
   $ml=Get-AppxPackage -Name 'Microsoft.4297127D64EC6' -EA SilentlyContinue | Select-Object -First 1
-  if($ml){ Add 'store:minecraft-launcher' 'Minecraft Launcher' 'Store' $ml.InstallLocation $null "shell:AppsFolder\$($ml.PackageFamilyName)!Minecraft" '' $null }
+  if($ml){ Add 'store:minecraft-launcher' 'Minecraft Launcher' 'Store' $ml.InstallLocation $null "shell:AppsFolder\$($ml.PackageFamilyName)!Minecraft" '' $null $null (StoreLogo $ml) }
 }catch{}
 ConvertTo-Json -InputObject @($out) -Compress -Depth 3`;
 
-// Íconos de los ejecutables (para los juegos que no tienen portada de Steam).
+// Íconos de los ejecutables (o .ico) para los juegos sin portada: el de 256 px si el archivo lo
+// trae (ExtractAssociatedIcon sólo da 32 px y se veía borroso); si no, el de 32.
 const ICONS = (paths: string[]) => String.raw`Add-Type -AssemblyName System.Drawing
+Add-Type -Namespace GoIco -Name N -MemberDefinition '[DllImport("user32.dll", CharSet=CharSet.Unicode)] public static extern uint PrivateExtractIcons(string f, int i, int cx, int cy, IntPtr[] h, IntPtr[] id, uint n, uint fl); [DllImport("user32.dll")] public static extern bool DestroyIcon(IntPtr h);'
 $out=[ordered]@{}
 foreach($p in @(${paths.map((p) => `'${p.replace(/'/g, "''")}'`).join(",")})){
-  try{ $ic=[System.Drawing.Icon]::ExtractAssociatedIcon($p); $bmp=$ic.ToBitmap(); $ms=New-Object IO.MemoryStream; $bmp.Save($ms,[System.Drawing.Imaging.ImageFormat]::Png); $out[$p]=[Convert]::ToBase64String($ms.ToArray()); $ms.Dispose(); $bmp.Dispose(); $ic.Dispose() }catch{}
+  try{
+    if($p -like '*.png'){ $out[$p]=[Convert]::ToBase64String([IO.File]::ReadAllBytes($p)); continue }
+    $h=New-Object IntPtr[] 1; $id=New-Object IntPtr[] 1; $big=$false
+    if([GoIco.N]::PrivateExtractIcons($p,0,256,256,$h,$id,1,0) -gt 0 -and $h[0] -ne [IntPtr]::Zero){ $ic=[System.Drawing.Icon]::FromHandle($h[0]); $big=$true }
+    else{ $ic=[System.Drawing.Icon]::ExtractAssociatedIcon($p) }
+    $bmp=$ic.ToBitmap(); $ms=New-Object IO.MemoryStream; $bmp.Save($ms,[System.Drawing.Imaging.ImageFormat]::Png); $out[$p]=[Convert]::ToBase64String($ms.ToArray()); $ms.Dispose(); $bmp.Dispose()
+    if($big){ [void][GoIco.N]::DestroyIcon($h[0]) } else { $ic.Dispose() }
+  }catch{}
 }
 $out | ConvertTo-Json -Compress`;
 
@@ -130,8 +165,9 @@ export async function scanGames(): Promise<Game[]> {
   try { list = JSON.parse(r.output.trim().split("\n").pop() || "[]"); } catch { list = []; }
   const seen = new Set<string>();
   list = list.filter((g) => g && g.id && !seen.has(g.id) && seen.add(g.id));
-  const m = await iconsFor(list.filter((g) => g.source !== "Steam" && g.exePath).map((g) => g.exePath!));
-  for (const g of list) if (g.exePath && m[g.exePath]) g.icon = m[g.exePath];
+  const src = (g: Game) => g.iconPath || g.exePath;
+  const m = await iconsFor(list.filter((g) => g.source !== "Steam" && !g.cover && src(g)).map((g) => src(g)!));
+  for (const g of list) { const p = src(g); if (p && m[p]) g.icon = m[p]; }
   return list;
 }
 
