@@ -12,6 +12,7 @@ import { gameAdapter, type GameAdapter, type GameCfg, type Values, type Preset, 
 const load = (k: string): string[] => { try { const v = JSON.parse(localStorage.getItem(k) || "[]"); return Array.isArray(v) ? v : []; } catch { return []; } };
 const save = (k: string, v: string[]) => { try { localStorage.setItem(k, JSON.stringify(v)); } catch { /* sólo esta sesión */ } };
 const exeName = (g: Game) => g.exePath?.split("\\").pop()?.toLowerCase();
+const OPT = "bg-[#1b1b1f] text-[#e8e8ea]";
 
 /** Ajustes de Windows para el .exe del juego; cada interruptor lee y escribe el registro real. */
 function WinSettings({ g, onClose }: { g: Game; onClose: () => void }) {
@@ -95,10 +96,11 @@ function GameOptions({ a, game }: { a: GameAdapter; game: string }) {
             <label key={f.key} className="flex flex-col gap-1 min-w-0">
               <span className="text-[12px] text-text-dim">{t(`lib.${a.id}.f.${f.key.split("::").pop()}`)}</span>
               <select value={cur} onChange={(e) => setV((x) => ({ ...x, [f.key]: e.target.value }))} disabled={busy}
-                className="h-8 rounded-md bg-white/[0.04] border border-line text-[12.5px] text-text px-2 outline-none focus:border-accent">
-                {cur === "" && <option value="">{t("lib.go.default")}</option>}
-                {cur !== "" && !known && <option value={cur}>{cur}</option>}
-                {f.opts.map(([o, l]) => <option key={o} value={o}>{tx(l)}</option>)}
+                className="h-8 rounded-md bg-white/[0.04] border border-line text-[12.5px] text-text px-2 outline-none focus:border-accent [color-scheme:dark]">
+                {/* La lista que se abre es nativa de Windows: sin esquema oscuro salía blanca con letras claras. */}
+                {cur === "" && <option value="" className={OPT}>{t("lib.go.default")}</option>}
+                {cur !== "" && !known && <option value={cur} className={OPT}>{cur}</option>}
+                {f.opts.map(([o, l]) => <option key={o} value={o} className={OPT}>{tx(l)}</option>)}
               </select>
             </label>
           );
