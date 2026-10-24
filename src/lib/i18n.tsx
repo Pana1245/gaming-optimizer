@@ -109,6 +109,7 @@ const STR: Record<string, { es: string; en: string }> = {
   "lib.fn.f.bUseVSync": { es: "Sincronización vertical (V-Sync)", en: "Vertical sync (V-Sync)" },
   "lib.fn.f.bMotionBlur": { es: "Desenfoque de movimiento", en: "Motion blur" },
   "lib.fn.f.bShowGrass": { es: "Mostrar pasto", en: "Show grass" },
+  "lib.fn.f.LatencyTweak2": { es: "NVIDIA Reflex (latencia baja)", en: "NVIDIA Reflex (low latency)" },
   "lib.fn.f.sg.ViewDistanceQuality": { es: "Distancia de visión", en: "View distance" },
   "lib.fn.f.sg.TextureQuality": { es: "Texturas", en: "Textures" },
   "lib.fn.f.sg.EffectsQuality": { es: "Efectos", en: "Effects" },

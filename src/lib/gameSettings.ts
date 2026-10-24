@@ -335,7 +335,7 @@ export const VALORANT: GameAdapter<Val> = {
 // (las demás repiten las claves para celulares, editor…). Probado en esta PC: el juego respeta
 // el cambio del archivo. FPS, suavizado, intensidad de efectos, clima, rayos de luz y resplandor
 // de lente van en el perfil (binario; el juego pisa el .ini al abrir): no se tocan.
-export interface IniFile { text: string; running: boolean; hasBackup: boolean }
+export interface IniFile { text: string; running: boolean; nvidia: boolean; hasBackup: boolean }
 const RL_SEC = "SystemSettings";
 const TF: [string, string][] = [["True", "lib.q.on"], ["False", "lib.q.off"]];
 const RL_FX = ["bAllowHighQualityMaterials", "AmbientOcclusion", "DepthOfField", "Bloom", "DynamicShadows", "MotionBlur"];
@@ -381,14 +381,14 @@ async function loadIni(locate: string, procs: string[], name: string): Promise<I
   const r = await runPowershell(locate + String.raw`
 $f=Join-Path $dir ${psq(name)}
 [pscustomobject]@{ text=[IO.File]::ReadAllText($f, (New-Object System.Text.UTF8Encoding $false)); running=[bool](Get-Process ${procs.map(psq).join(",")} -EA SilentlyContinue)
-  hasBackup=(Test-Path -LiteralPath "$f.gobak") } | ConvertTo-Json -Compress`);
+  nvidia=${NVIDIA_PS}; hasBackup=(Test-Path -LiteralPath "$f.gobak") } | ConvertTo-Json -Compress`);
   const j = lastJson(r.output);
   return j && typeof j.text === "string" && j.text ? j : null;
 }
 
 export const ROCKET_LEAGUE: GameAdapter<IniFile> = {
   id: "rl", fields: RL_FIELDS, presets: RL_PRESETS,
-  load: async () => { const c = await loadIni(RL_LOCATE, RL_PROCS, "TASystemSettings.ini"); return c && { who: "", running: c.running, nvidia: false, hasBackup: c.hasBackup, values: rlRead(c.text), raw: c }; },
+  load: async () => { const c = await loadIni(RL_LOCATE, RL_PROCS, "TASystemSettings.ini"); return c && { who: "", running: c.running, nvidia: c.nvidia, hasBackup: c.hasBackup, values: rlRead(c.text), raw: c }; },
   save: (c, v) => saveFiles(RL_LOCATE, RL_PROCS, [["TASystemSettings.ini", c.text, rlApply(c.text, v)]]),
   restore: () => restoreFiles(RL_LOCATE, RL_PROCS, ["TASystemSettings.ini"]),
 };
@@ -406,6 +406,8 @@ export const FN_FIELDS: Field[] = [
   { key: "displaymode", opts: [["0", "lib.cs2.full"], ["1", "lib.cs2.borderless"], ["2", "lib.cs2.window"]] },
   { key: "FrameRateLimit", opts: [["0", "lib.go.noLimit"], ...["60", "120", "144", "165", "240", "360"].map((x): [string, string] => [x, x])] },
   ...FN_TF.map((key): Field => ({ key, opts: TF })),
+  // NVIDIA Reflex: 0 No, 1 Sí, 2 Sí + potenciar (visto en el menú del juego).
+  { key: "LatencyTweak2", opts: [["0", "lib.q.off"], ["1", "lib.q.on"], ["2", "lib.go.boost"]], nvidiaOnly: true },
   ...FN_Q.map((key): Field => ({ key, opts: [...Q4.slice(0, 3), ["3", "lib.fn.epic"]] })),
 ];
 const FN_PRESETS = presets(["bMotionBlur", "bShowGrass", ...FN_Q],
@@ -417,6 +419,7 @@ const FN_PRESETS = presets(["bMotionBlur", "bShowGrass", ...FN_Q],
 export function fnRead(text: string): Values {
   const v: Values = {};
   for (const k of FN_TF) { const x = tf(iniGet(text, k, FN_SEC)); if (x !== undefined) v[k] = x; }
+  const rx = iniGet(text, "LatencyTweak2", FN_SEC); if (rx !== undefined) v.LatencyTweak2 = rx;
   for (const k of FN_Q) { const x = iniGet(text, k, FN_SG); if (x !== undefined) v[k] = x; }
   const m = iniGet(text, "FullscreenMode", FN_SEC); if (m !== undefined) v.displaymode = m;
   const fps = Number(iniGet(text, "FrameRateLimit", FN_SEC) ?? "0");
@@ -438,7 +441,7 @@ const FN_PROCS = ["FortniteClient-Win64-Shipping", "FortniteClient-Win64-Shippin
 
 export const FORTNITE: GameAdapter<IniFile> = {
   id: "fn", fields: FN_FIELDS, presets: FN_PRESETS,
-  load: async () => { const c = await loadIni(FN_LOCATE, FN_PROCS, "GameUserSettings.ini"); return c && { who: "", running: c.running, nvidia: false, hasBackup: c.hasBackup, values: fnRead(c.text), raw: c }; },
+  load: async () => { const c = await loadIni(FN_LOCATE, FN_PROCS, "GameUserSettings.ini"); return c && { who: "", running: c.running, nvidia: c.nvidia, hasBackup: c.hasBackup, values: fnRead(c.text), raw: c }; },
   save: (c, v) => saveFiles(FN_LOCATE, FN_PROCS, [["GameUserSettings.ini", c.text, fnApply(c.text, v)]]),
   restore: () => restoreFiles(FN_LOCATE, FN_PROCS, ["GameUserSettings.ini"]),
 };

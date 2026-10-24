@@ -97,6 +97,7 @@ export const PT: Record<string, string> = {
   "lib.fn.f.bUseVSync": "Sincronização vertical (V-Sync)",
   "lib.fn.f.bMotionBlur": "Desfoque de movimento",
   "lib.fn.f.bShowGrass": "Mostrar grama",
+  "lib.fn.f.LatencyTweak2": "NVIDIA Reflex (baixa latência)",
   "lib.fn.f.sg.ViewDistanceQuality": "Distância de visão",
   "lib.fn.f.sg.TextureQuality": "Texturas",
   "lib.fn.f.sg.EffectsQuality": "Efeitos",
