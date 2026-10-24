@@ -79,11 +79,11 @@ function GameOptions({ a, game }: { a: GameAdapter; game: string }) {
         <div className="text-[11.5px] text-text-mute truncate">{t(`lib.${a.id}.account`).replace("{n}", c.who)}</div>
       </div>
       {c.running && <p className="text-[12px] text-[#ffb547] mb-2">{t("lib.go.running").replace("{g}", game)}</p>}
-      <div className="flex gap-2 mb-3">
+      {a.presets && <div className="flex gap-2 mb-3">
         {(["low", "mid", "high"] as Preset[]).map((p) => (
-          <button key={p} onClick={() => setV((x) => ({ ...x, ...a.presets[p] }))} disabled={busy} className="btn btn-ghost h-8 flex-1 text-[12.5px]">{t(`lib.go.preset.${p}`)}</button>
+          <button key={p} onClick={() => setV((x) => ({ ...x, ...a.presets![p] }))} disabled={busy} className="btn btn-ghost h-8 flex-1 text-[12.5px]">{t(`lib.go.preset.${p}`)}</button>
         ))}
-      </div>
+      </div>}
       <div className="grid grid-cols-2 gap-x-4 gap-y-2.5">
         {a.fields.filter((f) => !f.nvidiaOnly || c.nvidia).map((f) => {
           const cur = v[f.key] ?? "";

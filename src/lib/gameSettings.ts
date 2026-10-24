@@ -13,7 +13,7 @@ export interface GameCfg<R> { who: string; running: boolean; nvidia: boolean; ha
 export interface GameAdapter<R = unknown> {
   id: string;                        // prefijo de los textos: lib.<id>.f.<clave>
   fields: Field[];
-  presets: Record<Preset, Values>;
+  presets?: Record<Preset, Values>;  // sin presets (ej. AION 2: sólo el límite de FPS) no se muestran los botones
   load(): Promise<GameCfg<R> | null>;
   /** Sólo los valores que cambiaron. */
   save(raw: R, changed: Values): Promise<SaveResult>;
@@ -446,11 +446,37 @@ export const FORTNITE: GameAdapter<IniFile> = {
   restore: () => restoreFiles(FN_LOCATE, FN_PROCS, ["GameUserSettings.ini"]),
 };
 
+// ---- AION 2 ----
+// Sus gráficos viven en .sav encriptados (NCS1) y el juego reescribe las calidades del .ini al
+// abrir: probado. Sólo respeta FrameRateLimit, que además su menú no tiene.
+const A2_SEC = "/Script/Engine.GameUserSettings";
+export const A2_FIELDS: Field[] = [
+  { key: "FrameRateLimit", opts: [["0", "lib.go.noLimit"], ...["30", "60", "120", "144", "165", "240"].map((x): [string, string] => [x, x])] },
+];
+export function a2Read(text: string): Values {
+  const fps = Number(iniGet(text, "FrameRateLimit", A2_SEC) ?? "0");
+  return { FrameRateLimit: String(Number.isFinite(fps) ? Math.round(fps) : 0) };
+}
+export function a2Apply(text: string, v: Values): string {
+  return v.FrameRateLimit === undefined ? text : iniSet(text, "FrameRateLimit", `${v.FrameRateLimit}.000000`, A2_SEC);
+}
+const A2_LOCATE = String.raw`$dir=Join-Path $env:LOCALAPPDATA 'AION2\Saved_Steam\Config\Windows'
+if(-not (Test-Path -LiteralPath "$dir\GameUserSettings.ini")){ exit 0 }`;
+const A2_PROCS = ["AION2"];
+
+export const AION2: GameAdapter<IniFile> = {
+  id: "a2", fields: A2_FIELDS,
+  load: async () => { const c = await loadIni(A2_LOCATE, A2_PROCS, "GameUserSettings.ini"); return c && { who: "", running: c.running, nvidia: c.nvidia, hasBackup: c.hasBackup, values: a2Read(c.text), raw: c }; },
+  save: (c, v) => saveFiles(A2_LOCATE, A2_PROCS, [["GameUserSettings.ini", c.text, a2Apply(c.text, v)]]),
+  restore: () => restoreFiles(A2_LOCATE, A2_PROCS, ["GameUserSettings.ini"]),
+};
+
 /** Módulo de opciones del juego, si está soportado. */
 export function gameAdapter(g: { id: string; appId?: string }): GameAdapter | null {
   if (g.appId === "730") return CS2 as GameAdapter;
   if (g.id === "riot:valorant") return VALORANT as GameAdapter;
   if (g.appId === "252950" || g.id === "epic:Sugar") return ROCKET_LEAGUE as GameAdapter;
   if (g.id === "epic:Fortnite") return FORTNITE as GameAdapter;
+  if (g.appId === "3393110") return AION2 as GameAdapter;
   return null;
 }
