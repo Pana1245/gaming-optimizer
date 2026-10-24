@@ -23,7 +23,7 @@ import { trLog } from "../lib/logI18n";
 import { SECURE_BACKUP_ROOT } from "../lib/backupAcl";
 
 // Categorías base + tweaks nuevos fusionados por id + categorías extra (WinUtil)
-const ALL_CATEGORIES = [
+export const ALL_CATEGORIES = [
   ...CATEGORIES.map((c) => ({
     ...c,
     tweaks: [...c.tweaks, ...(EXTRA_TWEAKS[c.id] || [])],
@@ -40,7 +40,7 @@ const ADVANCED = new Set([
   "Desanclar todas las apps del menu Inicio",
 ]);
 
-const BACKUP = String.raw`${SECURE_BACKUP_ROOT}
+export const BACKUP = String.raw`${SECURE_BACKUP_ROOT}
 $date    = Get-Date -Format 'yyyy-MM-dd_HH-mm-ss'
 $backDir = "$env:SystemDrive\OptimizacionBackup\$date"
 New-Item -ItemType Directory -Path $backDir -Force | Out-Null

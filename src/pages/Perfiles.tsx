@@ -9,6 +9,11 @@ import { useI18n, pick } from "../lib/i18n";
 import { trLog } from "../lib/logI18n";
 import { useGameMode } from "../lib/gameMode";
 import { GAME_ADAPTERS, type Values } from "../lib/gameSettings";
+import { ALL_CATEGORIES, BACKUP } from "./Optimizaciones";
+import { getSystemInfo } from "../lib/api";
+import { TWEAK_EN } from "../catalogEn";
+import { TWEAK_PT } from "../catalogPt";
+import type { Tweak } from "../catalog";
 
 const Bolt = () => (
   <svg width="11" height="11" viewBox="0 0 24 24" fill="currentColor"><path d="M13 2 4.5 13.5H11l-1 8.5 8.5-11.5H12z" /></svg>
@@ -52,6 +57,23 @@ export default function Perfiles() {
     }
   };
 
+  // Optimizaciones de esa sección, con el mismo respaldo (registro + punto de restauración):
+  // sin respaldo no se aplica ninguna. Se deshacen en Restaurar, no en el Motor.
+  const applyTweaks = async (names: string[]) => {
+    const winVer = await getSystemInfo().then((i) => i.win_ver).catch(() => 11);
+    const all = ALL_CATEGORIES.flatMap((c) => c.tweaks);
+    const list = names.map((n) => all.find((tw) => tw.name === n)).filter((tw): tw is Tweak => !!tw && (!tw.os || tw.os === winVer));
+    if (!list.length) return;
+    addLog(t("profiles.optBackup"));
+    const bk = await runPowershell(BACKUP);
+    if (!bk.ok || !Number(bk.output.match(/Backup del registro: (\d+) ramas/)?.[1] ?? 0)) { addLog(`✗ ${t("profiles.optNoBackup")}`); return; }
+    for (const tw of list) {
+      const r = await runPowershell(tw.script);
+      addLog(`${r.ok ? "✓" : "✗"} ${pick(lang, tw.name, TWEAK_EN[tw.name], TWEAK_PT[tw.name])}`);
+    }
+    addLog(t("profiles.optUndo"));
+  };
+
   const apply = async (p: Profile) => {
     setApplyingId(p.id);
     addLog(`\n${t("profiles.applyingPre")} ${p.emoji} ${nameOf(p)} —`);
@@ -76,6 +98,7 @@ export default function Perfiles() {
       addLog(`${ok}/${p.ops.length} ${t("profiles.verified")}`);
       setPro(p.gmPro);
       addLog(`✓ Auto Game-Mode: ${p.gmPro ? "Power" : "Lite"}`);
+      if (p.tweaks) await applyTweaks(p.tweaks);
       if (withGames && p.games) await applyGames(p.games);
       // Sólo marcamos el perfil como activo si el plan de energía se aplicó de
       // verdad: si falló, no persistimos un "activo" cuyo plan nunca se aplicó.

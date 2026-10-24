@@ -24,6 +24,7 @@ export interface Profile {
   planLabelPt: string;
   gmPro: boolean;     // Auto Game-Mode: Power (baja las apps de fondo elegidas) o Lite
   games?: { preset?: Preset; fps?: string }; // opciones de video de los juegos (si el usuario lo marca); fps "max" = sin límite
+  tweaks?: string[];  // optimizaciones de la sección Optimizaciones (por nombre): con su respaldo, se deshacen en Restaurar
 }
 
 const SYSP = String.raw`HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Multimedia\SystemProfile`;
@@ -40,6 +41,16 @@ const op = (id: string, name: string, key: string, prop: string, value: number, 
 
 // Terminan con `exit $LASTEXITCODE` (el de powercfg) para que el frontend sepa si
 // el plan se aplicó de verdad — powercfg es nativo y su fallo no altera `ok` solo.
+// Optimizaciones (por nombre exacto del catálogo) que suma cada perfil. Ninguna "Avanzado".
+const T_NET = ["Sin ahorro de energía en el adaptador de red", "Desactivar Network Throttling", "No compartir Windows Update con otras PCs (P2P)"];
+const T_PLAY = ["Desactivar Power Throttling (no frenar programas)", "Desactivar Sticky Keys", "Desactivar Filter Keys y Toggle Keys",
+  "No bajar el volumen del juego en llamadas", "Optimizaciones para juegos en ventana"];
+export const PROFILE_TWEAKS = {
+  competitivo: ["Deshabilitar aceleración del mouse", "Deshabilitar algoritmo de Nagle (ping más bajo)", ...T_NET, ...T_PLAY],
+  streaming: [...T_NET, ...T_PLAY],
+  ahorro: ["Deshabilitar apps en segundo plano", "Edge sin segundo plano ni inicio anticipado", "Chrome sin segundo plano", "No compartir Windows Update con otras PCs (P2P)"],
+};
+
 const PLAN_MAX = String.raw`${MAX_PLAN}
 $pc=$LASTEXITCODE; Write-Output 'Plan: maximo rendimiento'
 exit $pc`;
@@ -56,9 +67,9 @@ export const PROFILES: Profile[] = [
     desc: "FPS y latencia al máximo. Para shooters y juego online serio.",
     descEn: "Max FPS and latency. For shooters and serious online play.",
     descPt: "FPS e latência no máximo. Para shooters e jogo online sério.",
-    bullets: ["Plan de energía máximo", "Game Mode ON · Game DVR OFF", "GPU Scheduling (HAGS)", "CPU sin reserva para fondo", "Sin transparencias", "Auto Game-Mode: Power (baja tus apps de fondo)", "Juegos: Máximo FPS, sin límite de FPS (opcional)"],
-    bulletsEn: ["Max power plan", "Game Mode ON · Game DVR OFF", "GPU Scheduling (HAGS)", "No CPU reserved for background", "No transparency", "Auto Game-Mode: Power (lowers your background apps)", "Games: Max FPS, no FPS limit (optional)"],
-    bulletsPt: ["Plano de energia máximo", "Game Mode ON · Game DVR OFF", "GPU Scheduling (HAGS)", "Sem reserva de CPU para segundo plano", "Sem transparências", "Auto Game-Mode: Power (reduz seus apps em segundo plano)", "Jogos: Máximo FPS, sem limite de FPS (opcional)"],
+    bullets: ["Plan de energía máximo", "Game Mode ON · Game DVR OFF", "GPU Scheduling (HAGS)", "CPU sin reserva para fondo", "Sin transparencias", "Auto Game-Mode: Power (baja tus apps de fondo)", "Mouse sin aceleración · red sin ahorro de energía · sin Network Throttling ni Nagle", "Sin Sticky Keys · no baja el juego en llamadas · sin P2P de Windows Update", "Juegos: Máximo FPS, sin límite de FPS (opcional)"],
+    bulletsEn: ["Max power plan", "Game Mode ON · Game DVR OFF", "GPU Scheduling (HAGS)", "No CPU reserved for background", "No transparency", "Auto Game-Mode: Power (lowers your background apps)", "No mouse acceleration · no network power saving · no Network Throttling or Nagle", "No Sticky Keys · game volume not lowered on calls · no Windows Update P2P", "Games: Max FPS, no FPS limit (optional)"],
+    bulletsPt: ["Plano de energia máximo", "Game Mode ON · Game DVR OFF", "GPU Scheduling (HAGS)", "Sem reserva de CPU para segundo plano", "Sem transparências", "Auto Game-Mode: Power (reduz seus apps em segundo plano)", "Mouse sem aceleração · rede sem economia de energia · sem Network Throttling nem Nagle", "Sem Teclas de Aderência · o jogo não abaixa em chamadas · sem P2P do Windows Update", "Jogos: Máximo FPS, sem limite de FPS (opcional)"],
     ops: [
       op("p_gamemode", "Game Mode de Windows", GAMEBAR, "AutoGameModeEnabled", 1, "Perfil Competitivo"),
       op("p_gamedvr", "Game DVR OFF", GAMECFG, "GameDVR_Enabled", 0, "Perfil Competitivo"),
@@ -67,16 +78,16 @@ export const PROFILES: Profile[] = [
       op("p_transp", "Transparencia OFF", PERSONALIZE, "EnableTransparency", 0, "Perfil Competitivo"),
     ],
     planScript: PLAN_MAX, planLabel: "Máximo rendimiento", planLabelEn: "Maximum performance", planLabelPt: "Desempenho máximo",
-    gmPro: true, games: { preset: "low", fps: "max" },
+    gmPro: true, games: { preset: "low", fps: "max" }, tweaks: PROFILE_TWEAKS.competitivo,
   },
   {
     id: "streaming", name: "Streaming", nameEn: "Streaming", namePt: "Streaming", emoji: "🎥", color: "#3b9eff",
     desc: "Jugar + transmitir/grabar (OBS). Deja CPU para el encoder.",
     descEn: "Play + stream/record (OBS). Leaves CPU for the encoder.",
     descPt: "Jogar + transmitir/gravar (OBS). Deixa CPU para o encoder.",
-    bullets: ["Plan de energía máximo", "Game Mode ON · Game DVR OFF (grabás con OBS)", "GPU Scheduling (HAGS)", "Reserva un poco de CPU para el encoder", "Auto Game-Mode: Lite (no frena al OBS)", "Juegos: Equilibrado (opcional)"],
-    bulletsEn: ["Max power plan", "Game Mode ON · Game DVR OFF (record with OBS)", "GPU Scheduling (HAGS)", "Reserves some CPU for the encoder", "Auto Game-Mode: Lite (doesn't slow OBS down)", "Games: Balanced (optional)"],
-    bulletsPt: ["Plano de energia máximo", "Game Mode ON · Game DVR OFF (grave com o OBS)", "GPU Scheduling (HAGS)", "Reserva um pouco de CPU para o encoder", "Auto Game-Mode: Lite (não atrapalha o OBS)", "Jogos: Equilibrado (opcional)"],
+    bullets: ["Plan de energía máximo", "Game Mode ON · Game DVR OFF (grabás con OBS)", "GPU Scheduling (HAGS)", "Reserva un poco de CPU para el encoder", "Auto Game-Mode: Lite (no frena al OBS)", "Red sin ahorro de energía ni Network Throttling · sin P2P de Windows Update (más subida libre)", "Sin Sticky Keys · no baja el juego en llamadas", "Juegos: Equilibrado (opcional)"],
+    bulletsEn: ["Max power plan", "Game Mode ON · Game DVR OFF (record with OBS)", "GPU Scheduling (HAGS)", "Reserves some CPU for the encoder", "Auto Game-Mode: Lite (doesn't slow OBS down)", "No network power saving or Network Throttling · no Windows Update P2P (more free upload)", "No Sticky Keys · game volume not lowered on calls", "Games: Balanced (optional)"],
+    bulletsPt: ["Plano de energia máximo", "Game Mode ON · Game DVR OFF (grave com o OBS)", "GPU Scheduling (HAGS)", "Reserva um pouco de CPU para o encoder", "Auto Game-Mode: Lite (não atrapalha o OBS)", "Rede sem economia de energia nem Network Throttling · sem P2P do Windows Update (mais upload livre)", "Sem Teclas de Aderência · o jogo não abaixa em chamadas", "Jogos: Equilibrado (opcional)"],
     ops: [
       op("p_gamemode", "Game Mode de Windows", GAMEBAR, "AutoGameModeEnabled", 1, "Perfil Streaming"),
       op("p_gamedvr", "Game DVR OFF", GAMECFG, "GameDVR_Enabled", 0, "Perfil Streaming"),
@@ -84,7 +95,7 @@ export const PROFILES: Profile[] = [
       op("p_sysresp10", "SystemResponsiveness = 10", SYSP, "SystemResponsiveness", 10, "Perfil Streaming"),
     ],
     planScript: PLAN_MAX, planLabel: "Máximo rendimiento", planLabelEn: "Maximum performance", planLabelPt: "Desempenho máximo",
-    gmPro: false, games: { preset: "mid" },
+    gmPro: false, games: { preset: "mid" }, tweaks: PROFILE_TWEAKS.streaming,
   },
   {
     id: "equilibrado", name: "Equilibrado", nameEn: "Balanced", namePt: "Equilibrado", emoji: "⚖️", color: "#c8c8cc",
@@ -106,14 +117,14 @@ export const PROFILES: Profile[] = [
     desc: "Notebook o PC encendida todo el día. Menos consumo y calor.",
     descEn: "Laptop or PC on all day. Less power and heat.",
     descPt: "Notebook ou PC ligado o dia todo. Menos consumo e calor.",
-    bullets: ["Plan de ahorro de energía", "SystemResponsiveness = 20 (default)", "Sin transparencias (ahorra GPU)", "Auto Game-Mode: Lite", "Juegos: Máximo FPS + límite de 60 FPS (opcional): menos consumo y calor"],
-    bulletsEn: ["Power-saver plan", "SystemResponsiveness = 20 (default)", "No transparency (saves GPU)", "Auto Game-Mode: Lite", "Games: Max FPS + 60 FPS limit (optional): less power and heat"],
-    bulletsPt: ["Plano de economia de energia", "SystemResponsiveness = 20 (padrão)", "Sem transparências (economiza GPU)", "Auto Game-Mode: Lite", "Jogos: Máximo FPS + limite de 60 FPS (opcional): menos consumo e calor"],
+    bullets: ["Plan de ahorro de energía", "SystemResponsiveness = 20 (default)", "Sin transparencias (ahorra GPU)", "Auto Game-Mode: Lite", "Sin apps en segundo plano · Edge y Chrome no quedan abiertos · sin P2P de Windows Update", "Juegos: Máximo FPS + límite de 60 FPS (opcional): menos consumo y calor"],
+    bulletsEn: ["Power-saver plan", "SystemResponsiveness = 20 (default)", "No transparency (saves GPU)", "Auto Game-Mode: Lite", "No background apps · Edge and Chrome don't stay open · no Windows Update P2P", "Games: Max FPS + 60 FPS limit (optional): less power and heat"],
+    bulletsPt: ["Plano de economia de energia", "SystemResponsiveness = 20 (padrão)", "Sem transparências (economiza GPU)", "Auto Game-Mode: Lite", "Sem apps em segundo plano · Edge e Chrome não ficam abertos · sem P2P do Windows Update", "Jogos: Máximo FPS + limite de 60 FPS (opcional): menos consumo e calor"],
     ops: [
       op("p_sysresp20", "SystemResponsiveness = 20 (default)", SYSP, "SystemResponsiveness", 20, "Perfil Ahorro"),
       op("p_transp", "Transparencia OFF", PERSONALIZE, "EnableTransparency", 0, "Perfil Ahorro"),
     ],
     planScript: PLAN_SAVE, planLabel: "Ahorro de energía", planLabelEn: "Power saver", planLabelPt: "Economia de energia",
-    gmPro: false, games: { preset: "low", fps: "60" },
+    gmPro: false, games: { preset: "low", fps: "60" }, tweaks: PROFILE_TWEAKS.ahorro,
   },
 ];

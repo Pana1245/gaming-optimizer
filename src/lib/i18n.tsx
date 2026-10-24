@@ -140,7 +140,7 @@ const STR: Record<string, { es: string; en: string }> = {
   "page.panel.title": { es: "Panel", en: "Dashboard" },
   "page.panel.sub": { es: "Estado de tu PC de un vistazo: optimización, temperaturas y memoria.", en: "Your PC at a glance: optimization, temperatures and memory." },
   "page.profiles.title": { es: "Perfiles", en: "Profiles" },
-  "page.profiles.sub": { es: "Configuraciones completas con un clic. Todo queda reversible en el Motor.", en: "Full setups in one click. Everything stays reversible in the Engine." },
+  "page.profiles.sub": { es: "Configuraciones completas con un clic. Todo se deshace: los ajustes de Windows en el Motor y las optimizaciones en Restaurar.", en: "Full setups in one click. Everything can be undone: Windows settings in the Engine and optimizations in Restore." },
   "page.network.title": { es: "Red", en: "Network" },
   "page.network.sub": { es: "Medí tu conexión para jugar y cambiá a un DNS más rápido.", en: "Test your connection for gaming and switch to a faster DNS." },
   "page.gpu.title": { es: "Gráficos", en: "Graphics" },
@@ -512,7 +512,7 @@ const STR: Record<string, { es: string; en: string }> = {
   "tools.unlock.killErr": { es: "No pude cerrar el proceso:", en: "Couldn't kill the process:" },
 
   // ── Perfiles ──
-  "profiles.logIntro": { es: "Elegí un perfil y aplicalo con un clic. Todo queda reversible en el Motor → Historial.", en: "Pick a profile and apply it in one click. Everything stays reversible in Engine → History." },
+  "profiles.logIntro": { es: "Elegí un perfil y aplicalo con un clic. Los ajustes de Windows se deshacen en Motor → Historial y las optimizaciones en Restaurar.", en: "Pick a profile and apply it in one click. Windows settings are undone in Engine → History and optimizations in Restore." },
   "profiles.active": { es: "ACTIVO", en: "ACTIVE" },
   "profiles.applying": { es: "Aplicando…", en: "Applying…" },
   "profiles.activeBtn": { es: "✓ Activo", en: "✓ Active" },
@@ -523,6 +523,9 @@ const STR: Record<string, { es: string; en: string }> = {
   "profiles.gameSame": { es: "(ya estaba)", en: "(already set)" },
   "profiles.gameOpen": { es: "está abierto: cerralo y aplicá de nuevo", en: "is running: close it and apply again" },
   "profiles.gameFail": { es: "no se pudieron guardar sus opciones", en: "its options couldn't be saved" },
+  "profiles.optBackup": { es: "Optimizaciones: creando respaldo y punto de restauración (como en Optimizaciones)…", en: "Optimizations: creating a backup and restore point (same as Optimizations)…" },
+  "profiles.optNoBackup": { es: "No se pudo crear el respaldo: no se aplicó ninguna optimización.", en: "The backup couldn't be created: no optimization was applied." },
+  "profiles.optUndo": { es: "Las optimizaciones se deshacen en Restaurar.", en: "Optimizations are undone in Restore." },
   "profiles.verified": { es: "cambios verificados. Reversible desde Motor → Historial.", en: "changes verified. Reversible from Engine → History." },
   "profiles.applyErr": { es: "Error al aplicar el perfil:", en: "Error applying the profile:" },
   "profiles.notifyPre": { es: "Perfil", en: "Profile" },
