@@ -24,7 +24,10 @@ const s = (group: SvcGroup, rec: boolean, services: string | string[], name: str
 };
 
 export const SVCS: Svc[] = [
-  s("perf", true, "SysMain", "SysMain (Superfetch)", "SysMain (Superfetch)", "SysMain (Superfetch)"),
+  // SysMain precarga lo que más usás (juegos incluidos): sólo se recomienda apagarlo en PCs con
+  // Windows en HDD y ≤ 8 GB de RAM, donde puede dejar el disco al 100% (SvcPicker, LOWEND).
+  s("perf", false, "SysMain", "SysMain (Superfetch)", "SysMain (Superfetch)", "SysMain (Superfetch)",
+    "la precarga de programas: juegos y apps tardan más en abrir", "app preloading: games and apps take longer to open", "o pré-carregamento: jogos e apps demoram mais para abrir"),
   s("perf", false, "WSearch", "Windows Search (indexado)", "Windows Search (indexing)", "Windows Search (indexação)",
     "la búsqueda del Inicio y del Explorador se vuelve lenta", "Start and File Explorer search gets slow", "a pesquisa do Iniciar e do Explorador fica lenta"),
   s("perf", true, "WerSvc", "Informe de errores de Windows", "Windows Error Reporting", "Relatório de Erros do Windows"),
@@ -67,4 +70,11 @@ if($bad.Count -gt 0){ exit 1 }`;
 export const SVCS_STATE = String.raw`foreach($n in ${psList(SVC_BACKUP_NAMES)}){
   $sv=Get-Service -Name $n -EA SilentlyContinue
   if($sv){ "$n=$($sv.StartType)" } else { "$n=NONE" }
-}`;
+}
+# LOWEND=1: Windows en HDD y <= 8 GB de RAM (ahí sí conviene apagar SysMain).
+try{
+  $dn=(Get-Partition -DriveLetter $env:SystemDrive[0] -EA Stop | Get-Disk -EA Stop).Number
+  $hdd="$((Get-PhysicalDisk -EA Stop | Where-Object { $_.DeviceId -eq "$dn" }).MediaType)" -eq 'HDD'
+  $ram=(Get-CimInstance Win32_ComputerSystem -EA Stop).TotalPhysicalMemory
+  "LOWEND=$([int]($hdd -and $ram -le 8.5GB))"
+}catch{ "LOWEND=0" }`;

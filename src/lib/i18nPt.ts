@@ -829,7 +829,7 @@ export const PT: Record<string, string> = {
   "svc.group.features": "Recursos que quase ninguém usa",
   "svc.group.gaming": "Gaming",
   "svc.disabled": "Já desativado",
-  "svc.hint": "“Recomendados” só marca serviços que um jogador típico não usa (SysMain, Registro Remoto, Fax, Relatório de Erros…). Nunca marca Pesquisa, impressão, localização nem Xbox: eles dizem o que quebram. Só aparecem os que existem no seu Windows. Restaurar os traz de volta.",
+  "svc.hint": "“Recomendados” só marca serviços que um jogador típico não usa (Registro Remoto, Fax, Relatório de Erros…). SysMain só em PCs com o Windows em HD e 8 GB de RAM ou menos. Nunca marca Pesquisa, impressão, localização nem Xbox: eles dizem o que quebram. Só aparecem os que existem no seu Windows. Restaurar os traz de volta.",
   "gml.planFail": "✗ O Windows não deixou mudar o plano de energia (o app foi aberto como administrador?)",
   "gml.error": "✗ Erro no Modo Gamer: {e}",
   "drv.openFail": "Não foi possível abrir o navegador. Copie o link:",

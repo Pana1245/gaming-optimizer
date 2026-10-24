@@ -43,7 +43,7 @@ export default function SvcPicker({ selected, onChange }: { selected: string[]; 
     id: g,
     label: t(`svc.group.${g}`),
     items: SVCS.filter((x) => x.group === g && exists(x)).map((x) => ({
-      id: x.id, label: pick(lang, x.name, x.nameEn, x.namePt), rec: x.rec,
+      id: x.id, label: pick(lang, x.name, x.nameEn, x.namePt), rec: x.rec || (x.id === "SysMain" && state?.LOWEND === "1"),
       sub: x.warn ? `${t("perms.breaks")} ${pick(lang, x.warn, x.warnEn, x.warnPt)}` : undefined,
       badge: disabled(x) ? <Badge>{t("svc.disabled")}</Badge> : undefined,
     })),
