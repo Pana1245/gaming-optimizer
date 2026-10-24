@@ -18,7 +18,7 @@ function WinSettings({ g, onClose }: { g: Game; onClose: () => void }) {
   const { t } = useI18n();
   const [st, setSt] = useState<GameWin | null>(null);
   const [busy, setBusy] = useState(false);
-  useEffect(() => { readGameWin(g.exePath!).then(setSt).catch(() => setSt({ gpu: false, fso: false })); }, [g.exePath]);
+  useEffect(() => { if (g.exePath) readGameWin(g.exePath).then(setSt).catch(() => setSt({ gpu: false, fso: false })); }, [g.exePath]);
   const flip = async (what: keyof GameWin) => {
     if (!st) return;
     setBusy(true);
@@ -39,9 +39,12 @@ function WinSettings({ g, onClose }: { g: Game; onClose: () => void }) {
   return (
     <Modal open wide={!!adapter} title={`${t("lib.win.title")} — ${g.name}`} onClose={onClose}>
       <div className="whitespace-normal">
-        <div className="text-[11px] uppercase tracking-wider text-text-mute mb-1">Windows</div>
-        <div className="divide-y divide-line">{row("gpu")}{row("fso")}</div>
-        <p className="text-[11.5px] text-text-mute mt-2">{t("lib.win.note")}</p>
+        {/* Los ajustes de Windows van por .exe: sin .exe encontrado sólo quedan las opciones del juego. */}
+        {g.exePath && <>
+          <div className="text-[11px] uppercase tracking-wider text-text-mute mb-1">Windows</div>
+          <div className="divide-y divide-line">{row("gpu")}{row("fso")}</div>
+          <p className="text-[11.5px] text-text-mute mt-2">{t("lib.win.note")}</p>
+        </>}
         {adapter && <GameOptions a={adapter} game={g.name} />}
       </div>
     </Modal>
@@ -229,7 +232,7 @@ export default function Biblioteca() {
                     )}
                     <div className="flex gap-1.5 mt-auto">
                       <button onClick={() => play(g)} className="btn btn-primary h-8 flex-1 text-[12.5px]">{t("lib.play")}</button>
-                      {g.exePath && (
+                      {(g.exePath || gameAdapter(g)) && (
                         <button onClick={() => setWinFor(g)} title={t("lib.win.title")} aria-label={`${t("lib.win.title")}: ${g.name}`}
                           className="btn btn-ghost h-8 w-9 px-0 text-[15px]">⚙</button>
                       )}

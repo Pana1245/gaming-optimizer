@@ -34,6 +34,7 @@ const KNOWN_EXE: Record<string, string> = {
   "steam:578080": String.raw`TslGame\Binaries\Win64\TslGame.exe`,
   "steam:1172470": String.raw`r5apex.exe`,
   "steam:570": String.raw`game\bin\win64\dota2.exe`,
+  "steam:3393110": String.raw`Aion2\Binaries\Win64\AION2.exe`,
   "epic:Fortnite": String.raw`FortniteGame\Binaries\Win64\FortniteClient-Win64-Shipping.exe`,
   "riot:valorant": String.raw`ShooterGame\Binaries\Win64\VALORANT-Win64-Shipping.exe`,
   "riot:league_of_legends": String.raw`Game\League of Legends.exe`,
@@ -59,6 +60,9 @@ function SteamCover($lc,$a){
 }
 function BestExe($dir,$hint){
   $c=@(Get-ChildItem -LiteralPath $dir -Filter *.exe -Recurse -Depth 2 -EA SilentlyContinue | Where-Object { $_.Name -notmatch $skipExe })
+  # Unreal Engine: el juego está en <Juego>\Binaries\Win64, un nivel más abajo de lo que se mira.
+  # (rutas literales, sin comodines: una carpeta con [ ] en el nombre rompía el patrón).
+  if(-not $c.Count){ $c=@(Get-ChildItem -LiteralPath $dir -Directory -EA SilentlyContinue | ForEach-Object { Get-ChildItem -LiteralPath (Join-Path $_.FullName 'Binaries\Win64') -Filter *.exe -EA SilentlyContinue } | Where-Object { $_.Name -notmatch $skipExe }) }
   $key=($hint -replace '[^a-zA-Z0-9]','').ToLower()
   $m=$c | Where-Object { $k=($_.BaseName -replace '[^a-zA-Z0-9]','').ToLower(); $k.Length -gt 2 -and $key -and ($k -like "*$key*" -or $key -like "*$k*") } | Sort-Object Length -Descending | Select-Object -First 1
   if(-not $m){ $m=$c | Sort-Object Length -Descending | Select-Object -First 1 }
