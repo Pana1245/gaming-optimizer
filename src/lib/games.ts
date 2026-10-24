@@ -74,14 +74,19 @@ try{
     }
   }
 }catch{}
-# EPIC: manifiestos .item
+# EPIC: manifiestos .item (y Pending\: ahí queda el de un juego instalado con una actualización a medias)
 try{
-  foreach($f in @(Get-ChildItem -LiteralPath "$env:ProgramData\Epic\EpicGamesLauncher\Data\Manifests" -Filter *.item -EA SilentlyContinue)){
+  $md="$env:ProgramData\Epic\EpicGamesLauncher\Data\Manifests"; $seen=@{}
+  foreach($f in @(Get-ChildItem -LiteralPath $md -Filter *.item -EA SilentlyContinue) + @(Get-ChildItem -LiteralPath "$md\Pending" -Filter *.item -EA SilentlyContinue)){
     try{
       $j=Get-Content -LiteralPath $f.FullName -Raw -Encoding UTF8 | ConvertFrom-Json
-      if(-not $j.DisplayName -or -not $j.AppName -or -not $j.InstallLocation -or $j.bIsIncompleteInstall){ continue }
+      if(-not $j.DisplayName -or -not $j.AppName -or -not $j.InstallLocation){ continue }
       $id="epic:$($j.AppName)"
+      if($seen[$id]){ continue }
       $exe=if($known[$id]){ Join-Path $j.InstallLocation $known[$id] } elseif($j.LaunchExecutable){ Join-Path $j.InstallLocation $j.LaunchExecutable }
+      # Incompleto: sólo si el juego ya está en el disco (actualizando), no una descarga a medias.
+      if($j.bIsIncompleteInstall -and -not ($exe -and (Test-Path -LiteralPath $exe -PathType Leaf))){ continue }
+      $seen[$id]=1
       $uri='com.epicgames.launcher://apps/' + [uri]::EscapeDataString("$($j.CatalogNamespace):$($j.CatalogItemId):$($j.AppName)") + '?action=launch&silent=true'
       Add $id $j.DisplayName 'Epic' $j.InstallLocation $exe $uri '' $null
     }catch{}

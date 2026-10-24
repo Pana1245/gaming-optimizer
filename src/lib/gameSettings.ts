@@ -335,7 +335,7 @@ export const VALORANT: GameAdapter<Val> = {
 // (las demás repiten las claves para celulares, editor…). Probado en esta PC: el juego respeta
 // el cambio del archivo. FPS, suavizado, intensidad de efectos, clima, rayos de luz y resplandor
 // de lente van en el perfil (binario; el juego pisa el .ini al abrir): no se tocan.
-export interface Rl { text: string; running: boolean; hasBackup: boolean }
+export interface IniFile { text: string; running: boolean; hasBackup: boolean }
 const RL_SEC = "SystemSettings";
 const TF: [string, string][] = [["True", "lib.q.on"], ["False", "lib.q.off"]];
 const RL_FX = ["bAllowHighQualityMaterials", "AmbientOcclusion", "DepthOfField", "Bloom", "DynamicShadows", "MotionBlur"];
@@ -376,20 +376,71 @@ const RL_LOCATE = String.raw`$dir=Join-Path ([Environment]::GetFolderPath('MyDoc
 if(-not (Test-Path -LiteralPath "$dir\TASystemSettings.ini")){ exit 0 }`;
 const RL_PROCS = ["RocketLeague"];
 
-export async function rlLoad(): Promise<Rl | null> {
-  const r = await runPowershell(RL_LOCATE + String.raw`
-$f="$dir\TASystemSettings.ini"
-[pscustomobject]@{ text=[IO.File]::ReadAllText($f, (New-Object System.Text.UTF8Encoding $false)); running=[bool](Get-Process ${RL_PROCS.map(psq).join(",")} -EA SilentlyContinue)
+/** Lee un archivo de opciones de $dir (`locate` sale sin nada si no existe). */
+async function loadIni(locate: string, procs: string[], name: string): Promise<IniFile | null> {
+  const r = await runPowershell(locate + String.raw`
+$f=Join-Path $dir ${psq(name)}
+[pscustomobject]@{ text=[IO.File]::ReadAllText($f, (New-Object System.Text.UTF8Encoding $false)); running=[bool](Get-Process ${procs.map(psq).join(",")} -EA SilentlyContinue)
   hasBackup=(Test-Path -LiteralPath "$f.gobak") } | ConvertTo-Json -Compress`);
   const j = lastJson(r.output);
   return j && typeof j.text === "string" && j.text ? j : null;
 }
 
-export const ROCKET_LEAGUE: GameAdapter<Rl> = {
+export const ROCKET_LEAGUE: GameAdapter<IniFile> = {
   id: "rl", fields: RL_FIELDS, presets: RL_PRESETS,
-  load: async () => { const c = await rlLoad(); return c && { who: "", running: c.running, nvidia: false, hasBackup: c.hasBackup, values: rlRead(c.text), raw: c }; },
+  load: async () => { const c = await loadIni(RL_LOCATE, RL_PROCS, "TASystemSettings.ini"); return c && { who: "", running: c.running, nvidia: false, hasBackup: c.hasBackup, values: rlRead(c.text), raw: c }; },
   save: (c, v) => saveFiles(RL_LOCATE, RL_PROCS, [["TASystemSettings.ini", c.text, rlApply(c.text, v)]]),
   restore: () => restoreFiles(RL_LOCATE, RL_PROCS, ["TASystemSettings.ini"]),
+};
+
+// ---- Fortnite ----
+// GameUserSettings.ini (%LOCALAPPDATA%\FortniteGame): opciones en FortGameUserSettings y calidades
+// en [ScalabilityGroups] (0 Bajo … 3 Épico). El modo de renderizado (Rendimiento/DX11/DX12) y el
+// escalado (DLSS/TSR) no se ofrecen: cambian varias claves a la vez y recompilan sombreadores.
+const FN_SEC = "/Script/FortniteGame.FortGameUserSettings", FN_SG = "ScalabilityGroups";
+const FN_TF = ["bUseVSync", "bMotionBlur", "bShowGrass"];
+const FN_Q = ["sg.ViewDistanceQuality", "sg.TextureQuality", "sg.EffectsQuality", "sg.PostProcessQuality", "sg.ShadowQuality"];
+const FN_MODES = ["FullscreenMode", "LastConfirmedFullscreenMode", "PreferredFullscreenMode"];
+export const FN_FIELDS: Field[] = [
+  // displaymode: 0 pantalla completa, 1 ventana sin bordes, 2 ventana (las tres claves juntas).
+  { key: "displaymode", opts: [["0", "lib.cs2.full"], ["1", "lib.cs2.borderless"], ["2", "lib.cs2.window"]] },
+  { key: "FrameRateLimit", opts: [["0", "lib.go.noLimit"], ...["60", "120", "144", "165", "240", "360"].map((x): [string, string] => [x, x])] },
+  ...FN_TF.map((key): Field => ({ key, opts: TF })),
+  ...FN_Q.map((key): Field => ({ key, opts: [...Q4.slice(0, 3), ["3", "lib.fn.epic"]] })),
+];
+const FN_PRESETS = presets(["bMotionBlur", "bShowGrass", ...FN_Q],
+  ["False", "False", "1", "0", "0", "0", "0"],   // Máximo FPS
+  ["False", "True", "2", "2", "1", "1", "1"],    // Equilibrado
+  ["True", "True", "3", "3", "3", "3", "3"],     // Calidad
+);
+
+export function fnRead(text: string): Values {
+  const v: Values = {};
+  for (const k of FN_TF) { const x = tf(iniGet(text, k, FN_SEC)); if (x !== undefined) v[k] = x; }
+  for (const k of FN_Q) { const x = iniGet(text, k, FN_SG); if (x !== undefined) v[k] = x; }
+  const m = iniGet(text, "FullscreenMode", FN_SEC); if (m !== undefined) v.displaymode = m;
+  const fps = Number(iniGet(text, "FrameRateLimit", FN_SEC) ?? "0");
+  v.FrameRateLimit = String(Number.isFinite(fps) ? Math.round(fps) : 0);
+  return v;
+}
+export function fnApply(text: string, v: Values): string {
+  for (const [k, val] of Object.entries(v)) {
+    if (k === "displaymode") { for (const m of FN_MODES) text = iniSet(text, m, val, FN_SEC); continue; }
+    if (k === "FrameRateLimit") { text = iniSet(text, k, `${val}.000000`, FN_SEC); continue; }
+    text = iniSet(text, k, val, k.startsWith("sg.") ? FN_SG : FN_SEC);
+  }
+  return text;
+}
+
+const FN_LOCATE = String.raw`$dir=Join-Path $env:LOCALAPPDATA 'FortniteGame\Saved\Config\WindowsClient'
+if(-not (Test-Path -LiteralPath "$dir\GameUserSettings.ini")){ exit 0 }`;
+const FN_PROCS = ["FortniteClient-Win64-Shipping", "FortniteClient-Win64-Shipping_EAC_EOS", "FortniteClient-Win64-Shipping_BE", "FortniteLauncher"];
+
+export const FORTNITE: GameAdapter<IniFile> = {
+  id: "fn", fields: FN_FIELDS, presets: FN_PRESETS,
+  load: async () => { const c = await loadIni(FN_LOCATE, FN_PROCS, "GameUserSettings.ini"); return c && { who: "", running: c.running, nvidia: false, hasBackup: c.hasBackup, values: fnRead(c.text), raw: c }; },
+  save: (c, v) => saveFiles(FN_LOCATE, FN_PROCS, [["GameUserSettings.ini", c.text, fnApply(c.text, v)]]),
+  restore: () => restoreFiles(FN_LOCATE, FN_PROCS, ["GameUserSettings.ini"]),
 };
 
 /** Módulo de opciones del juego, si está soportado. */
@@ -397,5 +448,6 @@ export function gameAdapter(g: { id: string; appId?: string }): GameAdapter | nu
   if (g.appId === "730") return CS2 as GameAdapter;
   if (g.id === "riot:valorant") return VALORANT as GameAdapter;
   if (g.appId === "252950" || g.id === "epic:Sugar") return ROCKET_LEAGUE as GameAdapter;
+  if (g.id === "epic:Fortnite") return FORTNITE as GameAdapter;
   return null;
 }
