@@ -21,6 +21,8 @@ import Modal from "../components/Modal";
 import { useI18n, pick } from "../lib/i18n";
 import { trLog } from "../lib/logI18n";
 import { SECURE_BACKUP_ROOT } from "../lib/backupAcl";
+import { loadApplied, markApplied } from "../lib/appliedTweaks";
+import { PROFILES } from "../profiles";
 
 // Categorías base + tweaks nuevos fusionados por id + categorías extra (WinUtil)
 export const ALL_CATEGORIES = [
@@ -247,6 +249,14 @@ export default function Optimizaciones() {
   const [progress, setProgress] = useSharedState("opt.progress", () => 0);
   const [running, setRunning] = useSharedState("opt.running", () => false);
   const [confirm, setConfirm] = useState(false);
+  // Lo ya aplicado (desde acá o desde un perfil): etiqueta "✓ Aplicado" en la fila.
+  const [applied, setApplied] = useState(loadApplied);
+  const appliedOf = (name: string) => {
+    const from = applied[name];
+    if (!from) return undefined;
+    const p = PROFILES.find((x) => x.id === from);
+    return { label: t("opt.applied"), title: p ? t("opt.appliedProfile").replace("{p}", pick(lang, p.name, p.nameEn, p.namePt)) : t("opt.appliedHere") };
+  };
   const [done, setDone] = useSharedState<string | null>("opt.done", () => null);
   const [canReboot, setCanReboot] = useSharedState("opt.canReboot", () => false);
   const [openMenu, setOpenMenu] = useState<Partial<Record<PickerKey, boolean>>>({});
@@ -346,11 +356,12 @@ export default function Optimizaciones() {
       const r = await runPowershell(scriptOf(list[i], picks));
       // Si el usuario cambió de sección, se SIGUE aplicando: cortar acá dejaba la
       // lista a medias sin avisar (los setState sobre la página desmontada no hacen nada).
-      if (r.ok) ok++;
+      if (r.ok) { ok++; markApplied(list[i].name, "opt"); }
       addLog(`  ${r.ok ? "✓" : "✗"} ${(r.output.split("\n")[0] || "OK").trim()}`);
       setProgress((i + 1) / list.length);
     }
     addLog(t("opt.completedLog").replace("{ok}", String(ok)).replace("{total}", String(list.length)));
+    setApplied(loadApplied());
     setRunning(false);
     setCanReboot(true);
     notify(t("opt.notifyTitle"), t("opt.appliedShort").replace("{ok}", String(ok)).replace("{total}", String(list.length)));
@@ -399,6 +410,7 @@ export default function Optimizaciones() {
                       label={tn(tw.name)}
                       badge={tw.os ? `W${tw.os}` : undefined}
                       risk={tw.risk === "advanced" || ADVANCED.has(tw.name) ? "advanced" : "safe"}
+                      applied={appliedOf(tw.name)}
                       desc={td(tw.name)}
                       checked={!!sel[selKey(c.id, tw)]}
                       onChange={(v) => {

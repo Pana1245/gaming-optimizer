@@ -6,6 +6,7 @@ import { Spinner, IndeterminateBar } from "../components/Feedback";
 import { useI18n } from "../lib/i18n";
 import { trLog } from "../lib/logI18n";
 import { SECURE_BACKUP_ROOT } from "../lib/backupAcl";
+import { clearApplied } from "../lib/appliedTweaks";
 
 const b64utf8 = (s: string) => btoa(String.fromCharCode(...new TextEncoder().encode(s || "")));
 
@@ -270,6 +271,8 @@ export default function RestaurarPage() {
     addLog(`▸ ${title}`);
     const r = await runPowershell(restoreScript(name));
     r.output.split("\n").forEach((l) => l.trim() && addLog("  " + l.trim()));
+    // Volvió al respaldo original: ninguna optimización queda "aplicada" en Optimizaciones.
+    if (r.ok) clearApplied();
     setBusy(false);
     loadBackups();
   };

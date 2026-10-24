@@ -13,11 +13,13 @@ interface Props {
   desc?: string;
   /** Control extra a la derecha (ej. el botón del menú de bloatware); su clic no toca la casilla. */
   action?: ReactNode;
+  /** Ya aplicado: texto de la etiqueta y de dónde vino (se ve al pasar el mouse). */
+  applied?: { label: string; title: string };
 }
 
 /** Fila con casilla (Optimizaciones, Motor, Gráficos, Limpieza): nombre, etiquetas
  *  (W11 / Avanzado) y un "?" con la explicación del tweak. */
-export default function EnergyCheckbox({ checked, onChange, label, badge, risk, desc, action }: Props) {
+export default function EnergyCheckbox({ checked, onChange, label, badge, risk, desc, action, applied }: Props) {
   const { t } = useI18n();
   return (
     <div
@@ -43,6 +45,7 @@ export default function EnergyCheckbox({ checked, onChange, label, badge, risk, 
       )}
       <span className="ml-auto flex items-center gap-1.5 shrink-0">
         {action && <span onClick={(e) => e.stopPropagation()}>{action}</span>}
+        {applied && <span title={applied.title}><Badge tone="ok">✓ {applied.label}</Badge></span>}
         {badge && <Badge>{badge}</Badge>}
         {risk === "advanced" && <Badge tone="warn">{t("common.advancedBadge")}</Badge>}
       </span>
