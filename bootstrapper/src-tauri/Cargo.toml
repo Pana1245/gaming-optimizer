@@ -1,6 +1,6 @@
 [package]
 name = "go-installer"
-version = "2.7.0"
+version = "2.7.1"
 description = "Gaming Optimizer Installer"
 edition = "2021"
 
