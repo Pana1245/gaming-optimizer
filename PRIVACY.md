@@ -30,8 +30,10 @@ The app connects to the internet only for these explicit, user-facing features:
 - **Game library** — Steam covers come from the copy Steam already keeps on your PC; if it
   isn't there, from Steam's public image server (`cdn.cloudflare.steamstatic.com`). Epic covers
   are loaded from Epic's public image server (`cdn1.epicgames.com`), using the address in the
-  catalog the Epic launcher keeps on your PC. Those servers receive the image requested and your
-  IP address, like any image on a web page. Game detection only reads your launchers' local files.
+  catalog the Epic launcher keeps on your PC. For VALORANT, League of Legends and Minecraft, the
+  official poster comes from Microsoft's public Store catalog (`displaycatalog.mp.microsoft.com`
+  and `store-images.s-microsoft.com`), which receives those games' public Store IDs. Those servers
+  receive the image requested and your IP address, like any image on a web page. Game detection only reads your launchers' local files.
 - **Drivers** — to find the latest driver for your graphics card or motherboard, the app queries
   the manufacturer's public support service (NVIDIA `gfwsl.geforce.com` / `www.nvidia.com`,
   ASUS `www.asus.com`) with your hardware model (e.g. "RTX 3070", the board name). "Open support

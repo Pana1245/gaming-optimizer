@@ -159,14 +159,34 @@ foreach($p in @(${paths.map((p) => `'${p.replace(/'/g, "''")}'`).join(",")})){
 }
 $out | ConvertTo-Json -Compress`;
 
+// Juegos sin portada local que están en la Microsoft Store: su póster oficial (catálogo público).
+const STORE_IDS: Record<string, string> = {
+  "riot:valorant": "9NKCCHCFTHV2", "riot:league_of_legends": "9PB301R051CQ",
+  "store:minecraft": "9NBLGGH2JHXJ", "store:minecraft-launcher": "9PGW18NPBZV5",
+};
+const POSTERS = (ids: string[]) => String.raw`$out=@{}
+try{
+  $j=Invoke-RestMethod 'https://displaycatalog.mp.microsoft.com/v7.0/products?bigIds=${ids.join(",")}&market=US&languages=en-US' -TimeoutSec 8
+  foreach($p in $j.Products){
+    $po=$p.LocalizedProperties[0].Images | Where-Object { $_.ImagePurpose -eq 'Poster' } | Select-Object -First 1
+    if($po.Uri -match '^//store-images\.s-microsoft\.com/image/[\w.-]+$'){ $out[$p.ProductId]='https:' + $po.Uri + '?w=360&h=540' }
+  }
+}catch{}
+$out | ConvertTo-Json -Compress`;
+
 export async function scanGames(): Promise<Game[]> {
   const r = await runPowershell(SCAN);
   let list: Game[];
   try { list = JSON.parse(r.output.trim().split("\n").pop() || "[]"); } catch { list = []; }
   const seen = new Set<string>();
   list = list.filter((g) => g && g.id && !seen.has(g.id) && seen.add(g.id));
+  const ids = list.filter((g) => !g.cover && STORE_IDS[g.id]).map((g) => STORE_IDS[g.id]);
+  let posters: Record<string, string> = {};
+  if (ids.length) try { posters = JSON.parse((await runPowershell(POSTERS(ids))).output.trim().split("\n").pop() || "{}"); } catch { /* sin internet: queda el ícono */ }
+  for (const g of list) if (!g.cover && posters[STORE_IDS[g.id]]) g.cover = posters[STORE_IDS[g.id]];
+  // Íconos también para los que tienen portada de internet: si no carga, se ve el ícono.
   const src = (g: Game) => g.iconPath || g.exePath;
-  const m = await iconsFor(list.filter((g) => g.source !== "Steam" && !g.cover && src(g)).map((g) => src(g)!));
+  const m = await iconsFor(list.filter((g) => g.source !== "Steam" && src(g)).map((g) => src(g)!));
   for (const g of list) { const p = src(g); if (p && m[p]) g.icon = m[p]; }
   return list;
 }
