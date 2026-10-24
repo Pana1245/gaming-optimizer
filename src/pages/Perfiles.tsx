@@ -7,6 +7,8 @@ import { runPowershell } from "../lib/api";
 import { notify } from "../lib/notify";
 import { useI18n, pick } from "../lib/i18n";
 import { trLog } from "../lib/logI18n";
+import { useGameMode } from "../lib/gameMode";
+import { GAME_ADAPTERS, type Values } from "../lib/gameSettings";
 
 const Bolt = () => (
   <svg width="11" height="11" viewBox="0 0 24 24" fill="currentColor"><path d="M13 2 4.5 13.5H11l-1 8.5 8.5-11.5H12z" /></svg>
@@ -21,10 +23,31 @@ export default function Perfiles() {
   const [log, setLog] = useState<string[]>(() => [t("profiles.logIntro")]);
   const logRef = useRef<HTMLDivElement>(null);
   const busy = applyingId !== null;
+  const { setPro } = useGameMode();
+  // Cambiar las opciones de video de los juegos es opcional: cambia cómo se ven.
+  const [withGames, setWithGames] = useState(() => localStorage.getItem("profile_games") === "1");
+  const toggleGames = (v: boolean) => { localStorage.setItem("profile_games", v ? "1" : "0"); setWithGames(v); };
 
   const addLog = (s: string) => {
     setLog((l) => [...l, s]);
     queueMicrotask(() => logRef.current?.scrollTo(0, logRef.current.scrollHeight));
+  };
+
+  // Opciones de video de cada juego soportado que esté en esta PC (sin archivo = no instalado:
+  // se saltea). Con el juego abierto no se toca. Se deshace desde Biblioteca → ⚙.
+  const applyGames = async (g: NonNullable<Profile["games"]>) => {
+    for (const a of GAME_ADAPTERS) {
+      const c = await a.load().catch(() => null);
+      if (!c) continue;
+      const nvidia = (k: string) => c.nvidia || !a.fields.find((f) => f.key === k)?.nvidiaOnly;
+      const want: Values = { ...(g.preset && a.presets ? a.presets[g.preset] : {}), ...(g.fps && a.fpsKey ? { [a.fpsKey]: g.fps } : {}) };
+      const diff = Object.fromEntries(Object.entries(want).filter(([k, v]) => nvidia(k) && c.values[k] !== v));
+      if (!Object.keys(want).length) continue;
+      const what = [g.preset && a.presets ? t(`lib.go.preset.${g.preset}`) : "", g.fps && a.fpsKey ? `${g.fps} FPS` : ""].filter(Boolean).join(" · ");
+      if (!Object.keys(diff).length) { addLog(`✓ ${a.name}: ${what} ${t("profiles.gameSame")}`); continue; }
+      const r = c.running ? "running" : await a.save(c.raw, diff);
+      addLog(r === "ok" ? `✓ ${a.name}: ${what}` : `✗ ${a.name}: ${t(r === "running" ? "profiles.gameOpen" : "profiles.gameFail")}`);
+    }
   };
 
   const apply = async (p: Profile) => {
@@ -49,6 +72,9 @@ export default function Perfiles() {
       const planRes = await runPowershell(p.planScript);
       addLog(planRes.ok ? `✓ ${planOf(p)}` : `✗ ${planOf(p)} — ${t("profiles.planFail")}`);
       addLog(`${ok}/${p.ops.length} ${t("profiles.verified")}`);
+      setPro(p.gmPro);
+      addLog(`✓ Auto Game-Mode: ${p.gmPro ? "Power" : "Lite"}`);
+      if (withGames && p.games) await applyGames(p.games);
       // Sólo marcamos el perfil como activo si el plan de energía se aplicó de
       // verdad: si falló, no persistimos un "activo" cuyo plan nunca se aplicó.
       if (planRes.ok) {
@@ -123,6 +149,13 @@ export default function Perfiles() {
           );
         })}
       </div>
+
+      <label className="mt-3 shrink-0 flex items-start gap-2.5 cursor-pointer select-none">
+        <input type="checkbox" checked={withGames} onChange={(e) => toggleGames(e.target.checked)} disabled={busy} className="mt-[3px] shrink-0" style={{ accentColor: "var(--color-accent)" }} />
+        <span className="text-[12.5px] text-text-dim leading-snug">
+          {t("profiles.games")} <span className="text-text-mute">{t("profiles.gamesHint")}</span>
+        </span>
+      </label>
 
       {/* registro */}
       <div className="mt-4 shrink-0">

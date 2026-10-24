@@ -12,6 +12,8 @@ export interface Field { key: string; opts: [string, string][]; nvidiaOnly?: boo
 export interface GameCfg<R> { who: string; running: boolean; nvidia: boolean; hasBackup: boolean; values: Values; raw: R }
 export interface GameAdapter<R = unknown> {
   id: string;                        // prefijo de los textos: lib.<id>.f.<clave>
+  name: string;                      // para el registro de Perfiles
+  fpsKey?: string;                   // la opción de límite de FPS (Perfiles → Ahorro)
   fields: Field[];
   presets?: Record<Preset, Values>;  // sin presets (ej. AION 2: sólo el límite de FPS) no se muestran los botones
   load(): Promise<GameCfg<R> | null>;
@@ -220,7 +222,7 @@ export function cs2Save(c: Cs2, v: Values): Promise<SaveResult> {
 export const cs2Restore = (c: Cs2): Promise<SaveResult> => restoreFiles(cs2Same(c.account), ["cs2"], CS2_FILES);
 
 export const CS2: GameAdapter<Cs2> = {
-  id: "cs2", fields: CS2_FIELDS, presets: CS2_PRESETS,
+  id: "cs2", name: "Counter-Strike 2", fpsKey: "fps_max", fields: CS2_FIELDS, presets: CS2_PRESETS,
   load: async () => { const c = await cs2Load(); return c && { who: c.persona, running: c.running, nvidia: c.nvidia, hasBackup: c.hasBackup, values: cs2Read(c), raw: c }; },
   save: cs2Save, restore: cs2Restore,
 };
@@ -317,7 +319,7 @@ $g=Join-Path $best.FullName 'WindowsClient\GameUserSettings.ini'; $gr=Join-Path 
 }
 
 export const VALORANT: GameAdapter<Val> = {
-  id: "val", fields: VAL_FIELDS, presets: VAL_PRESETS,
+  id: "val", name: "VALORANT", fpsKey: "fpslimit", fields: VAL_FIELDS, presets: VAL_PRESETS,
   load: async () => { const c = await valLoad(); return c && { who: c.region.toUpperCase(), running: c.running, nvidia: c.nvidia, hasBackup: c.hasBackup, values: valRead(c.text, c.gus || c.gusRoot), raw: c }; },
   // Sólo los archivos que cambian (rutas relativas a <cuenta>\Windows).
   save: (c, v) => {
@@ -387,7 +389,7 @@ $f=Join-Path $dir ${psq(name)}
 }
 
 export const ROCKET_LEAGUE: GameAdapter<IniFile> = {
-  id: "rl", fields: RL_FIELDS, presets: RL_PRESETS,
+  id: "rl", name: "Rocket League", fields: RL_FIELDS, presets: RL_PRESETS,
   load: async () => { const c = await loadIni(RL_LOCATE, RL_PROCS, "TASystemSettings.ini"); return c && { who: "", running: c.running, nvidia: c.nvidia, hasBackup: c.hasBackup, values: rlRead(c.text), raw: c }; },
   save: (c, v) => saveFiles(RL_LOCATE, RL_PROCS, [["TASystemSettings.ini", c.text, rlApply(c.text, v)]]),
   restore: () => restoreFiles(RL_LOCATE, RL_PROCS, ["TASystemSettings.ini"]),
@@ -440,7 +442,7 @@ if(-not (Test-Path -LiteralPath "$dir\GameUserSettings.ini")){ exit 0 }`;
 const FN_PROCS = ["FortniteClient-Win64-Shipping", "FortniteClient-Win64-Shipping_EAC_EOS", "FortniteClient-Win64-Shipping_BE", "FortniteLauncher"];
 
 export const FORTNITE: GameAdapter<IniFile> = {
-  id: "fn", fields: FN_FIELDS, presets: FN_PRESETS,
+  id: "fn", name: "Fortnite", fpsKey: "FrameRateLimit", fields: FN_FIELDS, presets: FN_PRESETS,
   load: async () => { const c = await loadIni(FN_LOCATE, FN_PROCS, "GameUserSettings.ini"); return c && { who: "", running: c.running, nvidia: c.nvidia, hasBackup: c.hasBackup, values: fnRead(c.text), raw: c }; },
   save: (c, v) => saveFiles(FN_LOCATE, FN_PROCS, [["GameUserSettings.ini", c.text, fnApply(c.text, v)]]),
   restore: () => restoreFiles(FN_LOCATE, FN_PROCS, ["GameUserSettings.ini"]),
@@ -465,11 +467,14 @@ if(-not (Test-Path -LiteralPath "$dir\GameUserSettings.ini")){ exit 0 }`;
 const A2_PROCS = ["AION2"];
 
 export const AION2: GameAdapter<IniFile> = {
-  id: "a2", fields: A2_FIELDS,
+  id: "a2", name: "AION 2", fpsKey: "FrameRateLimit", fields: A2_FIELDS,
   load: async () => { const c = await loadIni(A2_LOCATE, A2_PROCS, "GameUserSettings.ini"); return c && { who: "", running: c.running, nvidia: c.nvidia, hasBackup: c.hasBackup, values: a2Read(c.text), raw: c }; },
   save: (c, v) => saveFiles(A2_LOCATE, A2_PROCS, [["GameUserSettings.ini", c.text, a2Apply(c.text, v)]]),
   restore: () => restoreFiles(A2_LOCATE, A2_PROCS, ["GameUserSettings.ini"]),
 };
+
+/** Todos los juegos soportados (Perfiles los recorre: el que no está instalado no tiene archivo y se saltea). */
+export const GAME_ADAPTERS = [CS2, VALORANT, ROCKET_LEAGUE, FORTNITE, AION2] as GameAdapter[];
 
 /** Módulo de opciones del juego, si está soportado. */
 export function gameAdapter(g: { id: string; appId?: string }): GameAdapter | null {
