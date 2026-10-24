@@ -39,18 +39,20 @@ const OP_PT: Record<string, string> = {"Game Mode de Windows": "Modo de Jogo do 
 const op = (id: string, name: string, key: string, prop: string, value: number, group: string): RegOp =>
   ({ id, name, nameEn: OP_EN[name] ?? name, namePt: OP_PT[name] ?? OP_EN[name] ?? name, desc: "", group, key, prop, type: "DWord", value });
 
-// Terminan con `exit $LASTEXITCODE` (el de powercfg) para que el frontend sepa si
-// el plan se aplicó de verdad — powercfg es nativo y su fallo no altera `ok` solo.
 // Optimizaciones (por nombre exacto del catálogo) que suma cada perfil. Ninguna "Avanzado".
 const T_NET = ["Sin ahorro de energía en el adaptador de red", "Desactivar Network Throttling", "No compartir Windows Update con otras PCs (P2P)"];
 const T_PLAY = ["Desactivar Power Throttling (no frenar programas)", "Desactivar Sticky Keys", "Desactivar Filter Keys y Toggle Keys",
   "No bajar el volumen del juego en llamadas", "Optimizaciones para juegos en ventana"];
 export const PROFILE_TWEAKS = {
-  competitivo: ["Deshabilitar aceleración del mouse", "Deshabilitar algoritmo de Nagle (ping más bajo)", ...T_NET, ...T_PLAY],
+  competitivo: ["Deshabilitar aceleración del mouse", "Deshabilitar algoritmo de Nagle (ping más bajo)", "Optimizar TCP", ...T_NET, ...T_PLAY,
+    "Desactivar animaciones y efectos visuales", "Deshabilitar apps en segundo plano", "Edge sin segundo plano ni inicio anticipado", "Chrome sin segundo plano",
+    "Deshabilitar telemetría de Windows", "Deshabilitar tareas programadas de telemetría", "Desactivar panel de Widgets", "Desactivar Copilot"],
   streaming: [...T_NET, ...T_PLAY],
   ahorro: ["Deshabilitar apps en segundo plano", "Edge sin segundo plano ni inicio anticipado", "Chrome sin segundo plano", "No compartir Windows Update con otras PCs (P2P)"],
 };
 
+// Terminan con `exit $LASTEXITCODE` (el de powercfg) para que el frontend sepa si
+// el plan se aplicó de verdad — powercfg es nativo y su fallo no altera `ok` solo.
 const PLAN_MAX = String.raw`${MAX_PLAN}
 $pc=$LASTEXITCODE; Write-Output 'Plan: maximo rendimiento'
 exit $pc`;
@@ -67,9 +69,9 @@ export const PROFILES: Profile[] = [
     desc: "FPS y latencia al máximo. Para shooters y juego online serio.",
     descEn: "Max FPS and latency. For shooters and serious online play.",
     descPt: "FPS e latência no máximo. Para shooters e jogo online sério.",
-    bullets: ["Plan de energía máximo", "Game Mode ON · Game DVR OFF", "GPU Scheduling (HAGS)", "CPU sin reserva para fondo", "Sin transparencias", "Auto Game-Mode: Power (baja tus apps de fondo)", "Mouse sin aceleración · red sin ahorro de energía · sin Network Throttling ni Nagle", "Sin Sticky Keys · no baja el juego en llamadas · sin P2P de Windows Update", "Juegos: Máximo FPS, sin límite de FPS (opcional)"],
-    bulletsEn: ["Max power plan", "Game Mode ON · Game DVR OFF", "GPU Scheduling (HAGS)", "No CPU reserved for background", "No transparency", "Auto Game-Mode: Power (lowers your background apps)", "No mouse acceleration · no network power saving · no Network Throttling or Nagle", "No Sticky Keys · game volume not lowered on calls · no Windows Update P2P", "Games: Max FPS, no FPS limit (optional)"],
-    bulletsPt: ["Plano de energia máximo", "Game Mode ON · Game DVR OFF", "GPU Scheduling (HAGS)", "Sem reserva de CPU para segundo plano", "Sem transparências", "Auto Game-Mode: Power (reduz seus apps em segundo plano)", "Mouse sem aceleração · rede sem economia de energia · sem Network Throttling nem Nagle", "Sem Teclas de Aderência · o jogo não abaixa em chamadas · sem P2P do Windows Update", "Jogos: Máximo FPS, sem limite de FPS (opcional)"],
+    bullets: ["Plan de energía máximo · Game Mode ON · GPU Scheduling (HAGS)", "CPU sin reserva para fondo · Power Throttling OFF · Game DVR OFF", "Sin animaciones, efectos ni transparencias: todo responde al instante", "Auto Game-Mode: Power (baja tus apps de fondo)", "Mouse sin aceleración · sin Sticky Keys · no baja el juego en llamadas", "Red: sin ahorro de energía, Network Throttling ni Nagle · TCP optimizado · sin P2P", "Menos fondo: sin apps en segundo plano, Edge/Chrome cerrados, sin telemetría (ni Widgets/Copilot en W11)", "Juegos: Máximo FPS, sin límite de FPS (opcional)"],
+    bulletsEn: ["Max power plan · Game Mode ON · GPU Scheduling (HAGS)", "No CPU reserved for background · Power Throttling OFF · Game DVR OFF", "No animations, effects or transparency: everything responds instantly", "Auto Game-Mode: Power (lowers your background apps)", "No mouse acceleration · no Sticky Keys · game volume not lowered on calls", "Network: no power saving, Network Throttling or Nagle · TCP tuned · no P2P", "Less background: no background apps, Edge/Chrome closed, no telemetry (nor Widgets/Copilot on W11)", "Games: Max FPS, no FPS limit (optional)"],
+    bulletsPt: ["Plano de energia máximo · Game Mode ON · GPU Scheduling (HAGS)", "Sem reserva de CPU para segundo plano · Power Throttling OFF · Game DVR OFF", "Sem animações, efeitos nem transparências: tudo responde na hora", "Auto Game-Mode: Power (reduz seus apps em segundo plano)", "Mouse sem aceleração · sem Teclas de Aderência · o jogo não abaixa em chamadas", "Rede: sem economia de energia, Network Throttling nem Nagle · TCP otimizado · sem P2P", "Menos segundo plano: sem apps em segundo plano, Edge/Chrome fechados, sem telemetria (nem Widgets/Copilot no W11)", "Jogos: Máximo FPS, sem limite de FPS (opcional)"],
     ops: [
       op("p_gamemode", "Game Mode de Windows", GAMEBAR, "AutoGameModeEnabled", 1, "Perfil Competitivo"),
       op("p_gamedvr", "Game DVR OFF", GAMECFG, "GameDVR_Enabled", 0, "Perfil Competitivo"),
