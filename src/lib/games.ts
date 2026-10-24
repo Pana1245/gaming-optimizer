@@ -85,7 +85,7 @@ try{
       if($seen[$id]){ continue }
       $exe=if($known[$id]){ Join-Path $j.InstallLocation $known[$id] } elseif($j.LaunchExecutable){ Join-Path $j.InstallLocation $j.LaunchExecutable }
       # Incompleto: sólo si el juego ya está en el disco (actualizando), no una descarga a medias.
-      if($j.bIsIncompleteInstall -and -not ($exe -and (Test-Path -LiteralPath $exe -PathType Leaf))){ continue }
+      if($j.bIsIncompleteInstall -and -not ($f.Directory.Name -eq 'Pending' -and $exe -and (Test-Path -LiteralPath $exe -PathType Leaf))){ continue }
       $seen[$id]=1
       $uri='com.epicgames.launcher://apps/' + [uri]::EscapeDataString("$($j.CatalogNamespace):$($j.CatalogItemId):$($j.AppName)") + '?action=launch&silent=true'
       Add $id $j.DisplayName 'Epic' $j.InstallLocation $exe $uri '' $null
